@@ -1,19 +1,8 @@
 import esbuild from "esbuild";
-import { copyFileSync, existsSync, statSync } from "fs";
+import { copyFileSync, existsSync } from "fs";
 
 const vaultPath =
   "D:/forZubin/books stuffs/The 19th Nexus/The 19th Nexus Vault/.obsidian/plugins/doob-engine";
-
-const buildOptions = {
-  entryPoints: ["src/main.ts"],
-  bundle: true,
-  outfile: "dist/main.js",
-  format: "cjs",
-  platform: "node",
-  external: ["obsidian"],
-  sourcemap: true,
-  minify: false
-};
 
 function copyToVault() {
   const src = "dist/main.js";
@@ -26,31 +15,42 @@ function copyToVault() {
 }
 
 async function start() {
-  const ctx = await esbuild.context(buildOptions);
+
+  const ctx = await esbuild.context({
+    entryPoints: ["src/main.ts"],
+    bundle: true,
+    outfile: "dist/main.js",
+    format: "cjs",
+    platform: "node",
+    external: ["obsidian"],
+    sourcemap: true,
+    minify: false,
+
+    // 🔥 THIS is the correct hook
+    plugins: [
+      {
+        name: "doob-reload-plugin",
+        setup(build) {
+
+          build.onEnd(result => {
+            if (result.errors.length === 0) {
+              copyToVault();
+            } else {
+              console.log("❌ Build failed, not copying");
+            }
+          });
+
+        }
+      }
+    ]
+  });
 
   console.log("👀 Watching src → dist");
 
-  // 🔥 THIS is the ONLY correct watch call
   await ctx.watch();
 
-  // initial build copy (safe delay for first build)
+  // initial copy (first build)
   setTimeout(copyToVault, 500);
-
-  // 🔥 THE ONLY RELIABLE HOOK in context mode:
-  // we hook rebuild by wrapping rebuild function safely
-
-  const originalRebuild = ctx.rebuild.bind(ctx);
-
-  ctx.rebuild = async (...args) => {
-    const result = await originalRebuild(...args);
-
-    // only copy if build succeeded
-    if (result) {
-      copyToVault();
-    }
-
-    return result;
-  };
 }
 
 start();

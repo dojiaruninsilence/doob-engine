@@ -1,0 +1,1 @@
+export const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
