@@ -29,7 +29,7 @@ export default class DoobEngine extends Plugin {
 		this.initUI();
 		this.initCommands?.();
 
-		new Notice("Doob Engine is alive! Fuck yeah 🚀");
+		new Notice("Doob Engine is alive!");
 	}
 
 	// --------------------------------------------------
