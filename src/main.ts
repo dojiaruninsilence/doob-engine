@@ -9,7 +9,7 @@ export default class DoobEngine extends Plugin {
 	// optional global reference (useful for debugging + reload)
 	public softReload?: () => Promise<void>;
 
-  public dataManager!: DataManager;
+  	public dataManager!: DataManager;
 
 	async onload() {
 
@@ -44,7 +44,7 @@ export default class DoobEngine extends Plugin {
 		// register panel view
 		this.registerView(
 			VIEW_TYPE_DOOB_PANEL,
-			(leaf) => new DoobToolPanel(leaf)
+			(leaf) => new DoobToolPanel(leaf, this)
 		);
 
 		// open panel on startup

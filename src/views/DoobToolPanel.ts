@@ -1,6 +1,13 @@
-import { ItemView, Notice } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
+import DoobEngine from "../main";
 
 export class DoobToolPanel extends ItemView {
+	private plugin: DoobEngine;
+
+	constructor(leaf: WorkspaceLeaf, plugin: DoobEngine) {
+		super(leaf);
+		this.plugin = plugin;
+	}
 
 	getViewType() {
 		return "doob-tool-panel";
@@ -53,6 +60,30 @@ export class DoobToolPanel extends ItemView {
 		statBtn.onclick = () => {
 			new Notice("Stat tool triggered (not implemented yet)");
 		};
+
+		const debugHeader = root.createEl("h2");
+
+		debugHeader.textContent = "Development";
+
+		const testFeatureBtn = root.createEl("button");
+
+		testFeatureBtn.textContent = "Add Test Item";
+
+		testFeatureBtn.onclick =
+			async () => {
+
+				const item =
+					await this.plugin
+						.dataManager
+						.add(
+							"items",
+							{
+								name: "Test Potion"
+							}
+						);
+
+				new Notice(`Created: ${item.id}`);
+			};
 
 		new Notice("Doob Tool Panel Loaded");
 	}
