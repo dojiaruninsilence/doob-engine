@@ -33,14 +33,6 @@ export default class DoobEngine extends Plugin {
 		this.initCommands?.();
 		this.dataManager = new DataManager(this.app);
 
-    await this.dataManager.add(
-      "items",
-      {
-        id: crypto.randomUUID(),
-        name: "Test Item"
-      }
-    );
-
 		new Notice("Doob Engine is alive!");
 	}
 
