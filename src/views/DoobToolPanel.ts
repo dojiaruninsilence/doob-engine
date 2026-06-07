@@ -72,20 +72,28 @@ export class DoobToolPanel extends ItemView {
 		testFeatureBtn.onclick =
 			async () => {
 
-				const schema =
-					await this.plugin
-						.schemaManager
-						.loadSchema(
+				try {
+					new Notice("STEP 1: CLICKED");
+
+					const schema =
+						await this.plugin.schemaManager.loadSchema(
+							"Core",
 							"Item"
 						);
 
-				new Notice(
-					JSON.stringify(
-						schema,
-						null,
-						2
-					)
-				);
+					new Notice("STEP 2: LOADED");
+
+					console.log(schema);
+
+				} catch (err) {
+
+					console.error(err);
+
+					new Notice(
+						"SCHEMA ERROR: " +
+						(err as Error).message
+					);
+				}
 			};
 
 		new Notice("Doob Tool Panel Loaded");

@@ -2,6 +2,7 @@ import { Plugin, Notice } from "obsidian";
 import { DoobToolPanel } from "./views/DoobToolPanel";
 import { DataManager } from "./managers/DataManager";
 import { SchemaManager } from "./managers/SchemaManager";
+import { RulesetManager } from "./managers/RulesetManager";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -12,7 +13,8 @@ export default class DoobEngine extends Plugin {
 
   	public dataManager!: DataManager;
   	public schemaManager!: SchemaManager;
-
+  	public rulesetManager!: RulesetManager;
+	
 	async onload() {
 
 		// --------------------------------------------------
@@ -34,7 +36,9 @@ export default class DoobEngine extends Plugin {
 		this.initUI();
 		this.initCommands?.();
 		this.dataManager = new DataManager(this.app);
-		this.schemaManager = new SchemaManager(this.app);
+		this.rulesetManager = new RulesetManager(this.app);
+		this.schemaManager = new SchemaManager(this.app, this.rulesetManager);
+
 		new Notice("Doob Engine is alive!");
 	}
 
