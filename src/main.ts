@@ -1,6 +1,7 @@
 import { Plugin, Notice } from "obsidian";
 import { DoobToolPanel } from "./views/DoobToolPanel";
 import { DataManager } from "./managers/DataManager";
+import { SchemaManager } from "./managers/SchemaManager";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -10,6 +11,7 @@ export default class DoobEngine extends Plugin {
 	public softReload?: () => Promise<void>;
 
   	public dataManager!: DataManager;
+  	public schemaManager!: SchemaManager;
 
 	async onload() {
 
@@ -32,7 +34,7 @@ export default class DoobEngine extends Plugin {
 		this.initUI();
 		this.initCommands?.();
 		this.dataManager = new DataManager(this.app);
-
+		this.schemaManager = new SchemaManager(this.app);
 		new Notice("Doob Engine is alive!");
 	}
 

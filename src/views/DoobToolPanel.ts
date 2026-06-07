@@ -67,22 +67,25 @@ export class DoobToolPanel extends ItemView {
 
 		const testFeatureBtn = root.createEl("button");
 
-		testFeatureBtn.textContent = "Add Test Item";
+		testFeatureBtn.textContent = "Test Feature";
 
 		testFeatureBtn.onclick =
 			async () => {
 
-				const item =
+				const schema =
 					await this.plugin
-						.dataManager
-						.add(
-							"items",
-							{
-								name: "Test Potion"
-							}
+						.schemaManager
+						.loadSchema(
+							"Item"
 						);
 
-				new Notice(`Created: ${item.id}`);
+				new Notice(
+					JSON.stringify(
+						schema,
+						null,
+						2
+					)
+				);
 			};
 
 		new Notice("Doob Tool Panel Loaded");
