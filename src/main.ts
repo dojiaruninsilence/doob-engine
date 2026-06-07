@@ -1,27 +1,21 @@
-import { Plugin } from "obsidian";
+import { Plugin, Notice } from "obsidian";
 
 export default class DoobEngine extends Plugin {
 
   async onload() {
-    console.log("Doob Engine loaded");
 
-    // TEMP API (we will replace this later)
-    (window as any).doob = {
-      loadJSON: async (path: string) => {
-        const file = await this.app.vault.adapter.read(path);
-        return JSON.parse(file);
-      },
+    (window as any).doobReload = async () => {
+      new Notice("Reloading Doob Engine...");
 
-      saveJSON: async (path: string, data: any) => {
-        await this.app.vault.adapter.write(
-          path,
-          JSON.stringify(data, null, 2)
-        );
-      }
+      await this.onunload();
+      await this.onload();
     };
+
+    new Notice("Doob Engine loaded");
+    new Notice("Doob Engine is alive!");
   }
 
   onunload() {
-    delete (window as any).doob;
+    console.log("Doob Engine unloaded");
   }
 }

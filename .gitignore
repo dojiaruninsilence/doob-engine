@@ -4,6 +4,7 @@ node_modules/
 # build output
 dist/
 main.js
+main.js.map
 
 # obsidian local environment (optional but recommended)
 .obsidian/
