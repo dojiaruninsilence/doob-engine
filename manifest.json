@@ -1,0 +1,9 @@
+{
+  "id": "doob-engine",
+  "name": "Doob Engine",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "TTRPG data engine",
+  "author": "You",
+  "isDesktopOnly": false
+}

@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+main.js
+
+# obsidian local environment (optional but recommended)
+.obsidian/
+
+# logs
+*.log
+
+# system files
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
