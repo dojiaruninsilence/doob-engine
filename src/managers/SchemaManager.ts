@@ -2,6 +2,7 @@ import { App, TFile, normalizePath } from "obsidian";
 import { Schema } from "../types/SchemaTypes";
 import { RulesetManager } from "./RulesetManager";
 import { FIELD_TYPES, FieldType } from "../types/FieldTypes";
+import { ValidationResult } from "../types/ValidationTypes";
 
 export class SchemaManager {
 
@@ -172,6 +173,138 @@ export class SchemaManager {
 	}
 
 	// --------------------------------------------------
+	// Validate Schema and Records
+	// --------------------------------------------------
+
+	validateSchema(
+		schema: Schema
+	): ValidationResult {
+
+		const errors: string[] = [];
+
+		if (!schema.name.trim()) {
+			errors.push(
+				"Schema name is required"
+			);
+		}
+
+		if (schema.version < 1) {
+			errors.push(
+				"Schema version must be greater than 0"
+			);
+		}
+
+		for (
+			const [fieldName, field]
+			of Object.entries(schema.fields)
+		) {
+
+			if (!this.isValidFieldType(field.type)) {
+
+				errors.push(
+					`Invalid type on field '${fieldName}'`
+				);
+
+				continue;
+			}
+
+			if (
+				!this.validateFieldValue(
+					field.default,
+					field.type
+				)
+			) {
+				errors.push(
+					`Invalid default value on field '${fieldName}'`
+				);
+			}
+
+			if (
+				field.type === "enum" &&
+				(!field.enumValues ||
+					field.enumValues.length === 0)
+			) {
+				errors.push(
+					`Enum field '${fieldName}' requires enumValues`
+				);
+			}
+
+			if (
+				field.type === "reference" &&
+				!field.referenceType
+			) {
+				errors.push(
+					`Reference field '${fieldName}' requires referenceType`
+				);
+			}
+		}
+
+		return {
+			valid: errors.length === 0,
+			errors
+		};
+	}
+
+	validateRecord(
+		record: Record<string, any>,
+		schema: Schema
+	): ValidationResult {
+
+		const errors: string[] = [];
+
+		for (
+			const [fieldName, field]
+			of Object.entries(schema.fields)
+		) {
+
+			const value =
+				record[fieldName];
+
+			if (
+				field.required &&
+				(
+					value === undefined ||
+					value === null
+				)
+			) {
+				errors.push(
+					`Missing required field '${fieldName}'`
+				);
+
+				continue;
+			}
+
+			if (
+				value !== undefined &&
+				!this.validateFieldValue(
+					value,
+					field.type
+				)
+			) {
+				errors.push(
+					`Invalid value for '${fieldName}'`
+				);
+			}
+
+			if (
+				field.type === "enum" &&
+				value !== undefined &&
+				field.enumValues &&
+				!field.enumValues.includes(value)
+			) {
+				errors.push(
+					`Invalid enum value for '${fieldName}'`
+				);
+			}
+		}
+
+		return {
+			valid: errors.length === 0,
+			errors
+		};
+	}
+
+	// --------------------------------------------------
 	// LOAD
 	// --------------------------------------------------
 
@@ -182,16 +315,30 @@ export class SchemaManager {
 
 		await this.ensureSchemaExists(ruleset, name);
 
+		return this.getSchema(ruleset, name);
+	}
+
+	async getSchema(
+		ruleset: string,
+		name: string
+	): Promise<Schema> {
+
 		const path =
 			this.getSchemaPath(ruleset, name);
 
 		const file =
 			this.app.vault.getAbstractFileByPath(
 				path
-			) as TFile;
+			);
+
+		if (!file) {
+			throw new Error(
+				`Schema does not exist: ${ruleset}/${name}`
+			);
+		}
 
 		const content =
-			await this.app.vault.read(file);
+			await this.app.vault.read(file as TFile);
 
 		try {
 			return JSON.parse(content);
@@ -227,6 +374,16 @@ export class SchemaManager {
 			this.app.vault.getAbstractFileByPath(
 				path
 			) as TFile;
+
+		const validation =
+			this.validateSchema(schema);
+
+		if (!validation.valid) {
+
+			throw new Error(
+				validation.errors.join("\n")
+			);
+		}
 
 		await this.app.vault.modify(
 			file,

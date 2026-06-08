@@ -5,6 +5,8 @@ export interface SchemaField {
 	default: any;
 	required?: boolean;
 	description?: string;
+	enumValues?: string[];
+	referenceType?: string;
 }
 
 export interface Schema {
