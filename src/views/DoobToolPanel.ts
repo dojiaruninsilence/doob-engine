@@ -73,27 +73,226 @@ export class DoobToolPanel extends ItemView {
 			async () => {
 
 				try {
-					new Notice("STEP 1: CLICKED");
+
+					const ruleset = "Core";
+					const schemaName = "SchemaManagerTest";
+
+					new Notice("Starting SchemaManager test...");
+
+					// ----------------------------------------
+					// CREATE / LOAD
+					// ----------------------------------------
+
+					await this.plugin.schemaManager.loadSchema(
+						ruleset,
+						schemaName
+					);
+
+					// ----------------------------------------
+					// CLEAN START
+					// ----------------------------------------
 
 					const schema =
 						await this.plugin.schemaManager.loadSchema(
-							"Core",
-							"Item"
+							ruleset,
+							schemaName
 						);
 
-					new Notice("STEP 2: LOADED");
+					schema.fields = {};
+					schema.version = 1;
 
-					console.log(schema);
+					await this.plugin.schemaManager.saveSchema(
+						ruleset,
+						schema
+					);
 
-				} catch (err) {
+					// ----------------------------------------
+					// ADD FIELDS
+					// ----------------------------------------
 
-					console.error(err);
+					await this.plugin.schemaManager.addField(
+						ruleset,
+						schemaName,
+						"name",
+						"string"
+					);
+
+					await this.plugin.schemaManager.addField(
+						ruleset,
+						schemaName,
+						"level",
+						"number"
+					);
+
+					await this.plugin.schemaManager.addField(
+						ruleset,
+						schemaName,
+						"health",
+						"number"
+					);
+
+					// ----------------------------------------
+					// VERIFY ADD
+					// ----------------------------------------
+
+					if (
+						!(
+							await this.plugin.schemaManager.hasField(
+								ruleset,
+								schemaName,
+								"name"
+							)
+						)
+					) {
+						throw new Error("name field missing");
+					}
+
+					if (
+						!(
+							await this.plugin.schemaManager.hasField(
+								ruleset,
+								schemaName,
+								"level"
+							)
+						)
+					) {
+						throw new Error("level field missing");
+					}
+
+					if (
+						!(
+							await this.plugin.schemaManager.hasField(
+								ruleset,
+								schemaName,
+								"health"
+							)
+						)
+					) {
+						throw new Error("health field missing");
+					}
+
+					// ----------------------------------------
+					// RENAME
+					// ----------------------------------------
+
+					await this.plugin.schemaManager.renameField(
+						ruleset,
+						schemaName,
+						"health",
+						"hp"
+					);
+
+					if (
+						await this.plugin.schemaManager.hasField(
+							ruleset,
+							schemaName,
+							"health"
+						)
+					) {
+						throw new Error("health field still exists");
+					}
+
+					if (
+						!(
+							await this.plugin.schemaManager.hasField(
+								ruleset,
+								schemaName,
+								"hp"
+							)
+						)
+					) {
+						throw new Error("hp field missing");
+					}
+
+					// ----------------------------------------
+					// UPDATE
+					// ----------------------------------------
+
+					await this.plugin.schemaManager.updateField(
+						ruleset,
+						schemaName,
+						"hp",
+						{
+							default: 100
+						}
+					);
+
+					// ----------------------------------------
+					// REMOVE
+					// ----------------------------------------
+
+					await this.plugin.schemaManager.removeField(
+						ruleset,
+						schemaName,
+						"level"
+					);
+
+					if (
+						await this.plugin.schemaManager.hasField(
+							ruleset,
+							schemaName,
+							"level"
+						)
+					) {
+						throw new Error("level field still exists");
+					}
+
+					// ----------------------------------------
+					// APPLY DEFAULTS
+					// ----------------------------------------
+
+					const finalSchema =
+						await this.plugin.schemaManager.loadSchema(
+							ruleset,
+							schemaName
+						);
+
+					const migrated =
+						this.plugin.schemaManager.applyDefaults(
+							{},
+							finalSchema
+						);
+
+					if (migrated.name !== "") {
+						throw new Error(
+							"name default failed"
+						);
+					}
+
+					if (migrated.hp !== 100) {
+						throw new Error(
+							"hp default failed"
+						);
+					}
+
+					// ----------------------------------------
+					// SUCCESS
+					// ----------------------------------------
 
 					new Notice(
-						"SCHEMA ERROR: " +
-						(err as Error).message
+						"✅ SchemaManager test passed"
+					);
+
+					console.log(
+						"Final schema:",
+						finalSchema
+					);
+
+					console.log(
+						"Migrated record:",
+						migrated
+					);
+
+				}
+				catch (error) {
+
+					console.error(error);
+
+					new Notice(
+						`❌ SchemaManager test failed: ${error}`
 					);
 				}
+
 			};
 
 		new Notice("Doob Tool Panel Loaded");
