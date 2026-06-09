@@ -67,6 +67,16 @@ export class EngineTestRunner {
             this.testQueries()
         );
 
+		await this.safeRun(
+			"Update Cache",
+			() => this.testUpdateCache()
+		);
+
+		await this.safeRun(
+			"Remove Cache",
+			() => this.testRemoveCache()
+		);
+
         new Notice("✅ All Engine Tests Completed");
     }
 
@@ -76,8 +86,15 @@ export class EngineTestRunner {
 
 	private async testSchemaSetup() {
 
-		new Notice("Test 1: Schema Setup");
+	new Notice("Test 1: Schema Setup");
 
+	const schema =
+		await this.schemaManager.loadSchema(
+			"CoreTest",
+			"Item"
+		);
+
+	if (!schema.fields["name"]) {
 		await this.schemaManager.addField(
 			"CoreTest",
 			"Item",
@@ -85,7 +102,9 @@ export class EngineTestRunner {
 			"string",
 			""
 		);
+	}
 
+	if (!schema.fields["damage"]) {
 		await this.schemaManager.addField(
 			"CoreTest",
 			"Item",
@@ -93,18 +112,21 @@ export class EngineTestRunner {
 			"number",
 			1
 		);
+	}
 
+	if (!schema.fields["rarity"]) {
 		await this.schemaManager.addField(
 			"CoreTest",
 			"Item",
 			"rarity",
 			"enum",
 			"Common",
-            ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+			["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 		);
-
-		new Notice("Schema ready");
 	}
+
+	new Notice("Schema ready");
+}
 
 	// --------------------------------------------------
 	// TEST 2: Valid Record
@@ -168,14 +190,18 @@ export class EngineTestRunner {
 	private async testMigration() {
 
 		new Notice("Test 4: Migration");
+		
+		const schema = await this.schemaManager.loadSchema("CoreTest", "Item");
 
-		await this.schemaManager.addField(
-			"CoreTest",
-			"Item",
-			"weight",
-			"number",
-			5
-		);
+		if (!schema.fields["weight"]) {
+			await this.schemaManager.addField(
+				"CoreTest",
+				"Item",
+				"weight",
+				"number",
+				5
+			);
+		}
 
         const context = await this.contextFactory.getSchemaContext(
 			"CoreTest",
@@ -218,5 +244,123 @@ export class EngineTestRunner {
 
 			new Notice(`GetById OK: ${first?.id}`);
 		}
+	}
+
+	// --------------------------------------------------
+	// TEST 6: UPDATE CACHE
+	// --------------------------------------------------
+
+	private async testUpdateCache() {
+
+		new Notice("Test 6: Update Cache");
+
+		const context =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// Create record
+
+		const record =
+			await this.dataManager.createRecord(
+				context,
+				{
+					name: "Cache Sword",
+					damage: 10
+				}
+			);
+
+		// Update record
+
+		await this.dataManager.update(
+			context,
+			record.id,
+			{
+				damage: 999
+			}
+		);
+
+		// Immediately read back
+
+		const updated =
+			await this.dataManager.getById(
+				context,
+				record.id
+			);
+
+		if (!updated) {
+			throw new Error(
+				"Updated record not found"
+			);
+		}
+
+		if (updated.data.damage !== 999) {
+			throw new Error(
+				`Expected damage 999, got ${updated.data.damage}`
+			);
+		}
+
+		new Notice(
+			`Update cache OK (${updated.data.damage})`
+		);
+	}
+
+	// --------------------------------------------------
+	// TEST 7: REMOVE CACHE
+	// --------------------------------------------------
+
+	private async testRemoveCache() {
+
+		new Notice("Test 7: Remove Cache");
+
+		const context =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// Create record
+
+		const record =
+			await this.dataManager.createRecord(
+				context,
+				{
+					name: "Delete Me",
+					damage: 1
+				}
+			);
+
+		// Remove record
+
+		const removed =
+			await this.dataManager.remove(
+				context,
+				record.id
+			);
+
+		if (!removed) {
+			throw new Error(
+				"Remove returned false"
+			);
+		}
+
+		// Verify cache + storage
+
+		const exists =
+			await this.dataManager.exists(
+				context,
+				record.id
+			);
+
+		if (exists) {
+			throw new Error(
+				"Record still exists after remove"
+			);
+		}
+
+		new Notice(
+			"Remove cache OK"
+		);
 	}
 }

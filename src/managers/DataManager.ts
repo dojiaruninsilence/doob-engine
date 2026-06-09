@@ -3,17 +3,20 @@ import { DataFile, DataRecord } from "../types/DataTypes";
 import { SchemaManager } from "./SchemaManager";
 import { SchemaContext } from "../types/ContextTypes";
 import { RulesetManager } from "./RulesetManager";
+import { CacheManager } from "./CacheManager";
 
 export class DataManager {
 
 	private app: App;
 	private schemaManager: SchemaManager;
 	private rulesetManager: RulesetManager;
+    private cacheManager: CacheManager;
 
-	constructor(app: App, schemaManager: SchemaManager, rulesetManager: RulesetManager) {
+	constructor(app: App, schemaManager: SchemaManager, rulesetManager: RulesetManager, cacheManager: CacheManager) {
 		this.app = app;
 		this.schemaManager = schemaManager;
         this.rulesetManager = rulesetManager;
+        this.cacheManager = cacheManager;
 	}
 
 	private getDataFolder(ruleset: string): string {
@@ -71,6 +74,20 @@ export class DataManager {
         context: SchemaContext
     ): Promise<DataFile> {
 
+        const cached =
+            this.cacheManager.getData(
+                context.ruleset,
+                context.schemaName
+            );
+
+        if (cached) {
+            new Notice(
+				`Data cache hit: ${context.ruleset}/${context.schemaName}`
+			);
+
+            return structuredClone(cached);
+        }
+
         await this.ensureFileExists(context);
 
         const path = this.getFilePath(context);
@@ -113,9 +130,16 @@ export class DataManager {
 
         if (changed) {
             await this.save(context, data);
+            return structuredClone(data);
         }
 
-        return data;
+        this.cacheManager.setData(
+            context.ruleset,
+            context.schemaName,
+            data
+        );
+
+        return structuredClone(data);
     }
 
 	async save(
@@ -134,6 +158,12 @@ export class DataManager {
 			file,
 			JSON.stringify(data, null, 2)
 		);
+
+        this.cacheManager.setData(
+            context.ruleset,
+            context.schemaName,
+            data
+        );
 	}
 
 	async add(

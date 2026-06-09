@@ -1,21 +1,25 @@
-import { App, TFile, normalizePath } from "obsidian";
+import { App, Notice, TFile, normalizePath } from "obsidian";
 import { Schema } from "../types/SchemaTypes";
 import { RulesetManager } from "./RulesetManager";
 import { FIELD_TYPES, FieldType } from "../types/FieldTypes";
 import { ValidationResult } from "../types/ValidationTypes";
 import { DataRecord } from "../types/DataTypes";
+import { CacheManager } from "./CacheManager";
 
 export class SchemaManager {
 
 	private app: App;
 	private rulesetManager: RulesetManager;
+	private cacheManager: CacheManager;
 
 	constructor(
 		app: App,
-		rulesetManager: RulesetManager
+		rulesetManager: RulesetManager,
+		cacheManager: CacheManager
 	) {
 		this.app = app;
 		this.rulesetManager = rulesetManager;
+		this.cacheManager = cacheManager;
 	}
 
 	private bumpSchemaVersion(schema: Schema) {
@@ -324,6 +328,17 @@ export class SchemaManager {
 		name: string
 	): Promise<Schema> {
 
+		const cached =
+			this.cacheManager.getSchema(
+				ruleset,
+				name
+			);
+
+		if (cached) {
+
+			return structuredClone(cached);
+		}
+
 		const path =
 			this.getSchemaPath(ruleset, name);
 
@@ -339,12 +354,25 @@ export class SchemaManager {
 		}
 
 		const content =
-			await this.app.vault.read(file as TFile);
+			await this.app.vault.read(
+				file as TFile
+			);
 
 		try {
-			return JSON.parse(content);
-		}
-		catch (error) {
+
+			const schema: Schema =
+				JSON.parse(content);
+
+			this.cacheManager.setSchema(
+				ruleset,
+				name,
+				schema
+			);
+
+			return structuredClone(schema);
+
+		} catch (error) {
+
 			throw new Error(
 				`Failed to parse schema '${name}'`
 			);
@@ -389,6 +417,12 @@ export class SchemaManager {
 		await this.app.vault.modify(
 			file,
 			JSON.stringify(schema, null, 2)
+		);
+
+		this.cacheManager.setSchema(
+			ruleset,
+			schema.name,
+			schema
 		);
 	}
 
