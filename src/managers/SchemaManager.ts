@@ -3,6 +3,7 @@ import { Schema } from "../types/SchemaTypes";
 import { RulesetManager } from "./RulesetManager";
 import { FIELD_TYPES, FieldType } from "../types/FieldTypes";
 import { ValidationResult } from "../types/ValidationTypes";
+import { DataRecord } from "../types/DataTypes";
 
 export class SchemaManager {
 
@@ -400,7 +401,9 @@ export class SchemaManager {
 		schemaName: string,
 		fieldName: string,
 		type: FieldType,
-		defaultValue?: any
+		defaultValue?: any,
+		enumValues?: string[],
+		referenceType?: string
 	) {
 
 		const schema =
@@ -417,13 +420,19 @@ export class SchemaManager {
 			throw new Error(`Field already exists: ${fieldName}`);
 		}
 
+		if (type === "enum" && (!enumValues || enumValues.length === 0)) {
+			throw new Error("Enum fields require enumValues");
+		}
+
 		const finalDefault =
 			defaultValue ??
 			this.getDefaultForType(type);
 
 		schema.fields[fieldName] = {
 			type,
-			default: structuredClone(finalDefault)
+			default: structuredClone(finalDefault),
+			enumValues:  type === "enum" ? enumValues : undefined,
+			referenceType
 		};
 
 		if (
@@ -624,5 +633,49 @@ export class SchemaManager {
 			record,
 			schema
 		);
+	}
+
+	// --------------------------------------------------
+	// MIGRATE RECORD ON LOAD
+	// --------------------------------------------------
+
+	migrateRecordOnLoad(
+		record: DataRecord,
+		schema: Schema
+	): DataRecord {
+
+		// already up to date
+		if (record.schemaVersion === schema.version) {
+			return record;
+		}
+
+		let migrated = structuredClone(record);
+
+		// --------------------------------------------------
+		// STEP 1: apply defaults (adds missing fields)
+		// --------------------------------------------------
+
+		migrated.data = this.applyDefaults(
+			migrated.data,
+			schema
+		);
+
+		// --------------------------------------------------
+		// STEP 2: remove invalid fields (optional cleanup)
+		// --------------------------------------------------
+
+		for (const key of Object.keys(migrated.data)) {
+			if (!schema.fields[key]) {
+				delete migrated.data[key];
+			}
+		}
+
+		// --------------------------------------------------
+		// STEP 3: upgrade version
+		// --------------------------------------------------
+
+		migrated.schemaVersion = schema.version;
+
+		return migrated;
 	}
 }

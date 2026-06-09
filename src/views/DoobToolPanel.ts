@@ -1,12 +1,15 @@
 import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import DoobEngine from "../main";
+import { EngineTestRunner } from "../tests/EngineTestRunner";
 
 export class DoobToolPanel extends ItemView {
 	private plugin: DoobEngine;
+	private testRunner!: EngineTestRunner;
 
 	constructor(leaf: WorkspaceLeaf, plugin: DoobEngine) {
 		super(leaf);
 		this.plugin = plugin;
+		this.testRunner = new EngineTestRunner(this.plugin.schemaManager, this.plugin.dataManager);
 	}
 
 	getViewType() {
@@ -65,36 +68,14 @@ export class DoobToolPanel extends ItemView {
 
 		debugHeader.textContent = "Development";
 
-		const testFeatureBtn = root.createEl("button");
+		const testEngineBtn = root.createEl("button");
 
-		testFeatureBtn.textContent = "Test Feature";
+		testEngineBtn.textContent = "Test Engine";
 
-		testFeatureBtn.onclick =
+		testEngineBtn.onclick =
 			async () => {
 
-				const schema =
-					await this.plugin.schemaManager.loadSchema(
-						"Core",
-						"ValidationTest"
-					);
-
-				schema.fields["rarity"] = {
-					type: "enum",
-					default: "Common",
-					enumValues: []
-				};
-
-				const result =
-					this.plugin.schemaManager.validateSchema(
-						schema
-					);
-
-				new Notice(
-					result.valid
-						? "Validation passed"
-						: result.errors.join(", ")
-				);
-
+				await this.testRunner.runAll();
 			};
 
 		new Notice("Doob Tool Panel Loaded");

@@ -1,27 +1,38 @@
 import { App, Notice, TFile, normalizePath } from "obsidian";
 import { DataFile, DataRecord } from "../types/DataTypes";
+import { SchemaManager } from "./SchemaManager";
+import { Entity } from "../types/EntityTypes";
+import { RulesetManager } from "./RulesetManager";
 
 export class DataManager {
 
 	private app: App;
+	private schemaManager: SchemaManager;
+	private rulesetManager: RulesetManager;
 
-	constructor(app: App) {
+	constructor(app: App, schemaManager: SchemaManager, rulesetManager: RulesetManager) {
 		this.app = app;
+		this.schemaManager = schemaManager;
+        this.rulesetManager = rulesetManager;
 	}
 
-	private getDataFolder(): string {
-		return "Doob Engine/Data";
-	}
-
-	private getFilePath(type: string): string {
+	private getDataFolder(ruleset: string): string {
 		return normalizePath(
-			`${this.getDataFolder()}/${type}.json`
+            this.rulesetManager.getDataFolder(
+                ruleset
+            )
+        );
+	}
+
+	private getFilePath(entity: Entity): string {
+		return normalizePath(
+			`${this.getDataFolder(entity.ruleset)}/${entity.schemaName}.json`
 		);
 	}
 
-	async ensureFolderExists(): Promise<void> {
+	async ensureFolderExists(ruleset: string): Promise<void> {
 
-		const folder = this.getDataFolder();
+		const folder = this.getDataFolder(ruleset);
 
 		const exists =
 			this.app.vault.getAbstractFileByPath(folder);
@@ -31,11 +42,11 @@ export class DataManager {
 		}
 	}
 
-	async ensureFileExists(type: string): Promise<void> {
+	async ensureFileExists(entity: Entity): Promise<void> {
 
-		await this.ensureFolderExists();
+		await this.ensureFolderExists(entity.ruleset);
 
-		const path = this.getFilePath(type);
+		const path = this.getFilePath(entity);
 
 		const file =
 			this.app.vault.getAbstractFileByPath(path);
@@ -43,6 +54,8 @@ export class DataManager {
 		if (!file) {
 
 			const initialData: DataFile = {
+				ruleset: entity.ruleset,
+				schemaName: entity.schemaName,
 				version: 1,
 				records: []
 			};
@@ -54,29 +67,65 @@ export class DataManager {
 		}
 	}
 
-	async load(type: string): Promise<DataFile> {
+	async load(
+        entity: Entity
+    ): Promise<DataFile> {
 
-		await this.ensureFileExists(type);
+        await this.ensureFileExists(entity);
 
-		const path = this.getFilePath(type);
+        const path = this.getFilePath(entity);
 
-		const file =
-			this.app.vault.getAbstractFileByPath(path) as TFile;
+        const file =
+            this.app.vault.getAbstractFileByPath(
+                path
+            ) as TFile;
 
-		const content =
-			await this.app.vault.read(file);
+        const content =
+            await this.app.vault.read(file);
 
-		return JSON.parse(content);
-	}
+        const data: DataFile =
+            JSON.parse(content);
+        
+        if (!entity.schema) {
+            throw new Error("Entity is missing schema (must be hydrated before DataManager usage)");
+        }
+        
+        const schema = entity.schema;
+
+        let changed = false;
+
+        data.records = data.records.map(record => {
+
+            const migrated =
+                this.schemaManager.migrateRecordOnLoad(
+                    record,
+                    schema
+                );
+
+            if (
+                migrated.schemaVersion !== record.schemaVersion
+            ) {
+                changed = true;
+            }
+
+            return migrated;
+        });
+
+        if (changed) {
+            await this.save(entity, data);
+        }
+
+        return data;
+    }
 
 	async save(
-		type: string,
+		entity: Entity,
 		data: DataFile
 	): Promise<void> {
 
-		await this.ensureFileExists(type);
+		await this.ensureFileExists(entity);
 
-		const path = this.getFilePath(type);
+		const path = this.getFilePath(entity);
 
 		const file =
 			this.app.vault.getAbstractFileByPath(path) as TFile;
@@ -88,39 +137,31 @@ export class DataManager {
 	}
 
 	async add(
-        type: string,
+        entity: Entity,
         recordData: Record<string, any>
     ): Promise<DataRecord> {
 
-        const data = await this.load(type);
-
-        const record: DataRecord = {
-            id: crypto.randomUUID(),
-            data: recordData
-        };
-
-        data.records.push(record);
-
-        await this.save(type, data);
-
-        return record;
+        return this.createRecord(
+            entity,
+            recordData
+        );
     }
 
     async getAll(
-        type: string
+        entity: Entity
     ): Promise<DataRecord[]> {
 
-        const data = await this.load(type);
+        const data = await this.load(entity);
 
         return data.records;
     }
 
     async getById(
-        type: string,
+        entity: Entity,
         id: string
     ): Promise<DataRecord | undefined> {
 
-        const data = await this.load(type);
+        const data = await this.load(entity);
 
         return data.records.find(
             record => record.id === id
@@ -128,49 +169,89 @@ export class DataManager {
     }
 
     async exists(
-        type: string,
+        entity: Entity,
         id: string
     ): Promise<boolean> {
 
         const record =
-            await this.getById(type, id);
+            await this.getById(entity, id);
 
         return record !== undefined;
     }
 
     async update(
-        type: string,
+        entity: Entity,
         id: string,
         changes: Record<string, any>
     ): Promise<boolean> {
 
-        const data = await this.load(type);
+        const data = await this.load(entity);
 
         const record =
-            data.records.find(
-                record => record.id === id
-            );
+            data.records.find(r => r.id === id);
 
         if (!record) {
             return false;
         }
 
-        Object.assign(
-            record.data,
-            changes
-        );
+        // --------------------------------------------------
+        // 1. Merge changes safely
+        // --------------------------------------------------
 
-        await this.save(type, data);
+        if (!entity.schema) {
+            throw new Error("Entity is missing schema (must be hydrated before DataManager usage)");
+        }
+
+        const schema = entity.schema;
+
+        const merged = {
+            ...record.data,
+            ...changes
+        };
+
+        // --------------------------------------------------
+        // 2. Apply schema normalization (IMPORTANT)
+        // --------------------------------------------------
+
+        const normalized =
+            this.schemaManager.applyDefaults(
+                merged,
+                schema
+            );
+
+        // --------------------------------------------------
+        // 3. Validate against schema
+        // --------------------------------------------------
+
+        const validation =
+            this.schemaManager.validateRecord(
+                normalized,
+                schema
+            );
+
+        if (!validation.valid) {
+            throw new Error(
+                `Update failed validation:\n${validation.errors.join("\n")}`
+            );
+        }
+
+        // --------------------------------------------------
+        // 4. Commit
+        // --------------------------------------------------
+
+        record.data = normalized;
+
+        await this.save(entity, data);
 
         return true;
     }
 
     async remove(
-        type: string,
+        entity: Entity,
         id: string
     ): Promise<boolean> {
 
-        const data = await this.load(type);
+        const data = await this.load(entity);
 
         const index =
             data.records.findIndex(
@@ -183,17 +264,70 @@ export class DataManager {
 
         data.records.splice(index, 1);
 
-        await this.save(type, data);
+        await this.save(entity, data);
 
         return true;
     }
 
     async count(
-        type: string
+        entity: Entity
     ): Promise<number> {
 
-        const data = await this.load(type);
+        const data = await this.load(entity);
 
         return data.records.length;
+    }
+
+    // --------------------------------------------------
+    // CREATE RECORD (SCHEMA-AWARE)
+    // --------------------------------------------------
+
+    async createRecord(
+        entity: Entity,
+        recordData: Record<string, any>
+    ): Promise<DataRecord> {
+
+        // 1. Load schema
+        if (!entity.schema) {
+            throw new Error("Entity is missing schema (must be hydrated before DataManager usage)");
+        }
+        const schema = entity.schema;
+
+        // 2. Apply defaults
+        let finalData =
+            this.schemaManager.applyDefaults(
+                recordData,
+                schema
+            );
+
+        // 3. Validate record
+        const validation =
+            this.schemaManager.validateRecord(
+                finalData,
+                schema
+            );
+
+        if (!validation.valid) {
+            throw new Error(
+                `Invalid record:\n${validation.errors.join("\n")}`
+            );
+        }
+
+        // 4. Create record
+        const record: DataRecord = {
+            id: crypto.randomUUID(),
+            schemaVersion: schema.version,
+            data: finalData
+        };
+
+        // 5. Save
+        const data =
+            await this.load(entity);
+
+        data.records.push(record);
+
+        await this.save(entity, data);
+
+        return record;
     }
 }

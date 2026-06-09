@@ -18,8 +18,9 @@ export default class DoobEngine extends Plugin {
 	async onload() {
 
 		// --------------------------------------------------
-		// GLOBAL DEBUG / HOT RELOAD HOOK
+		// DEBUG HOOKS FIRST
 		// --------------------------------------------------
+
 		(window as any).doobPlugin = this;
 
 		(window as any).doobReload = async () => {
@@ -27,17 +28,31 @@ export default class DoobEngine extends Plugin {
 			await this.softReload?.();
 		};
 
-		// bind so we can safely call it externally
 		this.softReload = this.softReloadImpl.bind(this);
 
 		// --------------------------------------------------
-		// INIT SYSTEMS
+		// INIT CORE SYSTEMS FIRST (CRITICAL FIX)
 		// --------------------------------------------------
+
+		this.rulesetManager = new RulesetManager(this.app);
+
+		this.schemaManager = new SchemaManager(
+			this.app,
+			this.rulesetManager
+		);
+
+		this.dataManager = new DataManager(
+			this.app,
+			this.schemaManager,
+			this.rulesetManager
+		);
+
+		// --------------------------------------------------
+		// NOW SAFE TO BUILD UI
+		// --------------------------------------------------
+
 		this.initUI();
 		this.initCommands?.();
-		this.dataManager = new DataManager(this.app);
-		this.rulesetManager = new RulesetManager(this.app);
-		this.schemaManager = new SchemaManager(this.app, this.rulesetManager);
 
 		new Notice("Doob Engine is alive!");
 	}

@@ -8,14 +8,17 @@ export class RulesetManager {
 		this.app = app;
 	}
 
-	getRulesetsRoot(): string {
+	// --------------------------------------------------
+	// PATHS
+	// --------------------------------------------------
 
+	getRulesetsRoot(): string {
 		return normalizePath(
 			"Doob Engine/Rulesets"
 		);
 	}
 
-	getRulesetPath(
+	getRulesetFolder(
 		ruleset: string
 	): string {
 
@@ -29,7 +32,20 @@ export class RulesetManager {
 	): string {
 
 		return normalizePath(
-			`${this.getRulesetPath(ruleset)}/Schemas`
+			`${this.getRulesetFolder(
+				ruleset
+			)}/Schemas`
+		);
+	}
+
+	getDataFolder(
+		ruleset: string
+	): string {
+
+		return normalizePath(
+			`${this.getRulesetFolder(
+				ruleset
+			)}/Data`
 		);
 	}
 
@@ -46,16 +62,16 @@ export class RulesetManager {
 			await this.app.vault.createFolder(root);
 		}
 
-		const rulesetPath =
-			this.getRulesetPath(ruleset);
+		const rulesetFolder =
+			this.getRulesetFolder(ruleset);
 
 		if (
 			!this.app.vault.getAbstractFileByPath(
-				rulesetPath
+				rulesetFolder
 			)
 		) {
 			await this.app.vault.createFolder(
-				rulesetPath
+				rulesetFolder
 			);
 		}
 
