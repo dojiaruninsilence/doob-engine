@@ -3,6 +3,7 @@ import { DoobToolPanel } from "./views/DoobToolPanel";
 import { DataManager } from "./managers/DataManager";
 import { SchemaManager } from "./managers/SchemaManager";
 import { RulesetManager } from "./managers/RulesetManager";
+import { ContextFactory } from "./managers/ContextFactory";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -14,6 +15,7 @@ export default class DoobEngine extends Plugin {
   	public dataManager!: DataManager;
   	public schemaManager!: SchemaManager;
   	public rulesetManager!: RulesetManager;
+  	public contextFactory!: ContextFactory;
 	
 	async onload() {
 
@@ -45,6 +47,10 @@ export default class DoobEngine extends Plugin {
 			this.app,
 			this.schemaManager,
 			this.rulesetManager
+		);
+
+		this.contextFactory = new ContextFactory(
+			this.schemaManager
 		);
 
 		// --------------------------------------------------

@@ -4,8 +4,9 @@ export class EngineTestRunner {
 
 	private schemaManager: any;
 	private dataManager: any;
+	private contextFactory: any;
 
-	constructor(schemaManager: any, dataManager: any) {
+	constructor(schemaManager: any, dataManager: any, contextFactory: any) {
 
         if (!schemaManager) {
             new Notice("SchemaManager not injected");
@@ -17,8 +18,14 @@ export class EngineTestRunner {
             throw new Error("DataManager not injected");
         }
 
+        if (!contextFactory) {
+            new Notice("ContextFactory not injected");
+            throw new Error("ContextFactory not injected");
+        }
+
         this.schemaManager = schemaManager;
         this.dataManager = dataManager;
+        this.contextFactory = contextFactory;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
@@ -107,20 +114,14 @@ export class EngineTestRunner {
 
 		new Notice("Test 2: Valid Record");
 
-        const schema = await this.schemaManager.loadSchema(
-            "CoreTest",
-            "Item"
-        );
-
-        const entity = {
-            ruleset: "CoreTest",
-            schemaName: "Item",
-            schema
-        };
+        const context = await this.contextFactory.getSchemaContext(
+			"CoreTest",
+			"Item"
+		);
 
 		const record =
 			await this.dataManager.createRecord(
-				entity,
+				context,
 				{
 					name: "Test Sword"
 				}
@@ -137,21 +138,15 @@ export class EngineTestRunner {
 
 		new Notice("Test 3: Invalid Record");
 
-        const schema = await this.schemaManager.loadSchema(
-            "CoreTest",
-            "Item"
-        );
-
-        const entity = {
-            ruleset: "CoreTest",
-            schemaName: "Item",
-            schema
-        };
+        const context = await this.contextFactory.getSchemaContext(
+			"CoreTest",
+			"Item"
+		);
 
 		try {
 
 			await this.dataManager.createRecord(
-				entity,
+				context,
 				{
 					name: "Bad Item",
 					damage: "INVALID"
@@ -182,20 +177,14 @@ export class EngineTestRunner {
 			5
 		);
 
-        const schema = await this.schemaManager.loadSchema(
-            "CoreTest",
-            "Item"
-        );
-
-        const entity = {
-            ruleset: "CoreTest",
-            schemaName: "Item",
-            schema
-        };
+        const context = await this.contextFactory.getSchemaContext(
+			"CoreTest",
+			"Item"
+		);
 
 		const all =
 			await this.dataManager.getAll(
-				entity
+				context
 			);
 
 		new Notice(`Migrated ${all.length} records`);
@@ -209,27 +198,21 @@ export class EngineTestRunner {
 
 		new Notice("Test 5: Queries");
 
-        const schema = await this.schemaManager.loadSchema(
-            "CoreTest",
-            "Item"
-        );
-
-        const entity = {
-            ruleset: "CoreTest",
-            schemaName: "Item",
-            schema
-        };
+        const context = await this.contextFactory.getSchemaContext(
+			"CoreTest",
+			"Item"
+		);
 
 		const all =
 			await this.dataManager.getAll(
-				entity
+				context
 			);
 
 		if (all.length > 0) {
 
 			const first =
 				await this.dataManager.getById(
-					entity,
+					context,
 					all[0].id
 				);
 
