@@ -5,6 +5,7 @@ import { SchemaManager } from "./managers/SchemaManager";
 import { RulesetManager } from "./managers/RulesetManager";
 import { ContextFactory } from "./managers/ContextFactory";
 import { CacheManager } from "./managers/CacheManager";
+import { QueryManager } from "./managers/QueryManager";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -18,7 +19,8 @@ export default class DoobEngine extends Plugin {
   	public rulesetManager!: RulesetManager;
   	public contextFactory!: ContextFactory;
   	public cacheManager!: CacheManager;
-
+  	public queryManager!: QueryManager;
+	
 	async onload() {
 
 		// --------------------------------------------------
@@ -57,6 +59,10 @@ export default class DoobEngine extends Plugin {
 
 		this.contextFactory = new ContextFactory(
 			this.schemaManager
+		);
+
+		this.queryManager = new QueryManager(
+			this.dataManager
 		);
 
 		// --------------------------------------------------

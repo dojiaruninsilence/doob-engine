@@ -81,10 +81,7 @@ export class DataManager {
             );
 
         if (cached) {
-            new Notice(
-				`Data cache hit: ${context.ruleset}/${context.schemaName}`
-			);
-
+            
             return structuredClone(cached);
         }
 

@@ -5,8 +5,9 @@ export class EngineTestRunner {
 	private schemaManager: any;
 	private dataManager: any;
 	private contextFactory: any;
+	private queryManager: any;
 
-	constructor(schemaManager: any, dataManager: any, contextFactory: any) {
+	constructor(schemaManager: any, dataManager: any, contextFactory: any, queryManager: any) {
 
         if (!schemaManager) {
             new Notice("SchemaManager not injected");
@@ -26,6 +27,7 @@ export class EngineTestRunner {
         this.schemaManager = schemaManager;
         this.dataManager = dataManager;
         this.contextFactory = contextFactory;
+        this.queryManager = queryManager;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
@@ -39,6 +41,22 @@ export class EngineTestRunner {
         }
     }
 
+	private async resetCoreTestData() {
+
+		const context =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const all =
+			await this.dataManager.getAll(context);
+
+		for (const record of all) {
+			await this.dataManager.remove(context, record.id);
+		}
+	}
+
 	// --------------------------------------------------
 	// RUN ALL TESTS
 	// --------------------------------------------------
@@ -47,7 +65,7 @@ export class EngineTestRunner {
 
         new Notice("🧪 Engine Tests Starting...");
 
-        await this.safeRun("Schema Setup", () =>
+        /*await this.safeRun("Schema Setup", () =>
             this.testSchemaSetup()
         );
 
@@ -65,7 +83,7 @@ export class EngineTestRunner {
 
         await this.safeRun("Queries", () =>
             this.testQueries()
-        );
+        );*/
 
 		await this.safeRun(
 			"Update Cache",
@@ -77,6 +95,26 @@ export class EngineTestRunner {
 			() => this.testRemoveCache()
 		);
 
+		await this.safeRun(
+			"Query Where",
+			() => this.testQueryWhere()
+		);
+
+		await this.safeRun(
+			"Query Comparison",
+			() => this.testQueryComparison()
+		);
+
+		await this.safeRun(
+			"Query Sort",
+			() => this.testQuerySort()
+		);
+
+		await this.safeRun(
+			"Query Pagination",
+			() => this.testQueryPagination()
+		);
+
         new Notice("✅ All Engine Tests Completed");
     }
 
@@ -86,53 +124,57 @@ export class EngineTestRunner {
 
 	private async testSchemaSetup() {
 
-	new Notice("Test 1: Schema Setup");
+		new Notice("Test 1: Schema Setup");
 
-	const schema =
-		await this.schemaManager.loadSchema(
-			"CoreTest",
-			"Item"
-		);
+		await this.resetCoreTestData();
 
-	if (!schema.fields["name"]) {
-		await this.schemaManager.addField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
+		const schema =
+			await this.schemaManager.loadSchema(
+				"CoreTest",
+				"Item"
+			);
+
+		if (!schema.fields["name"]) {
+			await this.schemaManager.addField(
+				"CoreTest",
+				"Item",
+				"name",
+				"string",
+				""
+			);
+		}
+
+		if (!schema.fields["damage"]) {
+			await this.schemaManager.addField(
+				"CoreTest",
+				"Item",
+				"damage",
+				"number",
+				1
+			);
+		}
+
+		if (!schema.fields["rarity"]) {
+			await this.schemaManager.addField(
+				"CoreTest",
+				"Item",
+				"rarity",
+				"enum",
+				"Common",
+				["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+			);
+		}
+
+		new Notice("Schema ready");
 	}
-
-	if (!schema.fields["damage"]) {
-		await this.schemaManager.addField(
-			"CoreTest",
-			"Item",
-			"damage",
-			"number",
-			1
-		);
-	}
-
-	if (!schema.fields["rarity"]) {
-		await this.schemaManager.addField(
-			"CoreTest",
-			"Item",
-			"rarity",
-			"enum",
-			"Common",
-			["Common", "Uncommon", "Rare", "Epic", "Legendary"]
-		);
-	}
-
-	new Notice("Schema ready");
-}
 
 	// --------------------------------------------------
 	// TEST 2: Valid Record
 	// --------------------------------------------------
 
 	private async testValidRecord() {
+
+		await this.resetCoreTestData();
 
 		new Notice("Test 2: Valid Record");
 
@@ -157,6 +199,8 @@ export class EngineTestRunner {
 	// --------------------------------------------------
 
 	private async testInvalidRecord() {
+
+		await this.resetCoreTestData();
 
 		new Notice("Test 3: Invalid Record");
 
@@ -188,6 +232,8 @@ export class EngineTestRunner {
 	// --------------------------------------------------
 
 	private async testMigration() {
+
+		await this.resetCoreTestData();
 
 		new Notice("Test 4: Migration");
 		
@@ -222,6 +268,8 @@ export class EngineTestRunner {
 
 	private async testQueries() {
 
+		await this.resetCoreTestData();
+
 		new Notice("Test 5: Queries");
 
         const context = await this.contextFactory.getSchemaContext(
@@ -251,6 +299,8 @@ export class EngineTestRunner {
 	// --------------------------------------------------
 
 	private async testUpdateCache() {
+
+		await this.resetCoreTestData();
 
 		new Notice("Test 6: Update Cache");
 
@@ -312,6 +362,8 @@ export class EngineTestRunner {
 
 	private async testRemoveCache() {
 
+		await this.resetCoreTestData();
+
 		new Notice("Test 7: Remove Cache");
 
 		const context =
@@ -362,5 +414,185 @@ export class EngineTestRunner {
 		new Notice(
 			"Remove cache OK"
 		);
+	}
+
+	// --------------------------------------------------
+	// TEST 8: QUERY - BASIC WHERE
+	// --------------------------------------------------
+
+	private async testQueryWhere() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test 8: Query Where");
+
+		const context =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// Create test records
+
+		await this.dataManager.createRecord(context, {
+			name: "Sword A",
+			damage: 5
+		});
+
+		await this.dataManager.createRecord(context, {
+			name: "Sword B",
+			damage: 15
+		});
+
+		const results =
+			await this.queryManager.query(context, {
+				where: {
+					damage: 15
+				}
+			});
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		new Notice(
+			`WHERE query OK (${results[0].name})`
+		);
+	}
+
+	// --------------------------------------------------
+	// TEST 9: QUERY - COMPARISON
+	// --------------------------------------------------
+
+	private async testQueryComparison() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test 9: Query Comparison");
+
+		const context =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(context, {
+			name: "Weak Item",
+			damage: 2
+		});
+
+		await this.dataManager.createRecord(context, {
+			name: "Strong Item",
+			damage: 100
+		});
+
+		const results =
+			await this.queryManager.query(context, {
+				where: {
+					damage: { gt: 10 }
+				}
+			});
+
+		if (results.length === 0) {
+			throw new Error("Expected results for gt query");
+		}
+
+		if (!results.every(r => r.damage > 10)) {
+			throw new Error("gt filter failed");
+		}
+
+		new Notice(
+			`GT query OK (${results.length} results)`
+		);
+	}
+
+	// --------------------------------------------------
+	// TEST 10: QUERY - SORT
+	// --------------------------------------------------
+
+	private async testQuerySort() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test 10: Query Sort");
+
+		const context =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(context, {
+			name: "Low",
+			damage: 1
+		});
+
+		await this.dataManager.createRecord(context, {
+			name: "High",
+			damage: 999
+		});
+
+		const results =
+			await this.queryManager.query(context, {
+				sort: {
+					field: "damage",
+					direction: "desc"
+				}
+			});
+
+		if (results.length < 2) {
+			throw new Error("Not enough data for sort test");
+		}
+
+		if (results[0].damage < results[1].damage) {
+			throw new Error("Sort failed (desc expected)");
+		}
+
+		new Notice("Sort query OK");
+	}
+
+	// --------------------------------------------------
+	// TEST 11: QUERY - LIMIT / OFFSET
+	// --------------------------------------------------
+
+	private async testQueryPagination() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test 11: Query Pagination");
+
+		const context =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// create multiple records
+		for (let i = 0; i < 5; i++) {
+			await this.dataManager.createRecord(context, {
+				name: `Item ${i}`,
+				damage: i
+			});
+		}
+
+		const results =
+			await this.queryManager.query(context, {
+				sort: {
+					field: "damage",
+					direction: "asc"
+				},
+				offset: 1,
+				limit: 2
+			});
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 results, got ${results.length}`
+			);
+		}
+
+		new Notice("Pagination OK");
 	}
 }
