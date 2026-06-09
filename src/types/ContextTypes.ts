@@ -1,6 +1,6 @@
 import { Schema } from "./SchemaTypes";
 
-export interface Entity {
+export interface SchemaContext {
 	ruleset: string;
 	schemaName: string;
 	schema: Schema;

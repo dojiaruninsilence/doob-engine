@@ -1,7 +1,7 @@
 import { App, Notice, TFile, normalizePath } from "obsidian";
 import { DataFile, DataRecord } from "../types/DataTypes";
 import { SchemaManager } from "./SchemaManager";
-import { Entity } from "../types/EntityTypes";
+import { SchemaContext } from "../types/ContextTypes";
 import { RulesetManager } from "./RulesetManager";
 
 export class DataManager {
@@ -24,9 +24,9 @@ export class DataManager {
         );
 	}
 
-	private getFilePath(entity: Entity): string {
+	private getFilePath(context: SchemaContext): string {
 		return normalizePath(
-			`${this.getDataFolder(entity.ruleset)}/${entity.schemaName}.json`
+			`${this.getDataFolder(context.ruleset)}/${context.schemaName}.json`
 		);
 	}
 
@@ -42,11 +42,11 @@ export class DataManager {
 		}
 	}
 
-	async ensureFileExists(entity: Entity): Promise<void> {
+	async ensureFileExists(context: SchemaContext): Promise<void> {
 
-		await this.ensureFolderExists(entity.ruleset);
+		await this.ensureFolderExists(context.ruleset);
 
-		const path = this.getFilePath(entity);
+		const path = this.getFilePath(context);
 
 		const file =
 			this.app.vault.getAbstractFileByPath(path);
@@ -54,8 +54,8 @@ export class DataManager {
 		if (!file) {
 
 			const initialData: DataFile = {
-				ruleset: entity.ruleset,
-				schemaName: entity.schemaName,
+				ruleset: context.ruleset,
+				schemaName: context.schemaName,
 				version: 1,
 				records: []
 			};
@@ -68,12 +68,12 @@ export class DataManager {
 	}
 
 	async load(
-        entity: Entity
+        context: SchemaContext
     ): Promise<DataFile> {
 
-        await this.ensureFileExists(entity);
+        await this.ensureFileExists(context);
 
-        const path = this.getFilePath(entity);
+        const path = this.getFilePath(context);
 
         const file =
             this.app.vault.getAbstractFileByPath(
@@ -86,11 +86,11 @@ export class DataManager {
         const data: DataFile =
             JSON.parse(content);
         
-        if (!entity.schema) {
-            throw new Error("Entity is missing schema (must be hydrated before DataManager usage)");
+        if (!context.schema) {
+            throw new Error("SchemaContext is missing schema (must be hydrated before DataManager usage)");
         }
         
-        const schema = entity.schema;
+        const schema = context.schema;
 
         let changed = false;
 
@@ -112,20 +112,20 @@ export class DataManager {
         });
 
         if (changed) {
-            await this.save(entity, data);
+            await this.save(context, data);
         }
 
         return data;
     }
 
 	async save(
-		entity: Entity,
+		context: SchemaContext,
 		data: DataFile
 	): Promise<void> {
 
-		await this.ensureFileExists(entity);
+		await this.ensureFileExists(context);
 
-		const path = this.getFilePath(entity);
+		const path = this.getFilePath(context);
 
 		const file =
 			this.app.vault.getAbstractFileByPath(path) as TFile;
@@ -137,31 +137,31 @@ export class DataManager {
 	}
 
 	async add(
-        entity: Entity,
+        context: SchemaContext,
         recordData: Record<string, any>
     ): Promise<DataRecord> {
 
         return this.createRecord(
-            entity,
+            context,
             recordData
         );
     }
 
     async getAll(
-        entity: Entity
+        context: SchemaContext
     ): Promise<DataRecord[]> {
 
-        const data = await this.load(entity);
+        const data = await this.load(context);
 
         return data.records;
     }
 
     async getById(
-        entity: Entity,
+        context: SchemaContext,
         id: string
     ): Promise<DataRecord | undefined> {
 
-        const data = await this.load(entity);
+        const data = await this.load(context);
 
         return data.records.find(
             record => record.id === id
@@ -169,23 +169,23 @@ export class DataManager {
     }
 
     async exists(
-        entity: Entity,
+        context: SchemaContext,
         id: string
     ): Promise<boolean> {
 
         const record =
-            await this.getById(entity, id);
+            await this.getById(context, id);
 
         return record !== undefined;
     }
 
     async update(
-        entity: Entity,
+        context: SchemaContext,
         id: string,
         changes: Record<string, any>
     ): Promise<boolean> {
 
-        const data = await this.load(entity);
+        const data = await this.load(context);
 
         const record =
             data.records.find(r => r.id === id);
@@ -198,11 +198,11 @@ export class DataManager {
         // 1. Merge changes safely
         // --------------------------------------------------
 
-        if (!entity.schema) {
-            throw new Error("Entity is missing schema (must be hydrated before DataManager usage)");
+        if (!context.schema) {
+            throw new Error("SchemaContext is missing schema (must be hydrated before DataManager usage)");
         }
 
-        const schema = entity.schema;
+        const schema = context.schema;
 
         const merged = {
             ...record.data,
@@ -241,17 +241,17 @@ export class DataManager {
 
         record.data = normalized;
 
-        await this.save(entity, data);
+        await this.save(context, data);
 
         return true;
     }
 
     async remove(
-        entity: Entity,
+        context: SchemaContext,
         id: string
     ): Promise<boolean> {
 
-        const data = await this.load(entity);
+        const data = await this.load(context);
 
         const index =
             data.records.findIndex(
@@ -264,16 +264,16 @@ export class DataManager {
 
         data.records.splice(index, 1);
 
-        await this.save(entity, data);
+        await this.save(context, data);
 
         return true;
     }
 
     async count(
-        entity: Entity
+        context: SchemaContext
     ): Promise<number> {
 
-        const data = await this.load(entity);
+        const data = await this.load(context);
 
         return data.records.length;
     }
@@ -283,15 +283,15 @@ export class DataManager {
     // --------------------------------------------------
 
     async createRecord(
-        entity: Entity,
+        context: SchemaContext,
         recordData: Record<string, any>
     ): Promise<DataRecord> {
 
         // 1. Load schema
-        if (!entity.schema) {
-            throw new Error("Entity is missing schema (must be hydrated before DataManager usage)");
+        if (!context.schema) {
+            throw new Error("SchemaContext is missing schema (must be hydrated before DataManager usage)");
         }
-        const schema = entity.schema;
+        const schema = context.schema;
 
         // 2. Apply defaults
         let finalData =
@@ -322,11 +322,11 @@ export class DataManager {
 
         // 5. Save
         const data =
-            await this.load(entity);
+            await this.load(context);
 
         data.records.push(record);
 
-        await this.save(entity, data);
+        await this.save(context, data);
 
         return record;
     }
