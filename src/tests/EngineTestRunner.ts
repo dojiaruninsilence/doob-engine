@@ -137,6 +137,26 @@ export class EngineTestRunner {
 			() => this.testReferenceValidation()
 		);
 
+		await this.safeRun(
+			"Reference Resolution",
+			() => this.testReferenceResolution()
+		);
+
+		await this.safeRun(
+			"Invalid Reference Validation",
+			() => this.testInvalidReferenceValidation()
+		);
+
+		await this.safeRun(
+			"Valid Reference Validation",
+			() => this.testValidReferenceValidation()
+		);
+
+		await this.safeRun(
+			"Hydration",
+			() => this.testHydration()
+		);
+
         new Notice("✅ All Engine Tests Completed");
     }
 
@@ -818,6 +838,245 @@ export class EngineTestRunner {
 
 		new Notice(
 			"Reference validation OK"
+		);
+	}
+
+	// --------------------------------------------------
+	// TEST: REFERENCE RESOLUTION
+	// --------------------------------------------------
+
+	private async testReferenceResolution() {
+
+		new Notice("Reference Resolution Test");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Reference Bob"
+				}
+			);
+
+		const resolved =
+			await this.referenceManager.resolve(
+				itemContext,
+				"owner",
+				character.id
+			);
+
+		if (!resolved) {
+			throw new Error(
+				"Reference failed to resolve"
+			);
+		}
+
+		if (
+			resolved.data.name !== "Reference Bob"
+		) {
+			throw new Error(
+				"Resolved incorrect record"
+			);
+		}
+
+		new Notice(
+			`Resolved: ${resolved.data.name}`
+		);
+	}
+
+	// --------------------------------------------------
+	// TEST: INVALID REFERENCE VALIDATION
+	// --------------------------------------------------
+
+	private async testInvalidReferenceValidation() {
+
+		new Notice("Invalid Reference Test");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		let failedCorrectly = false;
+
+		try {
+
+			// ❌ Step 1: validate references BEFORE saving
+			const errors =
+				await this.referenceManager.validateRecordReferences(
+					itemContext,
+					{
+						name: "Broken Sword",
+						damage: 10,
+						owner: "fake-id"
+					}
+				);
+
+			if (errors.length > 0) {
+				throw new Error(errors.join("\n"));
+			}
+
+			// ❌ Step 2: should never reach here
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Broken Sword",
+					damage: 10,
+					owner: "fake-id"
+				}
+			);
+
+		} catch {
+			failedCorrectly = true;
+		}
+
+		if (!failedCorrectly) {
+			throw new Error("Invalid reference was accepted");
+		}
+
+		new Notice("Invalid reference rejected correctly");
+	}
+
+	// --------------------------------------------------
+	// TEST: VALID REFERENCE VALIDATION
+	// --------------------------------------------------
+
+	private async testValidReferenceValidation() {
+
+		new Notice("Valid Reference Test");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Valid Bob"
+				}
+			);
+
+		// ✔ Step 1: validate references first
+		const errors =
+			await this.referenceManager.validateRecordReferences(
+				itemContext,
+				{
+					name: "Valid Sword",
+					damage: 5,
+					owner: character.id
+				}
+			);
+
+		if (errors.length > 0) {
+			throw new Error(errors.join("\n"));
+		}
+
+		// ✔ Step 2: only create after validation passes
+		const item =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Valid Sword",
+					damage: 5,
+					owner: character.id
+				}
+			);
+
+		if (!item) {
+			throw new Error("Valid reference failed creation");
+		}
+
+		new Notice("Valid reference accepted");
+	}
+
+	// --------------------------------------------------
+	// TEST: HYDRATION
+	// --------------------------------------------------
+
+	private async testHydration() {
+
+		new Notice("Hydration Test");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Hydration Bob"
+				}
+			);
+
+		const item =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Hydration Sword",
+					damage: 10,
+					owner: character.id
+				}
+			);
+
+		const hydrated =
+			await this.referenceManager.hydrateRecord(
+				itemContext,
+				item.data
+			);
+
+		if (!hydrated._resolved) {
+			throw new Error(
+				"_resolved was not created"
+			);
+		}
+
+		if (!hydrated._resolved.owner) {
+			throw new Error(
+				"Owner was not hydrated"
+			);
+		}
+
+		if (
+			hydrated._resolved.owner.data.name !==
+			"Hydration Bob"
+		) {
+			throw new Error(
+				"Hydrated wrong record"
+			);
+		}
+
+		new Notice(
+			`Hydrated owner: ${hydrated._resolved.owner.data.name}`
 		);
 	}
 }

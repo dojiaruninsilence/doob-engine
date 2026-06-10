@@ -4,8 +4,9 @@ import { SchemaManager } from "./SchemaManager";
 import { SchemaContext } from "../types/ContextTypes";
 import { RulesetManager } from "./RulesetManager";
 import { CacheManager } from "./CacheManager";
+import { IDataReader } from "../interfaces/IDataReader";
 
-export class DataManager {
+export class DataManager implements IDataReader {
 
 	private app: App;
 	private schemaManager: SchemaManager;
