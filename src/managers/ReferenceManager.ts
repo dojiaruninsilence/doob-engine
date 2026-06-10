@@ -54,6 +54,13 @@ export class ReferenceManager {
 		);
 	}
 
+	async resolveById(
+		context: SchemaContext,
+		id: string
+	) {
+		return this.dataManager.getById(context, id);
+	}
+
 	// --------------------------------------------------
 	// VALIDATE REFERENCE
 	// --------------------------------------------------

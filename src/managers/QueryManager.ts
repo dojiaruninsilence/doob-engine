@@ -1,20 +1,26 @@
 import { SchemaContext } from "../types/ContextTypes";
 import { QueryRequest, QueryFilter } from "../types/QueryTypes";
 import { IDataReader } from "../interfaces/IDataReader";
+import {IReferenceResolver} from "../interfaces/IReferenceResolver";
 import { DataRecord } from "../types/DataTypes";
 
 export class QueryManager {
 
+	private referenceCache = new Map<string, any>();
+
 	constructor(
-		private reader: IDataReader
+		private reader: IDataReader,
+		private referenceResolver: IReferenceResolver
 	) {}
 
-	private matches(
+	private async matches(
+		context: SchemaContext,
 		record: DataRecord,
 		filter: QueryFilter
-	): boolean {
+	): Promise<boolean> {
 
-		const value = record.data[filter.field];
+		const value =
+			await this.getValueByPath(context, record, filter.field);
 
 		switch (filter.op) {
 
@@ -53,16 +59,29 @@ export class QueryManager {
 		}
 	}
 
-	private applyFilters(
+	private async applyFilters(
+		context: SchemaContext,
 		records: DataRecord[],
 		filters: QueryFilter[]
-	): DataRecord[] {
+	): Promise<DataRecord[]> {
 
-		return filters.reduce((result, filter) => {
-			return result.filter(record =>
-				this.matches(record, filter)
-			);
-		}, records);
+		let result = records;
+
+		for (const filter of filters) {
+
+			const next: DataRecord[] = [];
+
+			for (const record of result) {
+
+				if (await this.matches(context, record, filter)) {
+					next.push(record);
+				}
+			}
+
+			result = next;
+		}
+
+		return result;
 	}
 
 	private applySort(
@@ -103,6 +122,58 @@ export class QueryManager {
 
 		return result;
 	}
+	
+	private async resolveReference(
+		context: SchemaContext,
+		id: string
+	) {
+
+		if (this.referenceCache.has(id)) {
+			return this.referenceCache.get(id);
+		}
+
+		const resolved =
+			await this.referenceResolver.resolve(context, id);
+
+		this.referenceCache.set(id, resolved);
+
+		return resolved;
+	}
+
+	private async getValueByPath(
+		context: SchemaContext,
+		record: DataRecord,
+		path: string
+	): Promise<any> {
+
+		const parts = path.split(".");
+
+		let current: any = record.data;
+
+		for (let i = 0; i < parts.length; i++) {
+
+			const part = parts[i];
+
+			if (current == null) return undefined;
+
+			const value = current[part];
+
+			// If last segment → return value
+			if (i === parts.length - 1) {
+				return value;
+			}
+
+			// If value is reference → resolve it
+			if (typeof value === "string") {
+				current =
+					await this.resolveReference(context, value);
+			} else {
+				current = value;
+			}
+		}
+
+		return current;
+	}
 
 	async query(
 		context: SchemaContext,
@@ -116,7 +187,7 @@ export class QueryManager {
 		// 2. Apply filters
 		if (request.where?.length) {
 			records =
-				this.applyFilters(records, request.where);
+				await this.applyFilters(context, records, request.where);
 		}
 
 		// 3. Sort

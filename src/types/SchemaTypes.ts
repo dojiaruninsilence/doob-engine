@@ -10,6 +10,7 @@ export interface SchemaField {
 	referenceTarget?: {
 		ruleset: string;
 		schema: string;
+		field?: string;
 	};
 }
 

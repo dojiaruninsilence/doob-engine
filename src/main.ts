@@ -7,6 +7,7 @@ import { ContextFactory } from "./managers/ContextFactory";
 import { CacheManager } from "./managers/CacheManager";
 import { QueryManager } from "./managers/QueryManager";
 import { ReferenceManager } from "./managers/ReferenceManager";
+import { ReferenceResolverAdapter } from "./adapters/ReferenceResolverAdapter";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -63,13 +64,18 @@ export default class DoobEngine extends Plugin {
 			this.schemaManager
 		);
 
-		this.queryManager = new QueryManager(
-			this.dataManager
-		);
-
 		this.referenceManager = new ReferenceManager(
 			this.dataManager,
 			this.contextFactory
+		);
+
+		const referenceResolver = new ReferenceResolverAdapter(
+			this.referenceManager
+		);
+		
+		this.queryManager = new QueryManager(
+			this.dataManager,
+			referenceResolver
 		);
 
 		// --------------------------------------------------

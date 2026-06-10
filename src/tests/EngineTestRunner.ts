@@ -155,11 +155,51 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Hydration",
 			() => this.testHydration()
-		);*/
+		);
 
 		await this.safeRun(
 			"Query Manager",
 			() => this.testQueryManager()
+		);
+
+		await this.safeRun("Invalid Reference Validation", () =>
+			this.testInvalidReferenceValidation()
+		);
+
+		await this.safeRun("Valid Reference Validation", () =>
+			this.testValidReferenceValidation()
+		);*/
+
+		await this.safeRun("Query Filter", () =>
+			this.testQueryFilter()
+		);
+
+		await this.safeRun("Query Exact Match", () =>
+			this.testQueryExactMatch()
+		);
+
+		await this.safeRun("Reference Query", () =>
+			this.testReferenceQuery()
+		);
+
+		await this.safeRun("Sorting", () =>
+			this.testSorting()
+		);
+
+		await this.safeRun("Pagination", () =>
+			this.testPagination()
+		);
+
+		await this.safeRun("Cache Stability", () =>
+			this.testCacheStability()
+		);
+
+		await this.safeRun("Migration Safety", () =>
+			this.testMigrationSafety()
+		);
+
+		await this.safeRun("Negative Query", () =>
+			this.testNegativeQuery()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -169,7 +209,7 @@ export class EngineTestRunner {
 	// TEST 1: Schema Setup
 	// --------------------------------------------------
 
-	private async testSchemaSetup() {
+	/*private async testSchemaSetup() {
 
 		new Notice("Test 1: Schema Setup");
 
@@ -1522,14 +1562,14 @@ export class EngineTestRunner {
 
 		new Notice("Test Query Manager Suite");
 
-		//await this.testQueryBasicReturn();
-		//await this.testQueryWhereEquals();
-		//await this.testQueryWhereGreaterThan();
-		//await this.testQueryMultiFilterAnd();
-		//await this.testQuerySortAsc();
-		//await this.testQuerySortDesc();
-		//await this.testQueryLimit();
-		//await this.testQueryOffset();
+		await this.testQueryBasicReturn();
+		await this.testQueryWhereEquals();
+		await this.testQueryWhereGreaterThan();
+		await this.testQueryMultiFilterAnd();
+		await this.testQuerySortAsc();
+		await this.testQuerySortDesc();
+		await this.testQueryLimit();
+		await this.testQueryOffset();
 		await this.testQueryLimitOffset();
 		await this.testQueryInOperator();
 		await this.testQueryContainsOperator();
@@ -1543,5 +1583,328 @@ export class EngineTestRunner {
 		await this.testQuerySortStability();
 
 		new Notice("Query Manager Tests Completed");
+	}*/
+
+	private async testInvalidReferenceValidation() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Invalid Reference Validation");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const errors =
+			await this.referenceManager.validateRecordReferences(
+				itemContext,
+				{
+					owner: "fake-id"
+				}
+			);
+
+		if (errors.length === 0) {
+			throw new Error(
+				"Invalid reference was accepted"
+			);
+		}
+
+		new Notice(
+			"Invalid reference rejected correctly"
+		);
+	}
+
+	private async testValidReferenceValidation() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Valid Reference Validation");
+
+		const charContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const character =
+			await this.dataManager.createRecord(
+				charContext,
+				{
+					name: "Valid Bob"
+				}
+			);
+
+		const errors =
+			await this.referenceManager.validateRecordReferences(
+				itemContext,
+				{
+					owner: character.id
+				}
+			);
+
+		if (errors.length > 0) {
+			throw new Error(
+				`Valid reference failed validation:\n${errors.join("\n")}`
+			);
+		}
+
+		new Notice(
+			"Valid reference accepted"
+		);
+	}
+
+	private async testQueryFilter() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Query Filter");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "damage", op: ">", value: 1 }
+				]
+			});
+
+		if (!Array.isArray(results)) {
+			throw new Error("Query did not return array");
+		}
+
+		new Notice(`Filter returned ${results.length} results`);
+	}
+
+	private async testQueryExactMatch() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Query Exact Match");
+
+		const context =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Seed test data
+		// --------------------------------------------------
+
+		await this.dataManager.createRecord(
+			context,
+			{
+				name: "Exact Match Sword",
+				damage: 10
+			}
+		);
+
+		// --------------------------------------------------
+		// Run query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(
+				context,
+				{
+					where: [
+						{
+							field: "name",
+							op: "=",
+							value: "Exact Match Sword"
+						}
+					]
+				}
+			);
+
+		// --------------------------------------------------
+		// Validate
+		// --------------------------------------------------
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (
+			results[0].data.name !==
+			"Exact Match Sword"
+		) {
+			throw new Error(
+				"Returned wrong record"
+			);
+		}
+
+		new Notice("Exact match query passed");
+	}
+
+	private async testReferenceQuery() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Reference Query");
+
+		const charContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const character =
+			await this.dataManager.createRecord(charContext, {
+				name: "Ref Bob"
+			});
+
+		await this.dataManager.createRecord(itemContext, {
+			name: "Ref Sword",
+			damage: 7,
+			owner: character.id
+		});
+
+		const results =
+			await this.queryManager.query(itemContext, {
+				where: [
+					{ field: "owner", op: "=", value: character.id }
+				]
+			});
+
+		if (results.length !== 1) {
+			throw new Error(`Expected 1 result, got ${results.length}`);
+		}
+
+		new Notice("Reference query passed");
+	}
+
+	private async testSorting() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Sorting");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				sort: {
+					field: "damage",
+					dir: "asc"
+				}
+			});
+
+		for (let i = 1; i < results.length; i++) {
+			if (results[i - 1].data.damage > results[i].data.damage) {
+				throw new Error("Sorting failed");
+			}
+		}
+
+		new Notice("Sorting passed");
+	}
+
+	private async testPagination() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Pagination");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const page =
+			await this.queryManager.query(context, {
+				offset: 0,
+				limit: 2
+			});
+
+		if (page.length > 2) {
+			throw new Error("Pagination failed");
+		}
+
+		new Notice("Pagination passed");
+	}
+
+	private async testCacheStability() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Cache Stability");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const first =
+			await this.dataManager.getAll(context);
+
+		const second =
+			await this.dataManager.getAll(context);
+
+		if (first.length !== second.length) {
+			throw new Error("Cache inconsistency detected");
+		}
+
+		new Notice("Cache stable");
+	}
+
+	private async testMigrationSafety() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Migration Safety");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const fieldName =
+			`testField_${Date.now()}`;
+
+		await this.schemaManager.addField(
+			"CoreTest",
+			"Item",
+			fieldName,
+			"string",
+			"default"
+		);
+
+		const data =
+			await this.dataManager.getAll(context);
+
+		if (!Array.isArray(data)) {
+			throw new Error("Migration broke data access");
+		}
+
+		new Notice("Migration safe");
+	}
+
+	private async testNegativeQuery() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Negative Query");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "damage", op: "=", value: -999 }
+				]
+			});
+
+		if (results.length !== 0) {
+			throw new Error("Negative query returned results unexpectedly");
+		}
+
+		new Notice("Negative query passed");
 	}
 }
