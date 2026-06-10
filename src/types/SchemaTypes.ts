@@ -6,7 +6,11 @@ export interface SchemaField {
 	required?: boolean;
 	description?: string;
 	enumValues?: string[];
-	referenceType?: string;
+
+	referenceTarget?: {
+		ruleset: string;
+		schema: string;
+	};
 }
 
 export interface Schema {

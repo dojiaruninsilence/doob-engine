@@ -6,8 +6,9 @@ export class EngineTestRunner {
 	private dataManager: any;
 	private contextFactory: any;
 	private queryManager: any;
+	private referenceManager: any;
 
-	constructor(schemaManager: any, dataManager: any, contextFactory: any, queryManager: any) {
+	constructor(schemaManager: any, dataManager: any, contextFactory: any, queryManager: any, referenceManager: any) {
 
         if (!schemaManager) {
             new Notice("SchemaManager not injected");
@@ -28,6 +29,7 @@ export class EngineTestRunner {
         this.dataManager = dataManager;
         this.contextFactory = contextFactory;
         this.queryManager = queryManager;
+        this.referenceManager = referenceManager;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
@@ -83,7 +85,7 @@ export class EngineTestRunner {
 
         await this.safeRun("Queries", () =>
             this.testQueries()
-        );*/
+        );
 
 		await this.safeRun(
 			"Update Cache",
@@ -113,6 +115,26 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Query Pagination",
 			() => this.testQueryPagination()
+		);*/
+
+		await this.safeRun(
+			"Reference Setup",
+			() => this.testReferenceSetup()
+		);
+
+		await this.safeRun(
+			"Resolve Reference",
+			() => this.testResolveReference()
+		);
+
+		await this.safeRun(
+			"Invalid Reference",
+			() => this.testInvalidReference()
+		);
+
+		await this.safeRun(
+			"Reference Validation",
+			() => this.testReferenceValidation()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -594,5 +616,208 @@ export class EngineTestRunner {
 		}
 
 		new Notice("Pagination OK");
+	}
+
+	// --------------------------------------------------
+	// TEST 12: REFERENCE SCHEMA SETUP
+	// --------------------------------------------------
+
+	private async testReferenceSetup() {
+
+		new Notice("Test 12: Reference Setup");
+
+		// Character schema
+
+		try {
+
+			await this.schemaManager.addField(
+				"CoreTest",
+				"Character",
+				"name",
+				"string",
+				""
+			);
+
+		} catch {}
+
+		// Item schema reference field
+
+		try {
+
+			await this.schemaManager.addField(
+				"CoreTest",
+				"Item",
+				"owner",
+				"reference",
+				null,
+				undefined,
+				{
+					ruleset: "CoreTest",
+					schema: "Character"
+				}
+			);
+
+		} catch {}
+
+		new Notice("Reference schema ready");
+	}
+
+	// --------------------------------------------------
+	// TEST 13: RESOLVE REFERENCE
+	// --------------------------------------------------
+
+	private async testResolveReference() {
+
+		new Notice("Test 13: Resolve Reference");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// Create character
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob"
+				}
+			);
+
+		// Create item
+
+		const item =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Sword",
+					damage: 10,
+					owner: character.id
+				}
+			);
+
+		const resolved =
+			await this.referenceManager.resolve(
+				itemContext,
+				"owner",
+				character.id
+			);
+
+		if (!resolved) {
+			throw new Error(
+				"Reference failed to resolve"
+			);
+		}
+
+		if (
+			resolved.data.name !== "Bob"
+		) {
+			throw new Error(
+				"Resolved wrong record"
+			);
+		}
+
+		new Notice(
+			`Reference resolved: ${resolved.data.name}`
+		);
+	}
+
+	// --------------------------------------------------
+	// TEST 14: INVALID REFERENCE
+	// --------------------------------------------------
+
+	private async testInvalidReference() {
+
+		new Notice("Test 14: Invalid Reference");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const resolved =
+			await this.referenceManager.resolve(
+				itemContext,
+				"owner",
+				"fake-id-does-not-exist"
+			);
+
+		if (resolved) {
+			throw new Error(
+				"Invalid reference resolved unexpectedly"
+			);
+		}
+
+		new Notice(
+			"Invalid reference handled correctly"
+		);
+	}
+
+	// --------------------------------------------------
+	// TEST 15: REFERENCE VALIDATION
+	// --------------------------------------------------
+
+	private async testReferenceValidation() {
+
+		new Notice("Test 15: Reference Validation");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Alice"
+				}
+			);
+
+		const valid =
+			await this.referenceManager.validate(
+				itemContext,
+				"owner",
+				character.id
+			);
+
+		if (!valid) {
+			throw new Error(
+				"Valid reference failed validation"
+			);
+		}
+
+		const invalid =
+			await this.referenceManager.validate(
+				itemContext,
+				"owner",
+				"bad-id"
+			);
+
+		if (invalid) {
+			throw new Error(
+				"Invalid reference passed validation"
+			);
+		}
+
+		new Notice(
+			"Reference validation OK"
+		);
 	}
 }

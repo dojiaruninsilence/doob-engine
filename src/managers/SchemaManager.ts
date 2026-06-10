@@ -234,13 +234,17 @@ export class SchemaManager {
 				);
 			}
 
-			if (
-				field.type === "reference" &&
-				!field.referenceType
-			) {
-				errors.push(
-					`Reference field '${fieldName}' requires referenceType`
-				);
+			if (field.type === "reference") {
+
+				if (
+					!field.referenceTarget ||
+					!field.referenceTarget.ruleset?.trim() ||
+					!field.referenceTarget.schema?.trim()
+				) {
+					errors.push(
+						`Reference field '${fieldName}' requires valid referenceTarget {ruleset, schema}`
+					);
+				}
 			}
 		}
 
@@ -437,7 +441,10 @@ export class SchemaManager {
 		type: FieldType,
 		defaultValue?: any,
 		enumValues?: string[],
-		referenceType?: string
+		referenceTarget?: {
+			ruleset: string;
+			schema: string;
+		}
 	) {
 
 		const schema =
@@ -465,8 +472,10 @@ export class SchemaManager {
 		schema.fields[fieldName] = {
 			type,
 			default: structuredClone(finalDefault),
-			enumValues:  type === "enum" ? enumValues : undefined,
-			referenceType
+			enumValues: type === "enum" ? enumValues : undefined,
+			referenceTarget: type === "reference"
+				? referenceTarget
+				: undefined
 		};
 
 		if (
