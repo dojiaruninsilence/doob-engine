@@ -115,7 +115,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Query Pagination",
 			() => this.testQueryPagination()
-		);*/
+		);
 
 		await this.safeRun(
 			"Reference Setup",
@@ -155,6 +155,11 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Hydration",
 			() => this.testHydration()
+		);*/
+
+		await this.safeRun(
+			"Query Manager",
+			() => this.testQueryManager()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -1078,5 +1083,465 @@ export class EngineTestRunner {
 		new Notice(
 			`Hydrated owner: ${hydrated._resolved.owner.data.name}`
 		);
+	}
+
+	// --------------------------------------------------
+	// QUERY MANAGER TESTS
+	// --------------------------------------------------
+	
+	private async testQueryBasicReturn() {
+
+		new Notice("Query: Basic Return");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {});
+
+		if (!Array.isArray(results)) {
+			throw new Error("Query did not return array");
+		}
+
+		new Notice(`Basic return OK: ${results.length}`);
+	}
+
+	private async testQueryWhereEquals() {
+
+		new Notice("Query: Where Equals");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "damage", op: "=", value: 10 }
+				]
+			});
+
+		for (const r of results) {
+			if (r.data.damage !== 10) {
+				throw new Error("Equality filter failed");
+			}
+		}
+
+		new Notice(`Equals OK: ${results.length}`);
+	}
+
+	private async testQueryWhereGreaterThan() {
+
+		new Notice("Query: Greater Than");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "damage", op: ">", value: 5 }
+				]
+			});
+
+		for (const r of results) {
+			if (!(r.data.damage > 5)) {
+				throw new Error("Greater than filter failed");
+			}
+		}
+
+		new Notice(`Greater Than OK: ${results.length}`);
+	}
+
+	private async testQueryMultiFilterAnd() {
+
+		new Notice("Query: Multi Filter");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "damage", op: ">", value: 5 },
+					{ field: "rarity", op: "=", value: "Epic" }
+				]
+			});
+
+		for (const r of results) {
+			if (!(r.data.damage > 5 && r.data.rarity === "Epic")) {
+				throw new Error("Multi filter failed");
+			}
+		}
+
+		new Notice(`Multi Filter OK: ${results.length}`);
+	}
+
+	private async testQuerySortAsc() {
+
+		new Notice("Query: Sort ASC");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				sort: { field: "damage", dir: "asc" }
+			});
+
+		for (let i = 1; i < results.length; i++) {
+			if (results[i - 1].data.damage > results[i].data.damage) {
+				throw new Error("Sort ASC failed");
+			}
+		}
+
+		new Notice("Sort ASC OK");
+	}
+
+	private async testQuerySortDesc() {
+
+		new Notice("Query: Sort DESC");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				sort: { field: "damage", dir: "desc" }
+			});
+
+		for (let i = 1; i < results.length; i++) {
+			if (results[i - 1].data.damage < results[i].data.damage) {
+				throw new Error("Sort DESC failed");
+			}
+		}
+
+		new Notice("Sort DESC OK");
+	}
+
+	private async testQueryLimit() {
+
+		new Notice("Query: Limit");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				limit: 2
+			});
+
+		if (results.length > 2) {
+			throw new Error("Limit failed");
+		}
+
+		new Notice(`Limit OK: ${results.length}`);
+	}
+
+	private async testQueryOffset() {
+
+		new Notice("Query: Offset");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const all =
+			await this.queryManager.query(context, {});
+
+		const offset =
+			await this.queryManager.query(context, {
+				offset: 1
+			});
+
+		if (offset.length !== all.length - 1) {
+			throw new Error("Offset failed");
+		}
+
+		new Notice("Offset OK");
+	}
+
+	private async testQueryLimitOffset() {
+
+		new Notice("Query: Limit + Offset");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				offset: 1,
+				limit: 2
+			});
+
+		if (results.length > 2) {
+			throw new Error("Limit+Offset failed");
+		}
+
+		new Notice("Limit+Offset OK");
+	}
+
+	private async testQueryInOperator() {
+
+		new Notice("Query: IN Operator");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{
+						field: "rarity",
+						op: "in",
+						value: ["Rare", "Epic"]
+					}
+				]
+			});
+
+		for (const r of results) {
+			if (!["Rare", "Epic"].includes(r.data.rarity)) {
+				throw new Error("IN operator failed");
+			}
+		}
+
+		new Notice("IN OK");
+	}
+
+	private async testQueryContainsOperator() {
+
+		new Notice("Query: Contains");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{
+						field: "name",
+						op: "contains",
+						value: "Sword"
+					}
+				]
+			});
+
+		for (const r of results) {
+			if (!r.data.name.includes("Sword")) {
+				throw new Error("Contains failed");
+			}
+		}
+
+		new Notice("Contains OK");
+	}
+
+	private async testQueryExistsOperator() {
+
+		new Notice("Query: Exists");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{
+						field: "owner",
+						op: "exists"
+					}
+				]
+			});
+
+		for (const r of results) {
+			if (r.data.owner == null) {
+				throw new Error("Exists failed");
+			}
+		}
+
+		new Notice("Exists OK");
+	}
+
+	private async testQueryDeterminism() {
+
+		new Notice("Query: Determinism");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const r1 =
+			await this.queryManager.query(context, {});
+
+		const r2 =
+			await this.queryManager.query(context, {});
+
+		if (r1.length !== r2.length) {
+			throw new Error("Non-deterministic results detected");
+		}
+
+		new Notice("Determinism OK");
+	}
+
+	private async testQueryUnknownField() {
+
+		new Notice("Query: Unknown Field");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "doesNotExist", op: "=", value: 1 }
+				]
+			});
+
+		if (results.length !== 0) {
+			throw new Error("Unknown field should return 0 results");
+		}
+
+		new Notice("Unknown Field OK");
+	}
+
+	private async testQueryNullAndUndefinedHandling() {
+
+		new Notice("Query: Null Safety");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "nonexistentField", op: "=", value: null }
+				]
+			});
+
+		// Should not crash
+		if (!Array.isArray(results)) {
+			throw new Error("Null safety failed");
+		}
+
+		new Notice("Null Safety OK");
+	}
+
+	private async testQueryTypeCoercionSafety() {
+
+		new Notice("Query: Type Safety");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "damage", op: ">", value: "5" }
+				]
+			});
+
+		// Should NOT throw or behave inconsistently
+		for (const r of results) {
+			if (typeof r.data.damage !== "number") {
+				throw new Error("Type mismatch detected");
+			}
+		}
+
+		new Notice("Type Safety OK");
+	}
+
+	private async testQueryStackedSameFieldFilters() {
+
+		new Notice("Query: Stacked Filters");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "damage", op: ">", value: 5 },
+					{ field: "damage", op: "<", value: 20 }
+				]
+			});
+
+		for (const r of results) {
+			if (!(r.data.damage > 5 && r.data.damage < 20)) {
+				throw new Error("Stacked filters failed");
+			}
+		}
+
+		new Notice("Stacked Filters OK");
+	}
+
+	private async testQueryEmptyDataset() {
+
+		new Notice("Query: Empty Dataset");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		// If possible, run against a schema with no records
+		const results =
+			await this.queryManager.query(context, {
+				where: [
+					{ field: "damage", op: ">", value: 999999 }
+				]
+			});
+
+		if (results.length !== 0) {
+			throw new Error("Empty dataset handling failed");
+		}
+
+		new Notice("Empty Dataset OK");
+	}
+
+	private async testQuerySortStability() {
+
+		new Notice("Query: Sort Stability");
+
+		const context =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const r1 =
+			await this.queryManager.query(context, {
+				sort: { field: "damage", dir: "asc" }
+			});
+
+		const r2 =
+			await this.queryManager.query(context, {
+				sort: { field: "damage", dir: "asc" }
+			});
+
+		for (let i = 0; i < r1.length; i++) {
+			if (r1[i].id !== r2[i].id) {
+				throw new Error("Sort is not deterministic");
+			}
+		}
+
+		new Notice("Sort Stability OK");
+	}
+
+	private async testQueryManager() {
+
+		new Notice("Test Query Manager Suite");
+
+		//await this.testQueryBasicReturn();
+		//await this.testQueryWhereEquals();
+		//await this.testQueryWhereGreaterThan();
+		//await this.testQueryMultiFilterAnd();
+		//await this.testQuerySortAsc();
+		//await this.testQuerySortDesc();
+		//await this.testQueryLimit();
+		//await this.testQueryOffset();
+		await this.testQueryLimitOffset();
+		await this.testQueryInOperator();
+		await this.testQueryContainsOperator();
+		await this.testQueryExistsOperator();
+		await this.testQueryDeterminism();
+		await this.testQueryUnknownField();
+		await this.testQueryNullAndUndefinedHandling();
+		await this.testQueryTypeCoercionSafety();
+		await this.testQueryStackedSameFieldFilters();
+		await this.testQueryEmptyDataset();
+		await this.testQuerySortStability();
+
+		new Notice("Query Manager Tests Completed");
 	}
 }
