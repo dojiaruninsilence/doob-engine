@@ -6,7 +6,7 @@ export class ReferenceResolverAdapter implements IReferenceResolver {
 
 	constructor(private referenceManager: ReferenceManager) {}
 
-	async resolve(context: SchemaContext, id: string) {
-		return this.referenceManager.resolveById(context, id);
+	async resolve(context: SchemaContext, fieldName: string, id: string) {
+		return this.referenceManager.resolve(context, fieldName, id);
 	}
 }

@@ -58,7 +58,14 @@ export class ReferenceManager {
 		context: SchemaContext,
 		id: string
 	) {
-		return this.dataManager.getById(context, id);
+		// try current context first
+		let record =
+			await this.dataManager.getById(context, id);
+
+		if (record) return record;
+
+		// optional: search other known contexts in ruleset (future upgrade)
+		return null;
 	}
 
 	// --------------------------------------------------

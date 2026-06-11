@@ -75,7 +75,8 @@ export default class DoobEngine extends Plugin {
 		
 		this.queryManager = new QueryManager(
 			this.dataManager,
-			referenceResolver
+			referenceResolver,
+			this.contextFactory
 		);
 
 		// --------------------------------------------------

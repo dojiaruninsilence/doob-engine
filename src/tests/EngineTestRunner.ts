@@ -45,18 +45,93 @@ export class EngineTestRunner {
 
 	private async resetCoreTestData() {
 
+		new Notice("Reset: CoreTest Data + Schema");
+
+		const schemas = ["Item", "Character", "Guild"];
+
+		// --------------------------------------------------
+		// 1. Clear all data per schema
+		// --------------------------------------------------
+
+		for (const schemaName of schemas) {
+
+			const context =
+				await this.contextFactory.getSchemaContext(
+					"CoreTest",
+					schemaName
+				);
+
+			const all =
+				await this.dataManager.getAll(context);
+
+			for (const record of all) {
+				await this.dataManager.remove(context, record.id);
+			}
+		}
+
+		// --------------------------------------------------
+		// 2. Reset schema mutations (IMPORTANT)
+		// --------------------------------------------------
+
+		for (const schemaName of schemas) {
+
+			const context =
+				await this.contextFactory.getSchemaContext(
+					"CoreTest",
+					schemaName
+				);
+
+			const fields =
+				Object.keys(context.schema.fields);
+
+			for (const field of fields) {
+
+				// Keep base identity fields if needed
+				if (field === "name") continue;
+
+				await this.schemaManager.removeField(
+					"CoreTest",
+					schemaName,
+					field
+				);
+			}
+		}
+
+		new Notice("Reset complete");
+	}
+
+	private async ensureField(
+		ruleset: string,
+		schemaName: string,
+		fieldName: string,
+		type: any,
+		defaultValue?: any,
+		enumValues?: string[],
+		referenceTarget?: {
+			ruleset: string;
+			schema: string;
+		}
+	) {
+
 		const context =
 			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
+				ruleset,
+				schemaName
 			);
 
-		const all =
-			await this.dataManager.getAll(context);
-
-		for (const record of all) {
-			await this.dataManager.remove(context, record.id);
+		if (context.schema.fields[fieldName]) {
+			return;
 		}
+
+		await this.schemaManager.addField(
+			ruleset,
+			schemaName,
+			fieldName,
+			type,
+			defaultValue,
+			enumValues,
+			referenceTarget
+		);
 	}
 
 	// --------------------------------------------------
@@ -168,7 +243,7 @@ export class EngineTestRunner {
 
 		await this.safeRun("Valid Reference Validation", () =>
 			this.testValidReferenceValidation()
-		);*/
+		);
 
 		await this.safeRun("Query Filter", () =>
 			this.testQueryFilter()
@@ -200,6 +275,26 @@ export class EngineTestRunner {
 
 		await this.safeRun("Negative Query", () =>
 			this.testNegativeQuery()
+		);
+
+		await this.safeRun(
+			"Single Hop Traversal",
+			() => this.testSingleHopReferenceTraversal()
+		);*/
+
+		await this.safeRun(
+			"Multi Hop Traversal",
+			() => this.testMultiHopReferenceTraversal()
+		);
+
+		await this.safeRun(
+			"Missing Reference Traversal",
+			() => this.testMissingReferenceTraversal()
+		);
+
+		await this.safeRun(
+			"Deep Reference Traversal",
+			() => this.testDeepReferenceTraversal()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -1906,5 +2001,636 @@ export class EngineTestRunner {
 		}
 
 		new Notice("Negative query passed");
+	}
+
+	private async testSingleHopReferenceTraversal() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Single Hop Reference Traversal"
+		);
+
+		// --------------------------------------------------
+		// Create required schema
+		// --------------------------------------------------
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		if (!itemContext.schema.fields.owner) {
+
+			await this.schemaManager.addField(
+				"CoreTest",
+				"Item",
+				"owner",
+				"reference",
+				null,
+				undefined,
+				{
+					ruleset: "CoreTest",
+					schema: "Character"
+				}
+			);
+		}
+
+		// --------------------------------------------------
+		// Reload contexts after migration
+		// --------------------------------------------------
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const updatedItemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Create data
+		// --------------------------------------------------
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Traversal Bob"
+				}
+			);
+
+		const item =
+			await this.dataManager.createRecord(
+				updatedItemContext,
+				{
+					name: "Traversal Sword",
+					damage: 10,
+					owner: character.id
+				}
+			);
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(
+				updatedItemContext,
+				{
+					where: [
+						{
+							field: "owner.name",
+							op: "=",
+							value: "Traversal Bob"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].id !== item.id) {
+			throw new Error(
+				"Wrong item returned"
+			);
+		}
+
+		new Notice(
+			"Single hop traversal passed"
+		);
+	}
+
+	private async testMultiHopReferenceTraversal() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Multi Hop Reference Traversal"
+		);
+
+		// --------------------------------------------------
+		// Add Guild schema field to Character
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		// --------------------------------------------------
+		// Reload contexts after migration
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Verify migration succeeded
+		// --------------------------------------------------
+
+		const guildField =
+			characterContext.schema.fields.guild;
+
+		if (!guildField) {
+			throw new Error(
+				"Guild field was not created"
+			);
+		}
+
+		if (guildField.type !== "reference") {
+			throw new Error(
+				"Guild field is not a reference"
+			);
+		}
+
+		if (
+			!guildField.referenceTarget ||
+			guildField.referenceTarget.schema !== "Guild"
+		) {
+			throw new Error(
+				"Guild reference target incorrect"
+			);
+		}
+
+		// --------------------------------------------------
+		// Create Guild
+		// --------------------------------------------------
+
+		const guild =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Knights"
+				}
+			);
+
+		if (!guild?.id) {
+			throw new Error(
+				"Guild creation failed"
+			);
+		}
+
+		// --------------------------------------------------
+		// Create Character
+		// --------------------------------------------------
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Guild Bob",
+					guild: guild.id
+				}
+			);
+
+		if (!character?.id) {
+			throw new Error(
+				"Character creation failed"
+			);
+		}
+
+		// --------------------------------------------------
+		// Create Item
+		// --------------------------------------------------
+
+		const item =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Guild Sword",
+					damage: 15,
+					owner: character.id
+				}
+			);
+
+		if (!item?.id) {
+			throw new Error(
+				"Item creation failed"
+			);
+		}
+
+		// --------------------------------------------------
+		// Execute traversal query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					where: [
+						{
+							field: "owner.guild.name",
+							op: "=",
+							value: "Knights"
+						}
+					]
+				}
+			);
+
+		// --------------------------------------------------
+		// Validate results
+		// --------------------------------------------------
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].id !== item.id) {
+			throw new Error(
+				"Traversal returned wrong item"
+			);
+		}
+
+		new Notice(
+			"Multi hop traversal passed"
+		);
+	}
+
+	private async testMissingReferenceTraversal() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Missing Reference Traversal"
+		);
+
+		// --------------------------------------------------
+		// Add Character.guild reference
+		// --------------------------------------------------
+
+		await this.schemaManager.addField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Create character with broken guild reference
+		// --------------------------------------------------
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Broken Bob",
+					guild: "fake-guild-id"
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Broken Sword",
+				damage: 10,
+				owner: character.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					where: [
+						{
+							field: "owner.guild.name",
+							op: "=",
+							value: "Knights"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 0) {
+			throw new Error(
+				`Expected 0 results, got ${results.length}`
+			);
+		}
+
+		new Notice(
+			"Missing reference traversal passed"
+		);
+	}
+
+	private async testDeepReferenceTraversal() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Deep Reference Traversal"
+		);
+
+		// --------------------------------------------------
+		// Ensure required schema fields exist
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"leader",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Reload contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Create leader
+		// --------------------------------------------------
+
+		const leader =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Guild Leader"
+				}
+			);
+
+		if (!leader?.id) {
+			throw new Error(
+				"Leader creation failed"
+			);
+		}
+
+		// --------------------------------------------------
+		// Create guild
+		// --------------------------------------------------
+
+		const guild =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Knights",
+					leader: leader.id
+				}
+			);
+
+		if (!guild?.id) {
+			throw new Error(
+				"Guild creation failed"
+			);
+		}
+
+		// --------------------------------------------------
+		// Create member
+		// --------------------------------------------------
+
+		const member =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Guild Bob",
+					guild: guild.id
+				}
+			);
+
+		if (!member?.id) {
+			throw new Error(
+				"Member creation failed"
+			);
+		}
+
+		// --------------------------------------------------
+		// Create item
+		// --------------------------------------------------
+
+		const item =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Guild Sword",
+					damage: 15,
+					owner: member.id
+				}
+			);
+
+		if (!item?.id) {
+			throw new Error(
+				"Item creation failed"
+			);
+		}
+
+		// --------------------------------------------------
+		// Execute traversal query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					where: [
+						{
+							field: "owner.guild.leader.name",
+							op: "=",
+							value: "Guild Leader"
+						}
+					]
+				}
+			);
+
+		// --------------------------------------------------
+		// Validate results
+		// --------------------------------------------------
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].id !== item.id) {
+			throw new Error(
+				"Deep traversal returned wrong item"
+			);
+		}
+
+		new Notice(
+			"Deep reference traversal passed"
+		);
 	}
 }

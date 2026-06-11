@@ -3,6 +3,8 @@ import { QueryRequest, QueryFilter } from "../types/QueryTypes";
 import { IDataReader } from "../interfaces/IDataReader";
 import {IReferenceResolver} from "../interfaces/IReferenceResolver";
 import { DataRecord } from "../types/DataTypes";
+import { Notice } from "obsidian";
+import { ContextFactory } from "./ContextFactory";
 
 export class QueryManager {
 
@@ -10,7 +12,8 @@ export class QueryManager {
 
 	constructor(
 		private reader: IDataReader,
-		private referenceResolver: IReferenceResolver
+		private referenceResolver: IReferenceResolver,
+		private contextFactory: ContextFactory
 	) {}
 
 	private async matches(
@@ -125,6 +128,7 @@ export class QueryManager {
 	
 	private async resolveReference(
 		context: SchemaContext,
+		fieldName: string,
 		id: string
 	) {
 
@@ -133,7 +137,7 @@ export class QueryManager {
 		}
 
 		const resolved =
-			await this.referenceResolver.resolve(context, id);
+			await this.referenceResolver.resolve(context, fieldName, id);
 
 		this.referenceCache.set(id, resolved);
 
@@ -149,27 +153,57 @@ export class QueryManager {
 		const parts = path.split(".");
 
 		let current: any = record.data;
+		let currentContext = context;
 
 		for (let i = 0; i < parts.length; i++) {
-
 			const part = parts[i];
 
 			if (current == null) return undefined;
 
 			const value = current[part];
 
-			// If last segment → return value
+			// LAST SEGMENT → return raw value
 			if (i === parts.length - 1) {
 				return value;
 			}
 
-			// If value is reference → resolve it
-			if (typeof value === "string") {
-				current =
-					await this.resolveReference(context, value);
-			} else {
+			const field = currentContext.schema.fields[part];
+
+			// NOT a reference → normal traversal
+			if (!field || field.type !== "reference") {
 				current = value;
+				continue;
 			}
+
+			// MUST be string id
+			if (typeof value !== "string") {
+				return undefined;
+			}
+
+			// RESOLVE
+			const resolved =
+				await this.resolveReference(
+					currentContext,
+					part,
+					value
+				);
+
+			if (!resolved) return undefined;
+
+			// MOVE DATA
+			current = resolved.data;
+
+			// MOVE SCHEMA
+			const target = field.referenceTarget;
+
+			currentContext =
+				await this.contextFactory.getSchemaContext(
+					target.ruleset,
+					target.schema
+				);
+
+			// IMPORTANT: restart loop cleanly
+			continue;
 		}
 
 		return current;
