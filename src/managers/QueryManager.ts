@@ -62,6 +62,32 @@ export class QueryManager {
 		}
 	}
 
+	private setProjectedValue(
+		target: any,
+		path: string,
+		value: any
+	) {
+
+		const parts = path.split(".");
+		let current = target;
+
+		for (let i = 0; i < parts.length; i++) {
+
+			const part = parts[i];
+
+			if (i === parts.length - 1) {
+				current[part] = value;
+				return;
+			}
+
+			if (!current[part]) {
+				current[part] = {};
+			}
+
+			current = current[part];
+		}
+	}
+
 	private async applyFilters(
 		context: SchemaContext,
 		records: DataRecord[],
@@ -125,6 +151,46 @@ export class QueryManager {
 
 		return result;
 	}
+
+	private async applyProjection(
+		context: SchemaContext,
+		records: DataRecord[],
+		select?: string[]
+	): Promise<any[]> {
+
+		if (!select || select.length === 0) {
+			return records;
+		}
+
+		const result: any[] = [];
+
+		for (const record of records) {
+
+			const projected: any = {
+				id: record.id
+			};
+
+			for (const path of select) {
+
+				const value =
+					await this.getValueByPath(
+						context,
+						record,
+						path
+					);
+
+				this.setProjectedValue(
+					projected,
+					path,
+					value
+				);
+			}
+
+			result.push(projected);
+		}
+
+		return result;
+	}
 	
 	private async resolveReference(
 		context: SchemaContext,
@@ -156,54 +222,52 @@ export class QueryManager {
 		let currentContext = context;
 
 		for (let i = 0; i < parts.length; i++) {
+
 			const part = parts[i];
 
 			if (current == null) return undefined;
 
 			const value = current[part];
 
-			// LAST SEGMENT → return raw value
+			// LAST SEGMENT
 			if (i === parts.length - 1) {
 				return value;
 			}
 
+			// ONLY treat as reference if schema says so
 			const field = currentContext.schema.fields[part];
 
-			// NOT a reference → normal traversal
-			if (!field || field.type !== "reference") {
-				current = value;
+			if (field?.type === "reference") {
+
+				if (typeof value !== "string") {
+					return undefined;
+				}
+
+				const resolved =
+					await this.resolveReference(
+						currentContext,
+						part,
+						value
+					);
+
+				if (!resolved) return undefined;
+
+				current = resolved.data;
+
+				currentContext =
+					await this.contextFactory.getSchemaContext(
+						field.referenceTarget.ruleset,
+						field.referenceTarget.schema
+					);
+
 				continue;
 			}
 
-			// MUST be string id
-			if (typeof value !== "string") {
-				return undefined;
-			}
+			// 🔥 IMPORTANT FIX:
+			// After first hop OR non-reference:
+			// just treat as object traversal
 
-			// RESOLVE
-			const resolved =
-				await this.resolveReference(
-					currentContext,
-					part,
-					value
-				);
-
-			if (!resolved) return undefined;
-
-			// MOVE DATA
-			current = resolved.data;
-
-			// MOVE SCHEMA
-			const target = field.referenceTarget;
-
-			currentContext =
-				await this.contextFactory.getSchemaContext(
-					target.ruleset,
-					target.schema
-				);
-
-			// IMPORTANT: restart loop cleanly
-			continue;
+			current = value;
 		}
 
 		return current;
@@ -234,6 +298,10 @@ export class QueryManager {
 		records =
 			this.applyPagination(records, request);
 
-		return records;
+		return await this.applyProjection(
+			context,
+			records,
+			request.select
+		);
 	}
 }

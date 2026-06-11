@@ -33,4 +33,5 @@ export interface QueryRequest {
 		field: string;
 		dir: "asc" | "desc";
 	};
+	select?: string[];
 }

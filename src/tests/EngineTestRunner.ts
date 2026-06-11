@@ -280,7 +280,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Single Hop Traversal",
 			() => this.testSingleHopReferenceTraversal()
-		);*/
+		);
 
 		await this.safeRun(
 			"Multi Hop Traversal",
@@ -295,6 +295,21 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Deep Reference Traversal",
 			() => this.testDeepReferenceTraversal()
+		);
+
+		await this.safeRun(
+			"projection flat fields",
+			() => this.testProjectionFlatFields()
+		);*/
+
+		await this.safeRun(
+			"Projection nested fields",
+			() => this.testProjectionNestedFields()
+		);
+
+		await this.safeRun(
+			"projection does not break filtering",
+			() => this.testProjectionDoesNotBreakFiltering()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -2632,5 +2647,276 @@ export class EngineTestRunner {
 		new Notice(
 			"Deep reference traversal passed"
 		);
+	}
+
+	private async testProjectionFlatFields() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Projection - Flat Fields");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const item =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Projection Sword",
+					damage: 25,
+					weight: 10
+				}
+			);
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					select: ["name", "damage"]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		const r = results[0];
+
+		if (r.id !== item.id) {
+			throw new Error("Wrong record returned");
+		}
+
+		if (!r.name || r.name !== "Projection Sword") {
+			throw new Error("Name projection failed");
+		}
+
+		if (r.damage !== 25) {
+			throw new Error("Damage projection failed");
+		}
+
+		// must NOT include weight
+		if ("weight" in r) {
+			throw new Error("Unexpected field: weight");
+		}
+
+		new Notice("Projection flat fields passed");
+	}
+
+	private async testProjectionNestedFields() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Projection - Nested Fields");
+
+		// --------------------------------------------------
+		// Build schemas
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Reload contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Create data
+		// --------------------------------------------------
+
+		const guild =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Knights"
+				}
+			);
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: guild.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: character.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					select: [
+						"name",
+						"owner.name",
+						"owner.guild.name"
+					]
+				}
+			);
+
+		// --------------------------------------------------
+		// Validate
+		// --------------------------------------------------
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		const r = results[0];
+
+		if (!r.owner?.name || r.owner.name !== "Bob") {
+			throw new Error("owner.name projection failed");
+		}
+
+		if (
+			!r.owner?.guild?.name ||
+			r.owner.guild.name !== "Knights"
+		) {
+			throw new Error(
+				"owner.guild.name projection failed"
+			);
+		}
+
+		new Notice(
+			"Projection nested fields passed"
+		);
+	}
+
+	private async testProjectionDoesNotBreakFiltering() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Projection + Filtering");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword A",
+				damage: 10
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword B",
+				damage: 50
+			}
+		);
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					where: [
+						{
+							field: "damage",
+							op: ">",
+							value: 20
+						}
+					],
+					select: ["name"]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].name !== "Sword B") {
+			throw new Error("Filtering broke with projection");
+		}
+
+		new Notice("Projection filtering safety passed");
 	}
 }
