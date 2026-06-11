@@ -1,5 +1,5 @@
 import { SchemaContext } from "../types/ContextTypes";
-import { QueryRequest, QueryFilter, QueryAggregate } from "../types/QueryTypes";
+import { QueryRequest, QueryFilter, QueryAggregate, QueryGroupResult } from "../types/QueryTypes";
 import { IDataReader } from "../interfaces/IDataReader";
 import {IReferenceResolver} from "../interfaces/IReferenceResolver";
 import { DataRecord } from "../types/DataTypes";
@@ -529,5 +529,78 @@ export class QueryManager {
 			records,
 			request.aggregate
 		);
+	}
+
+	async queryGroup(
+		context: SchemaContext,
+		request: QueryRequest
+	): Promise<QueryGroupResult[]> {
+
+		if (!request.groupBy) {
+			throw new Error(
+				"Group query missing groupBy field"
+			);
+		}
+
+		if (!request.aggregate) {
+			throw new Error(
+				"Group query requires aggregate"
+			);
+		}
+
+		// 1. Load all data
+		let records =
+			await this.reader.getAll(context);
+
+		// 2. Apply filters
+		if (request.where?.length) {
+			records =
+				await this.applyFilters(
+					context,
+					records,
+					request.where
+				);
+		}
+
+		// 3. Build groups
+		const groups =
+			new Map<any, DataRecord[]>();
+
+		for (const record of records) {
+
+			const key =
+				await this.getValueByPath(
+					context,
+					record,
+					request.groupBy
+				);
+
+			if (!groups.has(key)) {
+				groups.set(key, []);
+			}
+
+			groups.get(key)!.push(record);
+		}
+
+		// 4. Aggregate each group
+		const results: QueryGroupResult[] = [];
+
+		for (const [key, groupRecords] of groups) {
+
+			const value =
+				await this.aggregate(
+					context,
+					groupRecords,
+					request.aggregate
+				);
+
+			results.push({
+				key,
+				records: groupRecords,
+				value
+			});
+		}
+
+		return results;
 	}
 }

@@ -1,3 +1,5 @@
+import { DataRecord } from "./DataTypes";
+
 export interface Query {
 	where?: Record<string, any>;
 	sort?: {
@@ -46,4 +48,11 @@ export interface QueryRequest {
 	};
 	select?: string[];
 	aggregate?: QueryAggregate;
+	groupBy?: string;
+}
+
+export interface QueryGroupResult {
+	key: any;
+	records: DataRecord[];
+	value: number; // aggregation result
 }
