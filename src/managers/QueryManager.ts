@@ -1,5 +1,5 @@
 import { SchemaContext } from "../types/ContextTypes";
-import { QueryRequest, QueryFilter } from "../types/QueryTypes";
+import { QueryRequest, QueryFilter, QueryAggregate } from "../types/QueryTypes";
 import { IDataReader } from "../interfaces/IDataReader";
 import {IReferenceResolver} from "../interfaces/IReferenceResolver";
 import { DataRecord } from "../types/DataTypes";
@@ -59,6 +59,177 @@ export class QueryManager {
 
 			default:
 				return false;
+		}
+	}
+
+	private async sum(
+		context: SchemaContext,
+		records: DataRecord[],
+		field?: string
+	): Promise<number> {
+
+		if (!field) {
+			throw new Error(
+				"Sum aggregate requires a field"
+			);
+		}
+
+		let total = 0;
+
+		for (const record of records) {
+
+			const value =
+				await this.getValueByPath(
+					context,
+					record,
+					field
+				);
+
+			if (typeof value === "number") {
+				total += value;
+			}
+		}
+
+		return total;
+	}
+
+	private async average(
+		context: SchemaContext,
+		records: DataRecord[],
+		field?: string
+	): Promise<number> {
+
+		if (records.length === 0) {
+			return 0;
+		}
+
+		const total =
+			await this.sum(
+				context,
+				records,
+				field
+			);
+
+		return total / records.length;
+	}
+
+	private async minimum(
+		context: SchemaContext,
+		records: DataRecord[],
+		field?: string
+	): Promise<number> {
+
+		if (!field) {
+			throw new Error(
+				"Min aggregate requires a field"
+			);
+		}
+
+		let min =
+			Infinity;
+
+		for (const record of records) {
+
+			const value =
+				await this.getValueByPath(
+					context,
+					record,
+					field
+				);
+
+			if (
+				typeof value === "number" &&
+				value < min
+			) {
+				min = value;
+			}
+		}
+
+		return min === Infinity
+			? 0
+			: min;
+	}
+
+	private async maximum(
+		context: SchemaContext,
+		records: DataRecord[],
+		field?: string
+	): Promise<number> {
+
+		if (!field) {
+			throw new Error(
+				"Max aggregate requires a field"
+			);
+		}
+
+		let max =
+			-Infinity;
+
+		for (const record of records) {
+
+			const value =
+				await this.getValueByPath(
+					context,
+					record,
+					field
+				);
+
+			if (
+				typeof value === "number" &&
+				value > max
+			) {
+				max = value;
+			}
+		}
+
+		return max === -Infinity
+			? 0
+			: max;
+	}
+
+	private async aggregate(
+		context: SchemaContext,
+		records: DataRecord[],
+		aggregate: QueryAggregate
+	): Promise<number> {
+
+		switch (aggregate.op) {
+
+			case "count":
+				return records.length;
+
+			case "sum":
+				return await this.sum(
+					context,
+					records,
+					aggregate.field
+				);
+
+			case "avg":
+				return await this.average(
+					context,
+					records,
+					aggregate.field
+				);
+
+			case "min":
+				return await this.minimum(
+					context,
+					records,
+					aggregate.field
+				);
+
+			case "max":
+				return await this.maximum(
+					context,
+					records,
+					aggregate.field
+				);
+
+			default:
+				throw new Error(
+					`Unknown aggregate operation: ${aggregate.op}`
+				);
 		}
 	}
 
@@ -302,6 +473,61 @@ export class QueryManager {
 			context,
 			records,
 			request.select
+		);
+	}
+
+	async queryAggregate(
+		context: SchemaContext,
+		request: QueryRequest
+	): Promise<number> {
+
+		if (!request.aggregate) {
+			throw new Error(
+				"Aggregate query missing aggregate definition"
+			);
+		}
+
+		if (request.select?.length) {
+			throw new Error(
+				"Aggregate queries do not support select"
+			);
+		}
+
+		if (request.sort) {
+			throw new Error(
+				"Aggregate queries do not support sort"
+			);
+		}
+
+		if (request.limit !== undefined) {
+			throw new Error(
+				"Aggregate queries do not support limit"
+			);
+		}
+
+		if (request.offset !== undefined) {
+			throw new Error(
+				"Aggregate queries do not support offset"
+			);
+		}
+
+		let records =
+			await this.reader.getAll(context);
+
+		if (request.where?.length) {
+
+			records =
+				await this.applyFilters(
+					context,
+					records,
+					request.where
+				);
+		}
+
+		return await this.aggregate(
+			context,
+			records,
+			request.aggregate
 		);
 	}
 }

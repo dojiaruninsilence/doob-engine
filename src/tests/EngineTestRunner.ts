@@ -300,7 +300,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"projection flat fields",
 			() => this.testProjectionFlatFields()
-		);*/
+		);
 
 		await this.safeRun(
 			"Projection nested fields",
@@ -310,6 +310,36 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"projection does not break filtering",
 			() => this.testProjectionDoesNotBreakFiltering()
+		);*/
+
+		await this.safeRun(
+			"count aggregation",
+			() => this.testCountAggregation()
+		);
+
+		await this.safeRun(
+			"Sum Aggregation",
+			() => this.testSumAggregation()
+		);
+
+		await this.safeRun(
+			"Average Aggregation",
+			() => this.testAverageAggregation()
+		);
+
+		await this.safeRun(
+			"Minimum Aggregation",
+			() => this.testMinimumAggregation()
+		);
+
+		await this.safeRun(
+			"Maximum Aggregation",
+			() => this.testMaximumAggregation()
+		);
+
+		await this.safeRun(
+			"Filtered Count Aggregation",
+			() => this.testFilteredCountAggregation()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -2918,5 +2948,364 @@ export class EngineTestRunner {
 		}
 
 		new Notice("Projection filtering safety passed");
+	}
+
+	private async testCountAggregation() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Count Aggregation"
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Sword" }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Shield" }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Bow" }
+		);
+
+		const count =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "count"
+					}
+				}
+			);
+
+		if (count !== 3) {
+			throw new Error(
+				`Expected 3, got ${count}`
+			);
+		}
+
+		new Notice(
+			"Count aggregation passed"
+		);
+	}
+
+	private async testSumAggregation() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Sum Aggregation"
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 10 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 20 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 30 }
+		);
+
+		const total =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "sum",
+						field: "damage"
+					}
+				}
+			);
+
+		if (total !== 60) {
+			throw new Error(
+				`Expected 60, got ${total}`
+			);
+		}
+
+		new Notice(
+			"Sum aggregation passed"
+		);
+	}
+
+	private async testAverageAggregation() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Average Aggregation"
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 10 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 20 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 30 }
+		);
+
+		const avg =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "avg",
+						field: "damage"
+					}
+				}
+			);
+
+		if (avg !== 20) {
+			throw new Error(
+				`Expected 20, got ${avg}`
+			);
+		}
+
+		new Notice(
+			"Average aggregation passed"
+		);
+	}
+
+	private async testMinimumAggregation() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Minimum Aggregation"
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 10 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 20 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 30 }
+		);
+
+		const min =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "min",
+						field: "damage"
+					}
+				}
+			);
+
+		if (min !== 10) {
+			throw new Error(
+				`Expected 10, got ${min}`
+			);
+		}
+
+		new Notice(
+			"Minimum aggregation passed"
+		);
+	}
+
+	private async testMaximumAggregation() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Maximum Aggregation"
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 10 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 20 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 30 }
+		);
+
+		const max =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "max",
+						field: "damage"
+					}
+				}
+			);
+
+		if (max !== 30) {
+			throw new Error(
+				`Expected 30, got ${max}`
+			);
+		}
+
+		new Notice(
+			"Maximum aggregation passed"
+		);
+	}
+
+	private async testFilteredCountAggregation() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Filtered Count Aggregation"
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 5 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 15 }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ damage: 25 }
+		);
+
+		const count =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					where: [
+						{
+							field: "damage",
+							op: ">",
+							value: 10
+						}
+					],
+					aggregate: {
+						op: "count"
+					}
+				}
+			);
+
+		if (count !== 2) {
+			throw new Error(
+				`Expected 2, got ${count}`
+			);
+		}
+
+		new Notice(
+			"Filtered count aggregation passed"
+		);
 	}
 }
