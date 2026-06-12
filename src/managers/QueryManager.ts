@@ -305,6 +305,55 @@ export class QueryManager {
 		});
 	}
 
+	private applyGroupSort(
+		groups: QueryGroupResult[],
+		sort?: QueryRequest["sort"]
+	): QueryGroupResult[] {
+
+		if (!sort) {
+			return groups;
+		}
+
+		const { field, dir } = sort;
+
+		return [...groups].sort((a, b) => {
+
+			let av: any;
+			let bv: any;
+
+			switch (field) {
+
+				case "key":
+					av = a.key;
+					bv = b.key;
+					break;
+
+				case "count":
+					av = a.records.length;
+					bv = b.records.length;
+					break;
+
+				case "value":
+					av = a.value;
+					bv = b.value;
+					break;
+
+				default:
+					return 0;
+			}
+
+			if (av < bv) {
+				return dir === "asc" ? -1 : 1;
+			}
+
+			if (av > bv) {
+				return dir === "asc" ? 1 : -1;
+			}
+
+			return 0;
+		});
+	}
+
 	private applyPagination(
 		records: DataRecord[],
 		request: QueryRequest
@@ -358,6 +407,49 @@ export class QueryManager {
 			}
 
 			result.push(projected);
+		}
+
+		return result;
+	}
+
+	private async applyHaving(
+		groups: QueryGroupResult[],
+		context: SchemaContext,
+		having?: QueryFilter[]
+	): Promise<QueryGroupResult[]> {
+
+		if (!having?.length) return groups;
+
+		let result = groups;
+
+		for (const filter of having) {
+
+			const next: QueryGroupResult[] = [];
+
+			for (const group of result) {
+
+				// Build pseudo-record for reuse of existing matcher
+				const fakeRecord = {
+					data: {
+						key: group.key,
+						value: group.value,
+						count: group.records.length
+					}
+				} as any;
+
+				const matches =
+					await this.matches(
+						context,
+						fakeRecord,
+						filter
+					);
+
+				if (matches) {
+					next.push(group);
+				}
+			}
+
+			result = next;
 		}
 
 		return result;
@@ -608,49 +700,12 @@ export class QueryManager {
 				request.having
 			);
 
+		results =
+			this.applyGroupSort(
+				results,
+				request.sort
+			);
+
 		return results;
-	}
-
-	private async applyHaving(
-		groups: QueryGroupResult[],
-		context: SchemaContext,
-		having?: QueryFilter[]
-	): Promise<QueryGroupResult[]> {
-
-		if (!having?.length) return groups;
-
-		let result = groups;
-
-		for (const filter of having) {
-
-			const next: QueryGroupResult[] = [];
-
-			for (const group of result) {
-
-				// Build pseudo-record for reuse of existing matcher
-				const fakeRecord = {
-					data: {
-						key: group.key,
-						value: group.value,
-						count: group.records.length
-					}
-				} as any;
-
-				const matches =
-					await this.matches(
-						context,
-						fakeRecord,
-						filter
-					);
-
-				if (matches) {
-					next.push(group);
-				}
-			}
-
-			result = next;
-		}
-
-		return result;
 	}
 }

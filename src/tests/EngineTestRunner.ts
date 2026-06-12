@@ -360,7 +360,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Group by Empty",
 			() => this.testGroupByEmpty()
-		);*/
+		);
 
 		await this.safeRun(
 			"Having Count",
@@ -380,6 +380,26 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Having Empty",
 			() => this.testHavingEmpty()
+		);
+
+		await this.safeRun(
+			"Group Order By Value desc",
+			() => this.testGroupOrderByValueDesc()
+		);
+
+		await this.safeRun(
+			"Group Order By Value Asc",
+			() => this.testGroupOrderByValueAsc()
+		);
+
+		await this.safeRun(
+			"Group Order By Key Asc",
+			() => this.testGroupOrderByKeyAsc()
+		);*/
+
+		await this.safeRun(
+			"Group Order by Count",
+			() => this.testGroupOrderByCount()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -4398,6 +4418,807 @@ export class EngineTestRunner {
 
 		new Notice(
 			"HAVING Empty passed"
+		);
+	}
+
+	private async testGroupOrderByValueDesc() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Group Order By Value Desc"
+		);
+
+		// Schema
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const rick =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Rick",
+					guild: knights.id
+				}
+			);
+
+		const jane =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Jane",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Sword", owner: bob.id }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Shield", owner: rick.id }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Bow", owner: jane.id }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Dagger", owner: john.id }
+		);
+
+		const results =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "owner.guild.name",
+					aggregate: {
+						op: "count"
+					},
+					sort: {
+						field: "value",
+						dir: "desc"
+					}
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 groups, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Knights") {
+			throw new Error(
+				"Descending sort failed"
+			);
+		}
+
+		new Notice(
+			"Group Order By Value Desc passed"
+		);
+	}
+
+	private async testGroupOrderByValueAsc() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Group Order By Value Asc"
+		);
+
+		// Schema
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const rick =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Rick",
+					guild: knights.id
+				}
+			);
+
+		const jane =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Jane",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Sword", owner: bob.id }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Shield", owner: rick.id }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Bow", owner: jane.id }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Dagger", owner: john.id }
+		);
+
+		const results =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "owner.guild.name",
+					aggregate: {
+						op: "count"
+					},
+					sort: {
+						field: "value",
+						dir: "asc"
+					}
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 groups, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Bandits") {
+			throw new Error(
+				"Value ascending sort failed: Bandits should be first"
+			);
+		}
+
+		if (results[1].key !== "Knights") {
+			throw new Error(
+				"Value ascending sort failed: Knights should be second"
+			);
+		}
+
+		if (results[0].value !== 1) {
+			throw new Error(
+				`Expected Bandits count 1, got ${results[0].value}`
+			);
+		}
+
+		if (results[1].value !== 3) {
+			throw new Error(
+				`Expected Knights count 3, got ${results[1].value}`
+			);
+		}
+
+		new Notice(
+			"Group Order By Value asc passed"
+		);
+	}
+
+	private async testGroupOrderByKeyAsc() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Group Order By Key Asc"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Guilds
+		// --------------------------------------------------
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const wizards =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Wizards" }
+			);
+
+		// --------------------------------------------------
+		// Characters
+		// --------------------------------------------------
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		const merlin =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Merlin",
+					guild: wizards.id
+				}
+			);
+
+		// --------------------------------------------------
+		// Items
+		// --------------------------------------------------
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Dagger",
+				owner: john.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Staff",
+				owner: merlin.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "owner.guild.name",
+					aggregate: {
+						op: "count"
+					},
+					sort: {
+						field: "key",
+						dir: "asc"
+					}
+				}
+			);
+
+		// --------------------------------------------------
+		// Validation
+		// --------------------------------------------------
+
+		if (results.length !== 3) {
+			throw new Error(
+				`Expected 3 groups, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Bandits") {
+			throw new Error(
+				"Bandits should be first alphabetically"
+			);
+		}
+
+		if (results[1].key !== "Knights") {
+			throw new Error(
+				"Knights should be second alphabetically"
+			);
+		}
+
+		if (results[2].key !== "Wizards") {
+			throw new Error(
+				"Wizards should be third alphabetically"
+			);
+		}
+
+		new Notice(
+			"Group Order By Key Asc passed"
+		);
+	}
+
+	private async testGroupOrderByCount() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Group Order By Count Desc"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const rick =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Rick",
+					guild: knights.id
+				}
+			);
+
+		const jane =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Jane",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Sword", owner: bob.id }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Shield", owner: rick.id }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Bow", owner: jane.id }
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{ name: "Dagger", owner: john.id }
+		);
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "owner.guild.name",
+					aggregate: {
+						op: "count"
+					},
+					sort: {
+						field: "count",
+						dir: "desc"
+					}
+				}
+			);
+
+		// --------------------------------------------------
+		// Validation
+		// --------------------------------------------------
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 groups, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Knights") {
+			throw new Error(
+				"Count sort descending failed"
+			);
+		}
+
+		if (results[0].value !== 3) {
+			throw new Error(
+				"Knights count incorrect"
+			);
+		}
+
+		if (results[1].key !== "Bandits") {
+			throw new Error(
+				"Count sort descending failed"
+			);
+		}
+
+		if (results[1].value !== 1) {
+			throw new Error(
+				"Bandits count incorrect"
+			);
+		}
+
+		new Notice(
+			"Group Order By Count Desc passed"
 		);
 	}
 }
