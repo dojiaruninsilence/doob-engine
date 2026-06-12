@@ -583,7 +583,7 @@ export class QueryManager {
 		}
 
 		// 4. Aggregate each group
-		const results: QueryGroupResult[] = [];
+		let results: QueryGroupResult[] = [];
 
 		for (const [key, groupRecords] of groups) {
 
@@ -601,6 +601,56 @@ export class QueryManager {
 			});
 		}
 
+		results =
+			await this.applyHaving(
+				results,
+				context,
+				request.having
+			);
+
 		return results;
+	}
+
+	private async applyHaving(
+		groups: QueryGroupResult[],
+		context: SchemaContext,
+		having?: QueryFilter[]
+	): Promise<QueryGroupResult[]> {
+
+		if (!having?.length) return groups;
+
+		let result = groups;
+
+		for (const filter of having) {
+
+			const next: QueryGroupResult[] = [];
+
+			for (const group of result) {
+
+				// Build pseudo-record for reuse of existing matcher
+				const fakeRecord = {
+					data: {
+						key: group.key,
+						value: group.value,
+						count: group.records.length
+					}
+				} as any;
+
+				const matches =
+					await this.matches(
+						context,
+						fakeRecord,
+						filter
+					);
+
+				if (matches) {
+					next.push(group);
+				}
+			}
+
+			result = next;
+		}
+
+		return result;
 	}
 }

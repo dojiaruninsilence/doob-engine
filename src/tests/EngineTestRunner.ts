@@ -340,7 +340,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Filtered Count Aggregation",
 			() => this.testFilteredCountAggregation()
-		);*/
+		);
 
 		await this.safeRun(
 			"Group by Count",
@@ -360,6 +360,26 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Group by Empty",
 			() => this.testGroupByEmpty()
+		);*/
+
+		await this.safeRun(
+			"Having Count",
+			() => this.testHavingCount()
+		);
+
+		await this.safeRun(
+			"Having Sum",
+			() => this.testHavingSum()
+		);
+
+		await this.safeRun(
+			"Having count property",
+			() => this.testHavingCountProperty()
+		);
+
+		await this.safeRun(
+			"Having Empty",
+			() => this.testHavingEmpty()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -3763,5 +3783,621 @@ export class EngineTestRunner {
 		}
 
 		new Notice("Empty group test passed");
+	}
+
+	private async testHavingCount() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: HAVING Count"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const rick =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Rick",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Shield",
+				owner: rick.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Dagger",
+				owner: john.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "owner.guild.name",
+					aggregate: {
+						op: "count"
+					},
+					having: [
+						{
+							field: "value",
+							op: ">",
+							value: 1
+						}
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Knights") {
+			throw new Error(
+				"Wrong group returned"
+			);
+		}
+
+		new Notice(
+			"HAVING Count passed"
+		);
+	}
+
+	private async testHavingSum() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: HAVING Sum"
+		);
+
+		// schema
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				damage: 10,
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Shield",
+				damage: 20,
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Dagger",
+				damage: 5,
+				owner: john.id
+			}
+		);
+
+		const results =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "owner.guild.name",
+					aggregate: {
+						op: "sum",
+						field: "damage"
+					},
+					having: [
+						{
+							field: "value",
+							op: ">",
+							value: 20
+						}
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Knights") {
+			throw new Error(
+				"Wrong guild returned"
+			);
+		}
+
+		new Notice(
+			"HAVING Sum passed"
+		);
+	}
+
+	private async testHavingCountProperty() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: HAVING Count Property"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Knights"
+				}
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Bandits"
+				}
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const rick =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Rick",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Shield",
+				owner: rick.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Dagger",
+				owner: john.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "owner.guild.name",
+					aggregate: {
+						op: "count"
+					},
+					having: [
+						{
+							field: "count",
+							op: ">",
+							value: 1
+						}
+					]
+				}
+			);
+
+		// --------------------------------------------------
+		// Validation
+		// --------------------------------------------------
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Knights") {
+			throw new Error(
+				"Wrong group returned"
+			);
+		}
+
+		if (results[0].value !== 2) {
+			throw new Error(
+				`Expected count 2, got ${results[0].value}`
+			);
+		}
+
+		new Notice(
+			"HAVING Count Property passed"
+		);
+	}
+
+	private async testHavingEmpty() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: HAVING Empty"
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const results =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "count"
+					},
+					having: [
+						{
+							field: "value",
+							op: ">",
+							value: 1
+						}
+					]
+				}
+			);
+
+		if (results.length !== 0) {
+			throw new Error(
+				"Expected empty result"
+			);
+		}
+
+		new Notice(
+			"HAVING Empty passed"
+		);
 	}
 }

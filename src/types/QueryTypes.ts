@@ -49,6 +49,7 @@ export interface QueryRequest {
 	select?: string[];
 	aggregate?: QueryAggregate;
 	groupBy?: string;
+	having?: QueryFilter[];
 }
 
 export interface QueryGroupResult {
