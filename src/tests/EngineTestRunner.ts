@@ -1360,7 +1360,7 @@ export class EngineTestRunner {
 		new Notice(
 			`Hydrated owner: ${hydrated._resolved.owner.data.name}`
 		);
-	}
+	}*/
 
 	// --------------------------------------------------
 	// QUERY MANAGER TESTS
@@ -1820,13 +1820,34 @@ export class EngineTestRunner {
 		await this.testQuerySortStability();
 
 		new Notice("Query Manager Tests Completed");
-	}*/
+	}
 
 	private async testInvalidReferenceValidation() {
 
 		await this.resetCoreTestData();
 
 		new Notice("Test: Invalid Reference Validation");
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
 
 		const itemContext =
 			await this.contextFactory.getSchemaContext(
