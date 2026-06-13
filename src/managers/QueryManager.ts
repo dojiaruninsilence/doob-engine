@@ -5,6 +5,8 @@ import {IReferenceResolver} from "../interfaces/IReferenceResolver";
 import { DataRecord } from "../types/DataTypes";
 import { Notice } from "obsidian";
 import { ContextFactory } from "./ContextFactory";
+import { QueryPlanner } from "../planners/QueryPlanner";
+import { QueryPlan } from "../types/QueryPlannerTypes";
 
 export class QueryManager {
 
@@ -13,7 +15,8 @@ export class QueryManager {
 	constructor(
 		private reader: IDataReader,
 		private referenceResolver: IReferenceResolver,
-		private contextFactory: ContextFactory
+		private contextFactory: ContextFactory,
+		private queryPlanner: QueryPlanner
 	) {}
 
 	private async matches(
@@ -536,14 +539,74 @@ export class QueryManager {
 		return current;
 	}
 
+	private async preloadReferences(
+		context: SchemaContext,
+		records: DataRecord[],
+		plan: QueryPlan
+	): Promise<void> {
+
+		if (plan.steps.length === 0) {
+			return;
+		}
+
+		let currentRecords = records;
+		let currentContext = context;
+
+		for (const step of plan.steps) {
+
+			const nextRecords: DataRecord[] = [];
+
+			for (const record of currentRecords) {
+
+				const id =
+					record.data?.[step.field];
+
+				if (typeof id !== "string") {
+					continue;
+				}
+
+				const resolved =
+					await this.resolveReference(
+						currentContext,
+						step.field,
+						id
+					);
+
+				if (!resolved) {
+					continue;
+				}
+
+				nextRecords.push(resolved);
+			}
+
+			currentContext =
+				await this.contextFactory.getSchemaContext(
+					step.toRuleset ?? context.ruleset,
+					step.to
+				);
+
+			currentRecords = nextRecords;
+		}
+	}
+
 	async query(
 		context: SchemaContext,
 		request: QueryRequest
 	): Promise<DataRecord[]> {
 
+		/*const plan =
+			await this.queryPlanner.plan(context, request);
+
+		new Notice(
+			`Query plan steps: ${plan.steps.length}`
+		);*/
+
 		// 1. Load all data
 		let records =
 			await this.reader.getAll(context);
+
+		const plan = await this.queryPlanner.plan(context, request);
+		await this.preloadReferences(context, records, plan);
 
 		// 2. Apply filters
 		if (request.where?.length) {
@@ -606,6 +669,9 @@ export class QueryManager {
 		let records =
 			await this.reader.getAll(context);
 
+		const plan = await this.queryPlanner.plan(context, request);
+		await this.preloadReferences(context, records, plan);
+
 		if (request.where?.length) {
 
 			records =
@@ -643,6 +709,9 @@ export class QueryManager {
 		// 1. Load all data
 		let records =
 			await this.reader.getAll(context);
+
+		const plan = await this.queryPlanner.plan(context, request);
+		await this.preloadReferences(context, records, plan);
 
 		// 2. Apply filters
 		if (request.where?.length) {

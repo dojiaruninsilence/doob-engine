@@ -7,8 +7,9 @@ export class EngineTestRunner {
 	private contextFactory: any;
 	private queryManager: any;
 	private referenceManager: any;
+	private queryPlanner: any;
 
-	constructor(schemaManager: any, dataManager: any, contextFactory: any, queryManager: any, referenceManager: any) {
+	constructor(schemaManager: any, dataManager: any, contextFactory: any, queryManager: any, referenceManager: any, queryPlanner: any) {
 
         if (!schemaManager) {
             new Notice("SchemaManager not injected");
@@ -30,6 +31,7 @@ export class EngineTestRunner {
         this.contextFactory = contextFactory;
         this.queryManager = queryManager;
         this.referenceManager = referenceManager;
+		this.queryPlanner = queryPlanner;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
@@ -395,11 +397,46 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Group Order By Key Asc",
 			() => this.testGroupOrderByKeyAsc()
-		);*/
+		);
 
 		await this.safeRun(
 			"Group Order by Count",
 			() => this.testGroupOrderByCount()
+		);
+
+		await this.safeRun(
+			"Query Planner Single Hop",
+			() => this.testQueryPlannerSingleHop()
+		);
+
+		await this.safeRun(
+			"Query Planner Multi Hop",
+			() => this.testQueryPlannerMultiHop()
+		);
+
+		await this.safeRun(
+			"Query Planner Combined Fields",
+			() => this.testQueryPlannerCombinedFields()
+		);
+
+		await this.safeRun(
+			"Query Planner No Traversal",
+			() => this.testQueryPlannerNoTraversal()
+		);*/
+
+		await this.safeRun(
+			"Planner Filter Integration",
+			() => this.testPlannerFilterIntegration()
+		);
+
+		await this.safeRun(
+			"Planner Projection Integration",
+			() => this.testPlannerProjectionIntegration()
+		);
+
+		await this.safeRun(
+			"Planner Group Integration",
+			() => this.testPlannerGroupIntegration()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -5219,6 +5256,867 @@ export class EngineTestRunner {
 
 		new Notice(
 			"Group Order By Count Desc passed"
+		);
+	}
+
+	private async testQueryPlannerSingleHop() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Query Planner Single Hop"
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const plan =
+			await this.queryPlanner.plan(
+				itemContext,
+				{
+					select: [
+						"owner.name"
+					]
+				}
+			);
+
+		if (plan.rootSchema !== "Item") {
+			throw new Error(
+				"Root schema incorrect"
+			);
+		}
+
+		if (plan.steps.length !== 1) {
+			throw new Error(
+				`Expected 1 step, got ${plan.steps.length}`
+			);
+		}
+
+		const step = plan.steps[0];
+
+		if (step.from !== "Item") {
+			throw new Error("Wrong from schema");
+		}
+
+		if (step.field !== "owner") {
+			throw new Error("Wrong field");
+		}
+
+		if (step.to !== "Character") {
+			throw new Error("Wrong target schema");
+		}
+
+		new Notice(
+			"Query Planner Single Hop passed"
+		);
+	}
+
+	private async testQueryPlannerMultiHop() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Query Planner Multi Hop"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Reload contexts
+		// --------------------------------------------------
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		// --------------------------------------------------
+		// Verify schema state
+		// --------------------------------------------------
+
+		if (!itemContext.schema.fields.owner) {
+			throw new Error(
+				"Item.owner missing"
+			);
+		}
+
+		if (!characterContext.schema.fields.guild) {
+			throw new Error(
+				"Character.guild missing"
+			);
+		}
+
+		// --------------------------------------------------
+		// Plan
+		// --------------------------------------------------
+
+		const plan =
+			await this.queryPlanner.plan(
+				itemContext,
+				{
+					select: [
+						"owner.guild.name"
+					]
+				}
+			);
+
+		if (plan.steps.length !== 2) {
+			throw new Error(
+				`Expected 2 steps, got ${plan.steps.length}`
+			);
+		}
+
+		if (
+			plan.steps[0].from !== "Item" ||
+			plan.steps[0].field !== "owner" ||
+			plan.steps[0].to !== "Character"
+		) {
+			throw new Error(
+				"Step 1 incorrect"
+			);
+		}
+
+		if (
+			plan.steps[1].from !== "Character" ||
+			plan.steps[1].field !== "guild" ||
+			plan.steps[1].to !== "Guild"
+		) {
+			throw new Error(
+				"Step 2 incorrect"
+			);
+		}
+
+		new Notice(
+			"Query Planner Multi Hop passed"
+		);
+	}
+
+	private async testQueryPlannerCombinedFields() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Query Planner Combined Fields"
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const plan =
+			await this.queryPlanner.plan(
+				itemContext,
+				{
+					select: [
+						"owner.name"
+					],
+					where: [
+						{
+							field: "owner.guild.name",
+							op: "=",
+							value: "Knights"
+						}
+					],
+					groupBy: "owner.guild.name"
+				}
+			);
+
+		if (plan.steps.length === 0) {
+			throw new Error(
+				"No traversal steps generated"
+			);
+		}
+
+		new Notice(
+			"Query Planner Combined Fields passed"
+		);
+	}
+
+	private async testQueryPlannerNoTraversal() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Query Planner No Traversal"
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const plan =
+			await this.queryPlanner.plan(
+				itemContext,
+				{
+					select: [
+						"name"
+					]
+				}
+			);
+
+		if (plan.steps.length !== 0) {
+			throw new Error(
+				"Expected no traversal steps"
+			);
+		}
+
+		new Notice(
+			"Query Planner No Traversal passed"
+		);
+	}
+
+	private async testPlannerFilterIntegration() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Planner Filter Integration"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Dagger",
+				owner: john.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					where: [
+						{
+							field: "owner.guild.name",
+							op: "=",
+							value: "Knights"
+						}
+					]
+				}
+			);
+
+		// --------------------------------------------------
+		// Validation
+		// --------------------------------------------------
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].data.name !== "Sword") {
+			throw new Error(
+				"Wrong item returned"
+			);
+		}
+
+		new Notice(
+			"Planner Filter Integration passed"
+		);
+	}
+
+	private async testPlannerProjectionIntegration() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Planner Projection Integration"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: bob.id
+			}
+		);
+
+		// Query
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					select: [
+						"owner.name",
+						"owner.guild.name"
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		const result = results[0];
+
+		if (result.owner?.name !== "Bob") {
+			throw new Error(
+				"owner.name projection failed"
+			);
+		}
+
+		if (
+			result.owner?.guild?.name !== "Knights"
+		) {
+			throw new Error(
+				"owner.guild.name projection failed"
+			);
+		}
+
+		new Notice(
+			"Planner Projection Integration passed"
+		);
+	}
+
+	private async testPlannerGroupIntegration() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Planner Group Integration"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const rick =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Rick",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Shield",
+				owner: rick.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Dagger",
+				owner: john.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "owner.guild.name",
+					aggregate: {
+						op: "count"
+					}
+				}
+			);
+
+		// --------------------------------------------------
+		// Validation
+		// --------------------------------------------------
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 groups, got ${results.length}`
+			);
+		}
+
+		const knightsGroup =
+			results.find(
+				r => r.key === "Knights"
+			);
+
+		const banditsGroup =
+			results.find(
+				r => r.key === "Bandits"
+			);
+
+		if (!knightsGroup || knightsGroup.value !== 2) {
+			throw new Error(
+				"Knights group incorrect"
+			);
+		}
+
+		if (!banditsGroup || banditsGroup.value !== 1) {
+			throw new Error(
+				"Bandits group incorrect"
+			);
+		}
+
+		new Notice(
+			"Planner Group Integration passed"
 		);
 	}
 }
