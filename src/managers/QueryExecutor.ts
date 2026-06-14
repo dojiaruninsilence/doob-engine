@@ -5,6 +5,7 @@ import { SchemaContext } from "../types/ContextTypes";
 import { QueryRequest, QueryGroupResult, QueryFilter, QueryAggregate } from "../types/QueryTypes";
 import { QueryPlan } from "../types/QueryPlannerTypes";
 import { DataRecord } from "../types/DataTypes";
+import { ReferenceBatchResolver } from "./ReferenceBatchResolver";
 
 export class QueryExecutor {
     
@@ -13,7 +14,8 @@ export class QueryExecutor {
 	constructor(
 		private reader: IDataReader,
 		private referenceResolver: IReferenceResolver,
-		private contextFactory: ContextFactory
+		private contextFactory: ContextFactory,
+        private batchResolver: ReferenceBatchResolver
 	) {}
 
     private async matches(
@@ -506,14 +508,25 @@ export class QueryExecutor {
                     return undefined;
                 }
 
-                const resolved =
-                    await this.resolveReference(
-                        currentContext,
-                        part,
-                        value
-                    );
+                let resolved =
+                    this.batchResolver.get(value);
 
-                if (!resolved) return undefined;
+                if (!resolved) {
+
+                    resolved =
+                        await this.referenceResolver.resolve(
+                            currentContext,
+                            part,
+                            value
+                        );
+
+                    if (resolved) {
+                        this.batchResolver.store(
+                            value,
+                            resolved
+                        );
+                    }
+                }
 
                 current = resolved.data;
 
@@ -551,6 +564,13 @@ export class QueryExecutor {
 
         for (const step of plan.steps) {
 
+            const resolvedMap =
+                await this.batchResolver.resolveBatch(
+                    currentContext,
+                    step.field,
+                    currentRecords
+                );
+
             const nextRecords: DataRecord[] = [];
 
             for (const record of currentRecords) {
@@ -563,11 +583,7 @@ export class QueryExecutor {
                 }
 
                 const resolved =
-                    await this.resolveReference(
-                        currentContext,
-                        step.field,
-                        id
-                    );
+                    resolvedMap.get(id);
 
                 if (!resolved) {
                     continue;

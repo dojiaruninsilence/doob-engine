@@ -9,7 +9,15 @@ export class DoobToolPanel extends ItemView {
 	constructor(leaf: WorkspaceLeaf, plugin: DoobEngine) {
 		super(leaf);
 		this.plugin = plugin;
-		this.testRunner = new EngineTestRunner(this.plugin.schemaManager, this.plugin.dataManager, this.plugin.contextFactory, this.plugin.queryManager, this.plugin.referenceManager, this.plugin.queryPlanner);
+		this.testRunner = new EngineTestRunner(
+			this.plugin.schemaManager, 
+			this.plugin.dataManager, 
+			this.plugin.contextFactory, 
+			this.plugin.queryManager, 
+			this.plugin.referenceManager, 
+			this.plugin.queryPlanner, 
+			this.plugin.referenceBatchResolver
+		);
 	}
 
 	getViewType() {

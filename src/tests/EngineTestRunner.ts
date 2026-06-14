@@ -8,8 +8,9 @@ export class EngineTestRunner {
 	private queryManager: any;
 	private referenceManager: any;
 	private queryPlanner: any;
+	private referenceBatchResolver: any;
 
-	constructor(schemaManager: any, dataManager: any, contextFactory: any, queryManager: any, referenceManager: any, queryPlanner: any) {
+	constructor(schemaManager: any, dataManager: any, contextFactory: any, queryManager: any, referenceManager: any, queryPlanner: any, referenceBatchResolver: any) {
 
         if (!schemaManager) {
             new Notice("SchemaManager not injected");
@@ -422,7 +423,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Query Planner No Traversal",
 			() => this.testQueryPlannerNoTraversal()
-		);*/
+		);
 
 		await this.safeRun(
 			"Planner Filter Integration",
@@ -437,6 +438,26 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Planner Group Integration",
 			() => this.testPlannerGroupIntegration()
+		);
+
+		await this.safeRun(
+			"Reference Batch Duplicate Resolution",
+			() => this.testReferenceBatchDuplicateResolution()
+		);*/
+
+		await this.safeRun(
+			"Batch Resolver Unique References",
+			() => this.testBatchResolverUniqueReferences()
+		);
+
+		await this.safeRun(
+			"Batch Resolver Multi Hop",
+			() => this.testBatchResolverMultiHop()
+		);
+
+		await this.safeRun(
+			"Shared Reference Fan-Out",
+			() => this.testBatchResolverSharedReferences()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -6138,6 +6159,733 @@ export class EngineTestRunner {
 
 		new Notice(
 			"Planner Group Integration passed"
+		);
+	}
+
+	private async testReferenceBatchDuplicateResolution() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Reference Batch Duplicate Resolution"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Contexts
+		// --------------------------------------------------
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob"
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Shield",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Bow",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Helmet",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Boots",
+				owner: bob.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Resolver Instrumentation
+		// --------------------------------------------------
+
+		let resolveCount = 0;
+
+		const originalResolve =
+			this.referenceManager.resolve.bind(
+				this.referenceManager
+			);
+
+		this.referenceManager.resolve =
+			async (...args: any[]) => {
+
+				resolveCount++;
+
+				return await originalResolve(...args);
+			};
+
+		try {
+
+			// --------------------------------------------------
+			// Query
+			// --------------------------------------------------
+
+			const results =
+				await this.queryManager.query(
+					itemContext,
+					{
+						select: [
+							"owner.name"
+						]
+					}
+				);
+
+			// --------------------------------------------------
+			// Validation
+			// --------------------------------------------------
+
+			if (results.length !== 5) {
+				throw new Error(
+					`Expected 5 results, got ${results.length}`
+				);
+			}
+
+			if (resolveCount !== 1) {
+				throw new Error(
+					`Expected 1 reference resolve, got ${resolveCount}`
+				);
+			}
+
+			new Notice(
+				"Reference Batch Duplicate Resolution passed"
+			);
+
+		} finally {
+
+			// restore resolver even if test fails
+
+			this.referenceManager.resolve =
+				originalResolve;
+		}
+	}
+
+	private async testBatchResolverUniqueReferences() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Batch Resolver Unique References"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{ name: "Bob" }
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{ name: "John" }
+			);
+
+		const jane =
+			await this.dataManager.createRecord(
+				characterContext,
+				{ name: "Jane" }
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Shield",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Bow",
+				owner: john.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Dagger",
+				owner: john.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Staff",
+				owner: jane.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Spy
+		// --------------------------------------------------
+
+		let resolveCount = 0;
+
+		const originalResolve =
+			this.referenceManager.resolve.bind(
+				this.referenceManager
+			);
+
+		this.referenceManager.resolve =
+			async (...args: any[]) => {
+
+				resolveCount++;
+
+				return await originalResolve(
+					...args
+				);
+			};
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		await this.queryManager.query(
+			itemContext,
+			{
+				select: [
+					"owner.name"
+				]
+			}
+		);
+
+		// --------------------------------------------------
+		// Validation
+		// --------------------------------------------------
+
+		if (resolveCount !== 3) {
+
+			throw new Error(
+				`Expected 3 resolves, got ${resolveCount}`
+			);
+		}
+
+		new Notice(
+			"Batch Resolver Unique References passed"
+		);
+	}
+
+	private async testBatchResolverMultiHop() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Batch Resolver Multi Hop"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Bandits" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: knights.id
+				}
+			);
+
+		const rick =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Rick",
+					guild: knights.id
+				}
+			);
+
+		const jane =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Jane",
+					guild: knights.id
+				}
+			);
+
+		const john =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "John",
+					guild: bandits.id
+				}
+			);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Sword",
+				owner: bob.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Shield",
+				owner: rick.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Bow",
+				owner: jane.id
+			}
+		);
+
+		await this.dataManager.createRecord(
+			itemContext,
+			{
+				name: "Dagger",
+				owner: john.id
+			}
+		);
+
+		// --------------------------------------------------
+		// Spy
+		// --------------------------------------------------
+
+		let resolveCount = 0;
+
+		const originalResolve =
+			this.referenceManager.resolve.bind(
+				this.referenceManager
+			);
+
+		this.referenceManager.resolve =
+			async (...args: any[]) => {
+
+				resolveCount++;
+
+				return await originalResolve(
+					...args
+				);
+			};
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		await this.queryManager.query(
+			itemContext,
+			{
+				select: [
+					"owner.guild.name"
+				]
+			}
+		);
+
+		// --------------------------------------------------
+		// Validation
+		// --------------------------------------------------
+
+		// 4 unique Characters
+		// 2 unique Guilds
+
+		if (resolveCount !== 6) {
+
+			throw new Error(
+				`Expected 6 resolves, got ${resolveCount}`
+			);
+		}
+
+		new Notice(
+			"Batch Resolver Multi Hop passed"
+		);
+	}
+
+	private async testBatchResolverSharedReferences() {
+
+		await this.resetCoreTestData();
+
+		new Notice(
+			"Test: Batch Resolver Shared References"
+		);
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const guild =
+			await this.dataManager.createRecord(
+				guildContext,
+				{ name: "Knights" }
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					guild: guild.id
+				}
+			);
+
+		for (let i = 0; i < 10; i++) {
+
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: `Item ${i}`,
+					owner: bob.id
+				}
+			);
+		}
+
+		// --------------------------------------------------
+		// Instrument Resolver
+		// --------------------------------------------------
+
+		let resolveCount = 0;
+
+		const originalResolve =
+			this.referenceManager.resolve.bind(
+				this.referenceManager
+			);
+
+		this.referenceManager.resolve =
+			async (...args) => {
+
+				resolveCount++;
+
+				return await originalResolve(...args);
+			};
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					select: [
+						"owner.name",
+						"owner.guild.name"
+					]
+				}
+			);
+
+		// --------------------------------------------------
+		// Validation
+		// --------------------------------------------------
+
+		if (results.length !== 10) {
+			throw new Error(
+				`Expected 10 results, got ${results.length}`
+			);
+		}
+
+		if (resolveCount !== 2) {
+			throw new Error(
+				`Expected 2 resolves, got ${resolveCount}`
+			);
+		}
+
+		this.referenceManager.resolve =
+			originalResolve;
+
+		new Notice(
+			"Batch Resolver Shared References passed"
 		);
 	}
 }

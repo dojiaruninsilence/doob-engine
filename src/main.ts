@@ -10,6 +10,7 @@ import { ReferenceManager } from "./managers/ReferenceManager";
 import { ReferenceResolverAdapter } from "./adapters/ReferenceResolverAdapter";
 import { QueryPlanner } from "./managers/QueryPlanner";
 import { QueryExecutor } from "./managers/QueryExecutor";
+import { ReferenceBatchResolver } from "./managers/ReferenceBatchResolver";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -27,6 +28,7 @@ export default class DoobEngine extends Plugin {
   	public referenceManager!: ReferenceManager;
 	public queryPlanner!: QueryPlanner;
 	public queryExecutor!: QueryExecutor;
+	public referenceBatchResolver!: ReferenceBatchResolver;
 	
 	async onload() {
 
@@ -81,10 +83,15 @@ export default class DoobEngine extends Plugin {
 			this.contextFactory
 		);
 
+		this.referenceBatchResolver = new ReferenceBatchResolver(
+			referenceResolver
+		);
+
 		this.queryExecutor = new QueryExecutor(
 			this.dataManager,
 			referenceResolver,
-			this.contextFactory
+			this.contextFactory,
+			this.referenceBatchResolver
 		);
 		
 		this.queryManager = new QueryManager(
