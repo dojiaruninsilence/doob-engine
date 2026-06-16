@@ -5,12 +5,13 @@ import { SchemaManager } from "./managers/SchemaManager";
 import { RulesetManager } from "./managers/RulesetManager";
 import { ContextFactory } from "./managers/ContextFactory";
 import { CacheManager } from "./managers/CacheManager";
-import { QueryManager } from "./managers/QueryManager";
+import { QueryManager } from "./managers/query/QueryManager";
 import { ReferenceManager } from "./managers/ReferenceManager";
 import { ReferenceResolverAdapter } from "./adapters/ReferenceResolverAdapter";
-import { QueryPlanner } from "./managers/QueryPlanner";
-import { QueryExecutor } from "./managers/QueryExecutor";
+import { QueryPlanner } from "./managers/query/QueryPlanner";
+import { QueryExecutor } from "./managers/query/QueryExecutor";
 import { ReferenceBatchResolver } from "./managers/ReferenceBatchResolver";
+import { QueryExecutionPlanRunner } from "./managers/query/QueryExecutionPlanRunner";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -29,6 +30,7 @@ export default class DoobEngine extends Plugin {
 	public queryPlanner!: QueryPlanner;
 	public queryExecutor!: QueryExecutor;
 	public referenceBatchResolver!: ReferenceBatchResolver;
+	public queryExecutionPlanRunner!: QueryExecutionPlanRunner;
 	
 	async onload() {
 
@@ -87,11 +89,17 @@ export default class DoobEngine extends Plugin {
 			referenceResolver
 		);
 
+		this.queryExecutionPlanRunner = new QueryExecutionPlanRunner(
+			this.referenceBatchResolver,
+			this.contextFactory
+		)
+
 		this.queryExecutor = new QueryExecutor(
 			this.dataManager,
 			referenceResolver,
 			this.contextFactory,
-			this.referenceBatchResolver
+			this.referenceBatchResolver,
+			this.queryExecutionPlanRunner
 		);
 		
 		this.queryManager = new QueryManager(

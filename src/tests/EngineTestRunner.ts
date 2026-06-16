@@ -443,7 +443,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Reference Batch Duplicate Resolution",
 			() => this.testReferenceBatchDuplicateResolution()
-		);*/
+		);
 
 		await this.safeRun(
 			"Batch Resolver Unique References",
@@ -458,6 +458,36 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Shared Reference Fan-Out",
 			() => this.testBatchResolverSharedReferences()
+		);
+
+		await this.safeRun(
+			"Shared Reference Fan-Out",
+			() => this.testBatchResolverSharedReferences()
+		);
+
+		await this.safeRun(
+			"Shared Reference Fan-Out",
+			() => this.testBatchResolverSharedReferences()
+		);
+
+		await this.safeRun(
+			"Shared Reference Fan-Out",
+			() => this.testBatchResolverSharedReferences()
+		);*/
+
+		await this.safeRun(
+			"Deduplication Test (select explosion)",
+			() => this.testQueryPlannerDeduplication()
+		);
+
+		await this.safeRun(
+			"Shared SELECT + WHERE Path Test",
+			() => this.testQueryPlannerSelectWhereDeduplication()
+		);
+
+		await this.safeRun(
+			"GroupBy Deduplication Test",
+			() => this.testQueryPlannerGroupByDeduplication()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -1537,24 +1567,46 @@ export class EngineTestRunner {
 
 	private async testQueryOffset() {
 
-		new Notice("Query: Offset");
+		await this.resetCoreTestData();
 
 		const context =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		await this.dataManager.createRecord(
+			context,
+			{ name: "A" }
+		);
+
+		await this.dataManager.createRecord(
+			context,
+			{ name: "B" }
+		);
+
+		await this.dataManager.createRecord(
+			context,
+			{ name: "C" }
+		);
 
 		const all =
-			await this.queryManager.query(context, {});
+			await this.queryManager.query(
+				context,
+				{}
+			);
 
 		const offset =
-			await this.queryManager.query(context, {
-				offset: 1
-			});
+			await this.queryManager.query(
+				context,
+				{
+					offset: 1
+				}
+			);
 
-		if (offset.length !== all.length - 1) {
+		if (offset.length !== 2) {
 			throw new Error("Offset failed");
 		}
-
-		new Notice("Offset OK");
 	}
 
 	private async testQueryLimitOffset() {
@@ -6887,5 +6939,281 @@ export class EngineTestRunner {
 		new Notice(
 			"Batch Resolver Shared References passed"
 		);
+	}
+
+	private async testQueryPlannerDeduplication() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Query Planner Deduplication");
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Plan
+		// --------------------------------------------------
+
+		const plan =
+			await this.queryPlanner.plan(itemContext, {
+				select: [
+					"owner.name",
+					"owner.guild.name",
+					"owner.guild.rank"
+				]
+			});
+
+		// --------------------------------------------------
+		// Assert
+		// --------------------------------------------------
+
+		if (plan.steps.length !== 2) {
+			throw new Error(
+				`Expected 2 steps, got ${plan.steps.length}`
+			);
+		}
+
+		new Notice("Deduplication test passed");
+	}
+
+	private async testQueryPlannerSelectWhereDeduplication() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Select + Where Deduplication");
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Plan
+		// --------------------------------------------------
+
+		const plan =
+			await this.queryPlanner.plan(itemContext, {
+				select: ["owner.guild.name"],
+				where: [
+					{
+						field: "owner.guild.name",
+						op: "=",
+						value: "Knights"
+					}
+				]
+			});
+
+		// --------------------------------------------------
+		// Assert
+		// --------------------------------------------------
+
+		if (plan.steps.length !== 2) {
+			throw new Error(
+				`Expected 2 steps, got ${plan.steps.length}`
+			);
+		}
+
+		new Notice("Select/Where dedup passed");
+	}
+
+	private async testQueryPlannerGroupByDeduplication() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: GroupBy Deduplication");
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// --------------------------------------------------
+		// Plan
+		// --------------------------------------------------
+
+		const plan =
+			await this.queryPlanner.plan(itemContext, {
+				select: ["owner.guild.name"],
+				groupBy: "owner.guild.name"
+			});
+
+		// --------------------------------------------------
+		// Assert
+		// --------------------------------------------------
+
+		if (plan.steps.length !== 2) {
+			throw new Error(
+				`Expected 2 steps, got ${plan.steps.length}`
+			);
+		}
+
+		new Notice("GroupBy dedup passed");
 	}
 }

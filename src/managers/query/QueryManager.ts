@@ -1,8 +1,8 @@
-import { SchemaContext } from "../types/ContextTypes";
-import { QueryRequest, QueryFilter, QueryAggregate, QueryGroupResult } from "../types/QueryTypes";
+import { SchemaContext } from "../../types/ContextTypes";
+import { QueryRequest, QueryFilter, QueryAggregate, QueryGroupResult } from "../../types/QueryTypes";
 //import { IDataReader } from "../interfaces/IDataReader";
 //import {IReferenceResolver} from "../interfaces/IReferenceResolver";
-import { DataRecord } from "../types/DataTypes";
+import { DataRecord } from "../../types/DataTypes";
 //import { Notice } from "obsidian";
 //import { ContextFactory } from "./ContextFactory";
 import { QueryPlanner } from "./QueryPlanner";

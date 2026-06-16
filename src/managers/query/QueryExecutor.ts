@@ -1,11 +1,12 @@
-import { IDataReader } from "../interfaces/IDataReader";
-import { IReferenceResolver } from "../interfaces/IReferenceResolver";
-import { ContextFactory } from "./ContextFactory";
-import { SchemaContext } from "../types/ContextTypes";
-import { QueryRequest, QueryGroupResult, QueryFilter, QueryAggregate } from "../types/QueryTypes";
-import { QueryPlan } from "../types/QueryPlannerTypes";
-import { DataRecord } from "../types/DataTypes";
-import { ReferenceBatchResolver } from "./ReferenceBatchResolver";
+import { IDataReader } from "../../interfaces/IDataReader";
+import { IReferenceResolver } from "../../interfaces/IReferenceResolver";
+import { ContextFactory } from "../ContextFactory";
+import { SchemaContext } from "../../types/ContextTypes";
+import { QueryRequest, QueryGroupResult, QueryFilter, QueryAggregate } from "../../types/QueryTypes";
+import { QueryPlan } from "../../types/QueryPlannerTypes";
+import { DataRecord } from "../../types/DataTypes";
+import { ReferenceBatchResolver } from "../ReferenceBatchResolver";
+import { QueryExecutionPlanRunner } from "./QueryExecutionPlanRunner";
 
 export class QueryExecutor {
     
@@ -15,7 +16,8 @@ export class QueryExecutor {
 		private reader: IDataReader,
 		private referenceResolver: IReferenceResolver,
 		private contextFactory: ContextFactory,
-        private batchResolver: ReferenceBatchResolver
+        private batchResolver: ReferenceBatchResolver,
+        private runner: QueryExecutionPlanRunner
 	) {}
 
     private async matches(
@@ -549,7 +551,7 @@ export class QueryExecutor {
         return current;
     }
 
-    private async preloadReferences(
+    /*private async preloadReferences(
         context: SchemaContext,
         records: DataRecord[],
         plan: QueryPlan
@@ -600,7 +602,7 @@ export class QueryExecutor {
 
             currentRecords = nextRecords;
         }
-    }
+    }*/
 
     
 	async executeQuery(
@@ -612,7 +614,8 @@ export class QueryExecutor {
 		let records =
 			await this.reader.getAll(context);
 
-		await this.preloadReferences(context, records, plan);
+		//await this.preloadReferences(context, records, plan);
+        await this.runner.run(context, records, plan);
 
 		// 2. Apply filters
 		if (request.where?.length) {
@@ -645,7 +648,8 @@ export class QueryExecutor {
         let records =
 			await this.reader.getAll(context);
 
-		await this.preloadReferences(context, records, plan);
+		//await this.preloadReferences(context, records, plan);
+        await this.runner.run(context, records, plan);
 
 		if (request.where?.length) {
 
@@ -672,7 +676,8 @@ export class QueryExecutor {
 
         let records = await this.reader.getAll(context);
         
-		await this.preloadReferences(context, records, plan);
+		//await this.preloadReferences(context, records, plan);
+        await this.runner.run(context, records, plan);
 
 		// 2. Apply filters
 		if (request.where?.length) {

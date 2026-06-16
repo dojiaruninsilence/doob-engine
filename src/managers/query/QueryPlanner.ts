@@ -1,7 +1,7 @@
-import { SchemaContext } from "../types/ContextTypes";
-import { QueryRequest, QueryFilter } from "../types/QueryTypes";
-import { QueryPlan, QueryPlanStep } from "../types/QueryPlannerTypes";
-import { ContextFactory } from "./ContextFactory";
+import { SchemaContext } from "../../types/ContextTypes";
+import { QueryRequest, QueryFilter } from "../../types/QueryTypes";
+import { QueryPlan, QueryPlanStep } from "../../types/QueryPlannerTypes";
+import { ContextFactory } from "../ContextFactory";
 
 export class QueryPlanner {
 
@@ -14,7 +14,9 @@ export class QueryPlanner {
 		request: QueryRequest
 	): Promise<QueryPlan> {
 
-		const steps: QueryPlanStep[] = [];
+		//const steps: QueryPlanStep[] = [];
+		const stepMap =
+    		new Map<string, QueryPlanStep>();
 
 		const fieldsToAnalyze = [
 			...(request.select ?? []),
@@ -40,15 +42,27 @@ export class QueryPlanner {
 					continue;
 				}
 
-				const step: QueryPlanStep = {
-					from: currentSchema,
-					field,
-					to: fieldDef.referenceTarget.schema,
-					isReference: true,
-                    toRuleset: fieldDef.referenceTarget.ruleset
-				};
+				const key =
+					[
+						currentSchema,
+						field,
+						fieldDef.referenceTarget.ruleset,
+						fieldDef.referenceTarget.schema
+					].join("|");
 
-				steps.push(step);
+				if (!stepMap.has(key)) {
+
+					stepMap.set(
+						key,
+						{
+							from: currentSchema,
+							field,
+							to: fieldDef.referenceTarget.schema,
+							isReference: true,
+							toRuleset: fieldDef.referenceTarget.ruleset
+						}
+					);
+				}
 
 				currentContext =
                     await this.contextFactory.getSchemaContext(
@@ -63,7 +77,7 @@ export class QueryPlanner {
 
 		return {
 			rootSchema: context.schema.name,
-			steps
+			steps: [...stepMap.values()]
 		};
 	}
 }
