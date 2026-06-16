@@ -473,7 +473,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Shared Reference Fan-Out",
 			() => this.testBatchResolverSharedReferences()
-		);*/
+		);
 
 		await this.safeRun(
 			"Deduplication Test (select explosion)",
@@ -488,6 +488,21 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"GroupBy Deduplication Test",
 			() => this.testQueryPlannerGroupByDeduplication()
+		);*/
+
+		await this.safeRun(
+			"Runner Batch Deduplication",
+			() => this.testRunnerBatchDeduplication()
+		);
+
+		await this.safeRun(
+			"Runner Multi Hop Integrity",
+			() => this.testRunnerMultiHopIntegrity()
+		);
+
+		await this.safeRun(
+			"Runner No Step Fast Path",
+			() => this.testRunnerNoStepFastPath()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -7215,5 +7230,201 @@ export class EngineTestRunner {
 		}
 
 		new Notice("GroupBy dedup passed");
+	}
+
+	private async testRunnerBatchDeduplication() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Runner Batch Deduplication");
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, { name: "Knights" });
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: guild.id
+			});
+
+		const john =
+			await this.dataManager.createRecord(characterContext, {
+				name: "John",
+				guild: guild.id
+			});
+
+		await this.dataManager.createRecord(itemContext, {
+			name: "Sword",
+			owner: bob.id
+		});
+
+		await this.dataManager.createRecord(itemContext, {
+			name: "Shield",
+			owner: john.id
+		});
+
+		const results =
+			await this.queryManager.query(itemContext, {
+				select: ["owner.guild.name"]
+			});
+
+		if (results.length !== 2) {
+			throw new Error(`Expected 2 results, got ${results.length}`);
+		}
+
+		if (results[0].owner?.guild?.name !== "Knights") {
+			throw new Error("First result incorrect");
+		}
+
+		if (results[1].owner?.guild?.name !== "Knights") {
+			throw new Error("Second result incorrect");
+		}
+
+		new Notice("Runner Batch Dedup passed");
+	}
+
+	private async testRunnerMultiHopIntegrity() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Runner Multi Hop Integrity");
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, {
+				name: "Knights"
+			});
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: guild.id
+			});
+
+		await this.dataManager.createRecord(itemContext, {
+			name: "Sword",
+			owner: bob.id
+		});
+
+		const results =
+			await this.queryManager.query(itemContext, {
+				select: ["owner.guild.name"]
+			});
+
+		if (results.length !== 1) {
+			throw new Error(`Expected 1 result, got ${results.length}`);
+		}
+
+		if (results[0].owner?.guild?.name !== "Knights") {
+			throw new Error("Multi-hop failed");
+		}
+
+		new Notice("Runner Multi Hop passed");
+	}
+
+	private async testRunnerNoStepFastPath() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Runner No Step Fast Path");
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		await this.dataManager.createRecord(itemContext, { name: "A" });
+		await this.dataManager.createRecord(itemContext, { name: "B" });
+		await this.dataManager.createRecord(itemContext, { name: "C" });
+
+		const results =
+			await this.queryManager.query(itemContext, {
+				offset: 1
+			});
+
+		if (results.length !== 2) {
+			throw new Error(`Expected 2 results, got ${results.length}`);
+		}
+
+		new Notice("Runner No Step Fast Path passed");
 	}
 }
