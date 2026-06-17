@@ -3,7 +3,6 @@ import { DataRecord } from "../../../types/DataTypes";
 import { QueryPlan, QueryPlanStep } from "../../../types/QueryPlannerTypes";
 import { ContextFactory } from "../../ContextFactory";
 import { IDataReader } from "../../../interfaces/IDataReader";
-//import { IReferenceResolver } from "../../../interfaces/IReferenceResolver";
 import { ResolvedRecordGraph, ResolvedNode } from "../../../types/ResolvedRecordGraph";
 import { Notice } from "obsidian";
 
@@ -11,8 +10,7 @@ export class ResolvedRecordGraphBuilder {
 
     constructor(
         private reader: IDataReader,
-        private contextFactory: ContextFactory,
-        //private referenceResolver: IReferenceResolver
+        private contextFactory: ContextFactory
     ) {}
 
     async build(
