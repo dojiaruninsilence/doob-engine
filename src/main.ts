@@ -6,12 +6,17 @@ import { RulesetManager } from "./managers/RulesetManager";
 import { ContextFactory } from "./managers/ContextFactory";
 import { CacheManager } from "./managers/CacheManager";
 import { QueryManager } from "./managers/query/QueryManager";
-import { ReferenceManager } from "./managers/ReferenceManager";
+import { ReferenceManager } from "./managers/reference/ReferenceManager";
 import { ReferenceResolverAdapter } from "./adapters/ReferenceResolverAdapter";
 import { QueryPlanner } from "./managers/query/QueryPlanner";
 import { QueryExecutor } from "./managers/query/QueryExecutor";
-import { ReferenceBatchResolver } from "./managers/ReferenceBatchResolver";
+import { ReferenceBatchResolver } from "./managers/reference/ReferenceBatchResolver";
 import { QueryExecutionPlanRunner } from "./managers/query/QueryExecutionPlanRunner";
+import { ReferenceGraphBuilder } from "./managers/reference/ReferenceGraphBuilder";
+import { GlobalIdAccumulator } from "./managers/query/execution/GlobalIdAccumulator";
+import { HydrationMapBuilder } from "./managers/query/execution/HydrationMapBuilder";
+import { ResolvedRecordGraphBuilder } from "./managers/query/execution/ResolvedRecordGraphBuilder";
+import { ResolvedRecordGraphNavigator } from "./managers/query/execution/ResolvedRecordGraphNavigator";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -31,6 +36,9 @@ export default class DoobEngine extends Plugin {
 	public queryExecutor!: QueryExecutor;
 	public referenceBatchResolver!: ReferenceBatchResolver;
 	public queryExecutionPlanRunner!: QueryExecutionPlanRunner;
+	public referenceGraphBuilder!: ReferenceGraphBuilder;
+	public hydrationMapBuilder!: HydrationMapBuilder;
+	public resolvedRecordGraphBuilcer!: ResolvedRecordGraphBuilder;
 	
 	async onload() {
 
@@ -81,6 +89,10 @@ export default class DoobEngine extends Plugin {
 			this.referenceManager
 		);
 
+		const globalIdAccumulator = new GlobalIdAccumulator();
+
+		const resolvedRecordGraphNavigator = new ResolvedRecordGraphNavigator();
+
 		this.queryPlanner = new QueryPlanner(
 			this.contextFactory
 		);
@@ -89,9 +101,25 @@ export default class DoobEngine extends Plugin {
 			referenceResolver
 		);
 
-		this.queryExecutionPlanRunner = new QueryExecutionPlanRunner(
-			this.referenceBatchResolver,
+		this.referenceGraphBuilder = new ReferenceGraphBuilder();
+
+		this.hydrationMapBuilder = new HydrationMapBuilder(
+			this.dataManager,
 			this.contextFactory
+		);
+
+		this.resolvedRecordGraphBuilcer = new ResolvedRecordGraphBuilder(
+			this.dataManager,
+			this.contextFactory,
+			referenceResolver
+		);
+
+		this.queryExecutionPlanRunner = new QueryExecutionPlanRunner(
+			this.resolvedRecordGraphBuilcer
+			// this.contextFactory,
+			// this.referenceGraphBuilder,
+			// globalIdAccumulator,
+			// this.hydrationMapBuilder
 		)
 
 		this.queryExecutor = new QueryExecutor(
@@ -99,7 +127,8 @@ export default class DoobEngine extends Plugin {
 			referenceResolver,
 			this.contextFactory,
 			this.referenceBatchResolver,
-			this.queryExecutionPlanRunner
+			this.queryExecutionPlanRunner,
+			resolvedRecordGraphNavigator
 		);
 		
 		this.queryManager = new QueryManager(

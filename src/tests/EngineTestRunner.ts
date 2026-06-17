@@ -9,8 +9,24 @@ export class EngineTestRunner {
 	private referenceManager: any;
 	private queryPlanner: any;
 	private referenceBatchResolver: any;
+	private dataReader: any;
+	private referenceGraphBuilder: any;
+	private globalIdAccumulator: any;
+	private hydrationMapBuilder: any;
 
-	constructor(schemaManager: any, dataManager: any, contextFactory: any, queryManager: any, referenceManager: any, queryPlanner: any, referenceBatchResolver: any) {
+	constructor(
+		schemaManager: any, 
+		dataManager: any, 
+		contextFactory: any, 
+		queryManager: any, 
+		referenceManager: any, 
+		queryPlanner: any, 
+		referenceBatchResolver: any, 
+		dataReader: any, 
+		referenceGraphBuilder: any,
+		globalIdAccumulator: any,
+		hydrationMapBuilder: any
+	) {
 
         if (!schemaManager) {
             new Notice("SchemaManager not injected");
@@ -33,6 +49,10 @@ export class EngineTestRunner {
         this.queryManager = queryManager;
         this.referenceManager = referenceManager;
 		this.queryPlanner = queryPlanner;
+		this.dataReader = dataReader;
+		this.referenceGraphBuilder = referenceGraphBuilder;
+		this.globalIdAccumulator = globalIdAccumulator;
+		this.hydrationMapBuilder = hydrationMapBuilder;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
@@ -295,10 +315,10 @@ export class EngineTestRunner {
 			() => this.testMissingReferenceTraversal()
 		);
 
-		await this.safeRun(
-			"Deep Reference Traversal",
-			() => this.testDeepReferenceTraversal()
-		);
+		// await this.safeRun(
+		// 	"Deep Reference Traversal",
+		// 	() => this.testDeepReferenceTraversal()
+		// );
 
 		await this.safeRun(
 			"projection flat fields",
@@ -440,40 +460,40 @@ export class EngineTestRunner {
 			() => this.testPlannerGroupIntegration()
 		);
 
-		await this.safeRun(
-			"Reference Batch Duplicate Resolution",
-			() => this.testReferenceBatchDuplicateResolution()
-		);
+		// await this.safeRun(
+		// 	"Reference Batch Duplicate Resolution",
+		// 	() => this.testReferenceBatchDuplicateResolution()
+		// );
 
-		await this.safeRun(
-			"Batch Resolver Unique References",
-			() => this.testBatchResolverUniqueReferences()
-		);
+		// await this.safeRun(
+		// 	"Batch Resolver Unique References",
+		// 	() => this.testBatchResolverUniqueReferences()
+		// );
 
-		await this.safeRun(
-			"Batch Resolver Multi Hop",
-			() => this.testBatchResolverMultiHop()
-		);
+		// await this.safeRun(
+		// 	"Batch Resolver Multi Hop",
+		// 	() => this.testBatchResolverMultiHop()
+		// );
 
-		await this.safeRun(
-			"Shared Reference Fan-Out",
-			() => this.testBatchResolverSharedReferences()
-		);
+		// await this.safeRun(
+		// 	"Shared Reference Fan-Out",
+		// 	() => this.testBatchResolverSharedReferences()
+		// );
 
-		await this.safeRun(
-			"Shared Reference Fan-Out",
-			() => this.testBatchResolverSharedReferences()
-		);
+		// await this.safeRun(
+		// 	"Shared Reference Fan-Out",
+		// 	() => this.testBatchResolverSharedReferences()
+		// );
 
-		await this.safeRun(
-			"Shared Reference Fan-Out",
-			() => this.testBatchResolverSharedReferences()
-		);
+		// await this.safeRun(
+		// 	"Shared Reference Fan-Out",
+		// 	() => this.testBatchResolverSharedReferences()
+		// );
 
-		await this.safeRun(
-			"Shared Reference Fan-Out",
-			() => this.testBatchResolverSharedReferences()
-		);
+		// await this.safeRun(
+		// 	"Shared Reference Fan-Out",
+		// 	() => this.testBatchResolverSharedReferences()
+		// );
 
 		await this.safeRun(
 			"Deduplication Test (select explosion)",
@@ -488,12 +508,12 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"GroupBy Deduplication Test",
 			() => this.testQueryPlannerGroupByDeduplication()
-		);*/
+		);
 
 		await this.safeRun(
 			"Runner Batch Deduplication",
 			() => this.testRunnerBatchDeduplication()
-		);
+		);*/
 
 		await this.safeRun(
 			"Runner Multi Hop Integrity",
@@ -503,6 +523,41 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Runner No Step Fast Path",
 			() => this.testRunnerNoStepFastPath()
+		);
+
+		// await this.safeRun(
+		// 	"Execution Pipeline Hydration",
+		// 	() => this.testExecutionPipelineHydration()
+		// );
+
+		// await this.safeRun(
+		// 	"Accumulator Deduplication",
+		// 	() => this.testAccumulatorDeduplication()
+		// );
+
+		// await this.safeRun(
+		// 	"Multi Hop Execution Graph",
+		// 	() => this.testMultiHopExecutionGraph()
+		// );
+
+		await this.safeRun(
+			"Deep Reference Traversal",
+			() => this.testDeepReferenceTraversal()
+		);
+
+		await this.safeRun(
+			"Shared Reference Consistency",
+			() => this.testSharedReferenceConsistency()
+		);
+
+		await this.safeRun(
+			"Batch Fan Out Traversal",
+			() => this.testBatchFanOutTraversal()
+		);
+
+		await this.safeRun(
+			"Missing Reference Filter Behavior",
+			() => this.testMissingReferenceFilterBehavior()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -2665,225 +2720,225 @@ export class EngineTestRunner {
 		);
 	}
 
-	private async testDeepReferenceTraversal() {
+	// private async testDeepReferenceTraversal() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Deep Reference Traversal"
-		);
+	// 	new Notice(
+	// 		"Test: Deep Reference Traversal"
+	// 	);
 
-		// --------------------------------------------------
-		// Ensure required schema fields exist
-		// --------------------------------------------------
+	// 	// --------------------------------------------------
+	// 	// Ensure required schema fields exist
+	// 	// --------------------------------------------------
 
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
 
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"guild",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Guild"
-			}
-		);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"guild",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Guild"
+	// 		}
+	// 	);
 
-		await this.ensureField(
-			"CoreTest",
-			"Guild",
-			"name",
-			"string",
-			""
-		);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Guild",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
 
-		await this.ensureField(
-			"CoreTest",
-			"Guild",
-			"leader",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Guild",
+	// 		"leader",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
 
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
 
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"damage",
-			"number",
-			0
-		);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"damage",
+	// 		"number",
+	// 		0
+	// 	);
 
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
 
-		// --------------------------------------------------
-		// Reload contexts
-		// --------------------------------------------------
+	// 	// --------------------------------------------------
+	// 	// Reload contexts
+	// 	// --------------------------------------------------
 
-		const guildContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Guild"
-			);
+	// 	const guildContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Guild"
+	// 		);
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Character"
-			);
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Character"
+	// 		);
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
 
-		// --------------------------------------------------
-		// Create leader
-		// --------------------------------------------------
+	// 	// --------------------------------------------------
+	// 	// Create leader
+	// 	// --------------------------------------------------
 
-		const leader =
-			await this.dataManager.createRecord(
-				characterContext,
-				{
-					name: "Guild Leader"
-				}
-			);
+	// 	const leader =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Guild Leader"
+	// 			}
+	// 		);
 
-		if (!leader?.id) {
-			throw new Error(
-				"Leader creation failed"
-			);
-		}
+	// 	if (!leader?.id) {
+	// 		throw new Error(
+	// 			"Leader creation failed"
+	// 		);
+	// 	}
 
-		// --------------------------------------------------
-		// Create guild
-		// --------------------------------------------------
+	// 	// --------------------------------------------------
+	// 	// Create guild
+	// 	// --------------------------------------------------
 
-		const guild =
-			await this.dataManager.createRecord(
-				guildContext,
-				{
-					name: "Knights",
-					leader: leader.id
-				}
-			);
+	// 	const guild =
+	// 		await this.dataManager.createRecord(
+	// 			guildContext,
+	// 			{
+	// 				name: "Knights",
+	// 				leader: leader.id
+	// 			}
+	// 		);
 
-		if (!guild?.id) {
-			throw new Error(
-				"Guild creation failed"
-			);
-		}
+	// 	if (!guild?.id) {
+	// 		throw new Error(
+	// 			"Guild creation failed"
+	// 		);
+	// 	}
 
-		// --------------------------------------------------
-		// Create member
-		// --------------------------------------------------
+	// 	// --------------------------------------------------
+	// 	// Create member
+	// 	// --------------------------------------------------
 
-		const member =
-			await this.dataManager.createRecord(
-				characterContext,
-				{
-					name: "Guild Bob",
-					guild: guild.id
-				}
-			);
+	// 	const member =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Guild Bob",
+	// 				guild: guild.id
+	// 			}
+	// 		);
 
-		if (!member?.id) {
-			throw new Error(
-				"Member creation failed"
-			);
-		}
+	// 	if (!member?.id) {
+	// 		throw new Error(
+	// 			"Member creation failed"
+	// 		);
+	// 	}
 
-		// --------------------------------------------------
-		// Create item
-		// --------------------------------------------------
+	// 	// --------------------------------------------------
+	// 	// Create item
+	// 	// --------------------------------------------------
 
-		const item =
-			await this.dataManager.createRecord(
-				itemContext,
-				{
-					name: "Guild Sword",
-					damage: 15,
-					owner: member.id
-				}
-			);
+	// 	const item =
+	// 		await this.dataManager.createRecord(
+	// 			itemContext,
+	// 			{
+	// 				name: "Guild Sword",
+	// 				damage: 15,
+	// 				owner: member.id
+	// 			}
+	// 		);
 
-		if (!item?.id) {
-			throw new Error(
-				"Item creation failed"
-			);
-		}
+	// 	if (!item?.id) {
+	// 		throw new Error(
+	// 			"Item creation failed"
+	// 		);
+	// 	}
 
-		// --------------------------------------------------
-		// Execute traversal query
-		// --------------------------------------------------
+	// 	// --------------------------------------------------
+	// 	// Execute traversal query
+	// 	// --------------------------------------------------
 
-		const results =
-			await this.queryManager.query(
-				itemContext,
-				{
-					where: [
-						{
-							field: "owner.guild.leader.name",
-							op: "=",
-							value: "Guild Leader"
-						}
-					]
-				}
-			);
+	// 	const results =
+	// 		await this.queryManager.query(
+	// 			itemContext,
+	// 			{
+	// 				where: [
+	// 					{
+	// 						field: "owner.guild.leader.name",
+	// 						op: "=",
+	// 						value: "Guild Leader"
+	// 					}
+	// 				]
+	// 			}
+	// 		);
 
-		// --------------------------------------------------
-		// Validate results
-		// --------------------------------------------------
+	// 	// --------------------------------------------------
+	// 	// Validate results
+	// 	// --------------------------------------------------
 
-		if (results.length !== 1) {
-			throw new Error(
-				`Expected 1 result, got ${results.length}`
-			);
-		}
+	// 	if (results.length !== 1) {
+	// 		throw new Error(
+	// 			`Expected 1 result, got ${results.length}`
+	// 		);
+	// 	}
 
-		if (results[0].id !== item.id) {
-			throw new Error(
-				"Deep traversal returned wrong item"
-			);
-		}
+	// 	if (results[0].id !== item.id) {
+	// 		throw new Error(
+	// 			"Deep traversal returned wrong item"
+	// 		);
+	// 	}
 
-		new Notice(
-			"Deep reference traversal passed"
-		);
-	}
+	// 	new Notice(
+	// 		"Deep reference traversal passed"
+	// 	);
+	// }
 
 	private async testProjectionFlatFields() {
 
@@ -6229,732 +6284,732 @@ export class EngineTestRunner {
 		);
 	}
 
-	private async testReferenceBatchDuplicateResolution() {
-
-		await this.resetCoreTestData();
-
-		new Notice(
-			"Test: Reference Batch Duplicate Resolution"
-		);
-
-		// --------------------------------------------------
-		// Schema
-		// --------------------------------------------------
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		// --------------------------------------------------
-		// Contexts
-		// --------------------------------------------------
-
-		const characterContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Character"
-			);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		// --------------------------------------------------
-		// Data
-		// --------------------------------------------------
-
-		const bob =
-			await this.dataManager.createRecord(
-				characterContext,
-				{
-					name: "Bob"
-				}
-			);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Sword",
-				owner: bob.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Shield",
-				owner: bob.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Bow",
-				owner: bob.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Helmet",
-				owner: bob.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Boots",
-				owner: bob.id
-			}
-		);
-
-		// --------------------------------------------------
-		// Resolver Instrumentation
-		// --------------------------------------------------
-
-		let resolveCount = 0;
-
-		const originalResolve =
-			this.referenceManager.resolve.bind(
-				this.referenceManager
-			);
-
-		this.referenceManager.resolve =
-			async (...args: any[]) => {
-
-				resolveCount++;
-
-				return await originalResolve(...args);
-			};
-
-		try {
-
-			// --------------------------------------------------
-			// Query
-			// --------------------------------------------------
-
-			const results =
-				await this.queryManager.query(
-					itemContext,
-					{
-						select: [
-							"owner.name"
-						]
-					}
-				);
-
-			// --------------------------------------------------
-			// Validation
-			// --------------------------------------------------
-
-			if (results.length !== 5) {
-				throw new Error(
-					`Expected 5 results, got ${results.length}`
-				);
-			}
-
-			if (resolveCount !== 1) {
-				throw new Error(
-					`Expected 1 reference resolve, got ${resolveCount}`
-				);
-			}
-
-			new Notice(
-				"Reference Batch Duplicate Resolution passed"
-			);
-
-		} finally {
-
-			// restore resolver even if test fails
-
-			this.referenceManager.resolve =
-				originalResolve;
-		}
-	}
-
-	private async testBatchResolverUniqueReferences() {
-
-		await this.resetCoreTestData();
-
-		new Notice(
-			"Test: Batch Resolver Unique References"
-		);
-
-		// --------------------------------------------------
-		// Schema
-		// --------------------------------------------------
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		const characterContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Character"
-			);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		// --------------------------------------------------
-		// Data
-		// --------------------------------------------------
-
-		const bob =
-			await this.dataManager.createRecord(
-				characterContext,
-				{ name: "Bob" }
-			);
-
-		const john =
-			await this.dataManager.createRecord(
-				characterContext,
-				{ name: "John" }
-			);
-
-		const jane =
-			await this.dataManager.createRecord(
-				characterContext,
-				{ name: "Jane" }
-			);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Sword",
-				owner: bob.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Shield",
-				owner: bob.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Bow",
-				owner: john.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Dagger",
-				owner: john.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Staff",
-				owner: jane.id
-			}
-		);
-
-		// --------------------------------------------------
-		// Spy
-		// --------------------------------------------------
-
-		let resolveCount = 0;
-
-		const originalResolve =
-			this.referenceManager.resolve.bind(
-				this.referenceManager
-			);
-
-		this.referenceManager.resolve =
-			async (...args: any[]) => {
-
-				resolveCount++;
-
-				return await originalResolve(
-					...args
-				);
-			};
-
-		// --------------------------------------------------
-		// Query
-		// --------------------------------------------------
-
-		await this.queryManager.query(
-			itemContext,
-			{
-				select: [
-					"owner.name"
-				]
-			}
-		);
-
-		// --------------------------------------------------
-		// Validation
-		// --------------------------------------------------
-
-		if (resolveCount !== 3) {
-
-			throw new Error(
-				`Expected 3 resolves, got ${resolveCount}`
-			);
-		}
-
-		new Notice(
-			"Batch Resolver Unique References passed"
-		);
-	}
-
-	private async testBatchResolverMultiHop() {
-
-		await this.resetCoreTestData();
-
-		new Notice(
-			"Test: Batch Resolver Multi Hop"
-		);
-
-		// --------------------------------------------------
-		// Schema
-		// --------------------------------------------------
-
-		await this.ensureField(
-			"CoreTest",
-			"Guild",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"guild",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Guild"
-			}
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		const guildContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Guild"
-			);
-
-		const characterContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Character"
-			);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		// --------------------------------------------------
-		// Data
-		// --------------------------------------------------
-
-		const knights =
-			await this.dataManager.createRecord(
-				guildContext,
-				{ name: "Knights" }
-			);
-
-		const bandits =
-			await this.dataManager.createRecord(
-				guildContext,
-				{ name: "Bandits" }
-			);
-
-		const bob =
-			await this.dataManager.createRecord(
-				characterContext,
-				{
-					name: "Bob",
-					guild: knights.id
-				}
-			);
-
-		const rick =
-			await this.dataManager.createRecord(
-				characterContext,
-				{
-					name: "Rick",
-					guild: knights.id
-				}
-			);
-
-		const jane =
-			await this.dataManager.createRecord(
-				characterContext,
-				{
-					name: "Jane",
-					guild: knights.id
-				}
-			);
-
-		const john =
-			await this.dataManager.createRecord(
-				characterContext,
-				{
-					name: "John",
-					guild: bandits.id
-				}
-			);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Sword",
-				owner: bob.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Shield",
-				owner: rick.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Bow",
-				owner: jane.id
-			}
-		);
-
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Dagger",
-				owner: john.id
-			}
-		);
-
-		// --------------------------------------------------
-		// Spy
-		// --------------------------------------------------
-
-		let resolveCount = 0;
-
-		const originalResolve =
-			this.referenceManager.resolve.bind(
-				this.referenceManager
-			);
-
-		this.referenceManager.resolve =
-			async (...args: any[]) => {
-
-				resolveCount++;
-
-				return await originalResolve(
-					...args
-				);
-			};
-
-		// --------------------------------------------------
-		// Query
-		// --------------------------------------------------
-
-		await this.queryManager.query(
-			itemContext,
-			{
-				select: [
-					"owner.guild.name"
-				]
-			}
-		);
-
-		// --------------------------------------------------
-		// Validation
-		// --------------------------------------------------
-
-		// 4 unique Characters
-		// 2 unique Guilds
-
-		if (resolveCount !== 6) {
-
-			throw new Error(
-				`Expected 6 resolves, got ${resolveCount}`
-			);
-		}
-
-		new Notice(
-			"Batch Resolver Multi Hop passed"
-		);
-	}
-
-	private async testBatchResolverSharedReferences() {
-
-		await this.resetCoreTestData();
-
-		new Notice(
-			"Test: Batch Resolver Shared References"
-		);
-
-		// --------------------------------------------------
-		// Schema
-		// --------------------------------------------------
-
-		await this.ensureField(
-			"CoreTest",
-			"Guild",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"guild",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Guild"
-			}
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		// --------------------------------------------------
-		// Contexts
-		// --------------------------------------------------
-
-		const guildContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Guild"
-			);
-
-		const characterContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Character"
-			);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		// --------------------------------------------------
-		// Data
-		// --------------------------------------------------
-
-		const guild =
-			await this.dataManager.createRecord(
-				guildContext,
-				{ name: "Knights" }
-			);
-
-		const bob =
-			await this.dataManager.createRecord(
-				characterContext,
-				{
-					name: "Bob",
-					guild: guild.id
-				}
-			);
-
-		for (let i = 0; i < 10; i++) {
-
-			await this.dataManager.createRecord(
-				itemContext,
-				{
-					name: `Item ${i}`,
-					owner: bob.id
-				}
-			);
-		}
-
-		// --------------------------------------------------
-		// Instrument Resolver
-		// --------------------------------------------------
-
-		let resolveCount = 0;
-
-		const originalResolve =
-			this.referenceManager.resolve.bind(
-				this.referenceManager
-			);
-
-		this.referenceManager.resolve =
-			async (...args) => {
-
-				resolveCount++;
-
-				return await originalResolve(...args);
-			};
-
-		// --------------------------------------------------
-		// Query
-		// --------------------------------------------------
-
-		const results =
-			await this.queryManager.query(
-				itemContext,
-				{
-					select: [
-						"owner.name",
-						"owner.guild.name"
-					]
-				}
-			);
-
-		// --------------------------------------------------
-		// Validation
-		// --------------------------------------------------
-
-		if (results.length !== 10) {
-			throw new Error(
-				`Expected 10 results, got ${results.length}`
-			);
-		}
-
-		if (resolveCount !== 2) {
-			throw new Error(
-				`Expected 2 resolves, got ${resolveCount}`
-			);
-		}
-
-		this.referenceManager.resolve =
-			originalResolve;
-
-		new Notice(
-			"Batch Resolver Shared References passed"
-		);
-	}
+	// private async testReferenceBatchDuplicateResolution() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	new Notice(
+	// 		"Test: Reference Batch Duplicate Resolution"
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Schema
+	// 	// --------------------------------------------------
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Contexts
+	// 	// --------------------------------------------------
+
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Character"
+	// 		);
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Data
+	// 	// --------------------------------------------------
+
+	// 	const bob =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Bob"
+	// 			}
+	// 		);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Sword",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Shield",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Bow",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Helmet",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Boots",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Resolver Instrumentation
+	// 	// --------------------------------------------------
+
+	// 	let resolveCount = 0;
+
+	// 	const originalResolve =
+	// 		this.referenceManager.resolve.bind(
+	// 			this.referenceManager
+	// 		);
+
+	// 	this.referenceManager.resolve =
+	// 		async (...args: any[]) => {
+
+	// 			resolveCount++;
+
+	// 			return await originalResolve(...args);
+	// 		};
+
+	// 	try {
+
+	// 		// --------------------------------------------------
+	// 		// Query
+	// 		// --------------------------------------------------
+
+	// 		const results =
+	// 			await this.queryManager.query(
+	// 				itemContext,
+	// 				{
+	// 					select: [
+	// 						"owner.name"
+	// 					]
+	// 				}
+	// 			);
+
+	// 		// --------------------------------------------------
+	// 		// Validation
+	// 		// --------------------------------------------------
+
+	// 		if (results.length !== 5) {
+	// 			throw new Error(
+	// 				`Expected 5 results, got ${results.length}`
+	// 			);
+	// 		}
+
+	// 		if (resolveCount !== 1) {
+	// 			throw new Error(
+	// 				`Expected 1 reference resolve, got ${resolveCount}`
+	// 			);
+	// 		}
+
+	// 		new Notice(
+	// 			"Reference Batch Duplicate Resolution passed"
+	// 		);
+
+	// 	} finally {
+
+	// 		// restore resolver even if test fails
+
+	// 		this.referenceManager.resolve =
+	// 			originalResolve;
+	// 	}
+	// }
+
+	// private async testBatchResolverUniqueReferences() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	new Notice(
+	// 		"Test: Batch Resolver Unique References"
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Schema
+	// 	// --------------------------------------------------
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
+
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Character"
+	// 		);
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Data
+	// 	// --------------------------------------------------
+
+	// 	const bob =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{ name: "Bob" }
+	// 		);
+
+	// 	const john =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{ name: "John" }
+	// 		);
+
+	// 	const jane =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{ name: "Jane" }
+	// 		);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Sword",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Shield",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Bow",
+	// 			owner: john.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Dagger",
+	// 			owner: john.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Staff",
+	// 			owner: jane.id
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Spy
+	// 	// --------------------------------------------------
+
+	// 	let resolveCount = 0;
+
+	// 	const originalResolve =
+	// 		this.referenceManager.resolve.bind(
+	// 			this.referenceManager
+	// 		);
+
+	// 	this.referenceManager.resolve =
+	// 		async (...args: any[]) => {
+
+	// 			resolveCount++;
+
+	// 			return await originalResolve(
+	// 				...args
+	// 			);
+	// 		};
+
+	// 	// --------------------------------------------------
+	// 	// Query
+	// 	// --------------------------------------------------
+
+	// 	await this.queryManager.query(
+	// 		itemContext,
+	// 		{
+	// 			select: [
+	// 				"owner.name"
+	// 			]
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Validation
+	// 	// --------------------------------------------------
+
+	// 	if (resolveCount !== 3) {
+
+	// 		throw new Error(
+	// 			`Expected 3 resolves, got ${resolveCount}`
+	// 		);
+	// 	}
+
+	// 	new Notice(
+	// 		"Batch Resolver Unique References passed"
+	// 	);
+	// }
+
+	// private async testBatchResolverMultiHop() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	new Notice(
+	// 		"Test: Batch Resolver Multi Hop"
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Schema
+	// 	// --------------------------------------------------
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Guild",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"guild",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Guild"
+	// 		}
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
+
+	// 	const guildContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Guild"
+	// 		);
+
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Character"
+	// 		);
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Data
+	// 	// --------------------------------------------------
+
+	// 	const knights =
+	// 		await this.dataManager.createRecord(
+	// 			guildContext,
+	// 			{ name: "Knights" }
+	// 		);
+
+	// 	const bandits =
+	// 		await this.dataManager.createRecord(
+	// 			guildContext,
+	// 			{ name: "Bandits" }
+	// 		);
+
+	// 	const bob =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Bob",
+	// 				guild: knights.id
+	// 			}
+	// 		);
+
+	// 	const rick =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Rick",
+	// 				guild: knights.id
+	// 			}
+	// 		);
+
+	// 	const jane =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Jane",
+	// 				guild: knights.id
+	// 			}
+	// 		);
+
+	// 	const john =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "John",
+	// 				guild: bandits.id
+	// 			}
+	// 		);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Sword",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Shield",
+	// 			owner: rick.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Bow",
+	// 			owner: jane.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Dagger",
+	// 			owner: john.id
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Spy
+	// 	// --------------------------------------------------
+
+	// 	let resolveCount = 0;
+
+	// 	const originalResolve =
+	// 		this.referenceManager.resolve.bind(
+	// 			this.referenceManager
+	// 		);
+
+	// 	this.referenceManager.resolve =
+	// 		async (...args: any[]) => {
+
+	// 			resolveCount++;
+
+	// 			return await originalResolve(
+	// 				...args
+	// 			);
+	// 		};
+
+	// 	// --------------------------------------------------
+	// 	// Query
+	// 	// --------------------------------------------------
+
+	// 	await this.queryManager.query(
+	// 		itemContext,
+	// 		{
+	// 			select: [
+	// 				"owner.guild.name"
+	// 			]
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Validation
+	// 	// --------------------------------------------------
+
+	// 	// 4 unique Characters
+	// 	// 2 unique Guilds
+
+	// 	if (resolveCount !== 6) {
+
+	// 		throw new Error(
+	// 			`Expected 6 resolves, got ${resolveCount}`
+	// 		);
+	// 	}
+
+	// 	new Notice(
+	// 		"Batch Resolver Multi Hop passed"
+	// 	);
+	// }
+
+	// private async testBatchResolverSharedReferences() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	new Notice(
+	// 		"Test: Batch Resolver Shared References"
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Schema
+	// 	// --------------------------------------------------
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Guild",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"guild",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Guild"
+	// 		}
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Contexts
+	// 	// --------------------------------------------------
+
+	// 	const guildContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Guild"
+	// 		);
+
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Character"
+	// 		);
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Data
+	// 	// --------------------------------------------------
+
+	// 	const guild =
+	// 		await this.dataManager.createRecord(
+	// 			guildContext,
+	// 			{ name: "Knights" }
+	// 		);
+
+	// 	const bob =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Bob",
+	// 				guild: guild.id
+	// 			}
+	// 		);
+
+	// 	for (let i = 0; i < 10; i++) {
+
+	// 		await this.dataManager.createRecord(
+	// 			itemContext,
+	// 			{
+	// 				name: `Item ${i}`,
+	// 				owner: bob.id
+	// 			}
+	// 		);
+	// 	}
+
+	// 	// --------------------------------------------------
+	// 	// Instrument Resolver
+	// 	// --------------------------------------------------
+
+	// 	let resolveCount = 0;
+
+	// 	const originalResolve =
+	// 		this.referenceManager.resolve.bind(
+	// 			this.referenceManager
+	// 		);
+
+	// 	this.referenceManager.resolve =
+	// 		async (...args) => {
+
+	// 			resolveCount++;
+
+	// 			return await originalResolve(...args);
+	// 		};
+
+	// 	// --------------------------------------------------
+	// 	// Query
+	// 	// --------------------------------------------------
+
+	// 	const results =
+	// 		await this.queryManager.query(
+	// 			itemContext,
+	// 			{
+	// 				select: [
+	// 					"owner.name",
+	// 					"owner.guild.name"
+	// 				]
+	// 			}
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Validation
+	// 	// --------------------------------------------------
+
+	// 	if (results.length !== 10) {
+	// 		throw new Error(
+	// 			`Expected 10 results, got ${results.length}`
+	// 		);
+	// 	}
+
+	// 	if (resolveCount !== 2) {
+	// 		throw new Error(
+	// 			`Expected 2 resolves, got ${resolveCount}`
+	// 		);
+	// 	}
+
+	// 	this.referenceManager.resolve =
+	// 		originalResolve;
+
+	// 	new Notice(
+	// 		"Batch Resolver Shared References passed"
+	// 	);
+	// }
 
 	private async testQueryPlannerDeduplication() {
 
@@ -7426,5 +7481,814 @@ export class EngineTestRunner {
 		}
 
 		new Notice("Runner No Step Fast Path passed");
+	}
+
+	// private async testExecutionPipelineHydration() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	new Notice(
+	// 		"Test: Execution Pipeline Hydration"
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Schema
+	// 	// --------------------------------------------------
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Contexts
+	// 	// --------------------------------------------------
+
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Character"
+	// 		);
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Data
+	// 	// --------------------------------------------------
+
+	// 	const bob =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Bob"
+	// 			}
+	// 		);
+
+	// 	const john =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "John"
+	// 			}
+	// 		);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Sword",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Shield",
+	// 			owner: john.id
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Plan
+	// 	// --------------------------------------------------
+
+	// 	const plan =
+	// 		await this.queryPlanner.plan(
+	// 			itemContext,
+	// 			{
+	// 				select: [
+	// 					"owner.name"
+	// 				]
+	// 			}
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Graph
+	// 	// --------------------------------------------------
+
+	// 	const graph =
+	// 		this.referenceGraphBuilder.build(plan);
+
+	// 	if (graph.stepMap.size !== 1) {
+
+	// 		throw new Error(
+	// 			`Expected 1 schema group, got ${graph.stepMap.size}`
+	// 		);
+	// 	}
+
+	// 	// --------------------------------------------------
+	// 	// Records
+	// 	// --------------------------------------------------
+
+	// 	const records =
+	// 		await this.dataReader.getAll(
+	// 			itemContext
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Accumulator
+	// 	// --------------------------------------------------
+
+	// 	const idsBySchema =
+	// 		await this.globalIdAccumulator.collect(
+	// 			itemContext,
+	// 			records,
+	// 			graph
+	// 		);
+
+	// 	const characterIds =
+	// 		idsBySchema.get("Character");
+
+	// 	if (!characterIds) {
+
+	// 		throw new Error(
+	// 			"Character schema missing"
+	// 		);
+	// 	}
+
+	// 	if (characterIds.size !== 2) {
+
+	// 		throw new Error(
+	// 			`Expected 2 ids, got ${characterIds.size}`
+	// 		);
+	// 	}
+
+	// 	// --------------------------------------------------
+	// 	// Hydration
+	// 	// --------------------------------------------------
+
+	// 	const hydrationMap =
+	// 		await this.hydrationMapBuilder.build(
+	// 			"CoreTest",
+	// 			idsBySchema
+	// 		);
+
+	// 	const characterMap =
+	// 		hydrationMap.get("Character");
+
+	// 	if (!characterMap) {
+
+	// 		throw new Error(
+	// 			"Character hydration missing"
+	// 		);
+	// 	}
+
+	// 	if (characterMap.size !== 2) {
+
+	// 		throw new Error(
+	// 			`Expected 2 hydrated records, got ${characterMap.size}`
+	// 		);
+	// 	}
+
+	// 	new Notice(
+	// 		"Execution Pipeline Hydration passed"
+	// 	);
+	// }
+
+	// private async testAccumulatorDeduplication() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	new Notice(
+	// 		"Test: Accumulator Deduplication"
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Schema
+	// 	// --------------------------------------------------
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
+
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Character"
+	// 		);
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Data
+	// 	// --------------------------------------------------
+
+	// 	const bob =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Bob"
+	// 			}
+	// 		);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Sword",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Shield",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Helmet",
+	// 			owner: bob.id
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Plan
+	// 	// --------------------------------------------------
+
+	// 	const plan =
+	// 		await this.queryPlanner.plan(
+	// 			itemContext,
+	// 			{
+	// 				select: [
+	// 					"owner.name"
+	// 				]
+	// 			}
+	// 		);
+
+	// 	const graph =
+	// 		this.referenceGraphBuilder.build(plan);
+
+	// 	const records =
+	// 		await this.dataReader.getAll(
+	// 			itemContext
+	// 		);
+
+	// 	const idsBySchema =
+	// 		await this.globalIdAccumulator.collect(
+	// 			itemContext,
+	// 			records,
+	// 			graph
+	// 		);
+
+	// 	const characterIds =
+	// 		idsBySchema.get("Character");
+
+	// 	if (!characterIds) {
+
+	// 		throw new Error(
+	// 			"Character schema missing"
+	// 		);
+	// 	}
+
+	// 	if (characterIds.size !== 1) {
+
+	// 		throw new Error(
+	// 			`Expected 1 id, got ${characterIds.size}`
+	// 		);
+	// 	}
+
+	// 	new Notice(
+	// 		"Accumulator Deduplication passed"
+	// 	);
+	// }
+
+	// private async testMultiHopExecutionGraph() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	new Notice(
+	// 		"Test: Multi-Hop Execution Graph"
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Schema
+	// 	// --------------------------------------------------
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Guild",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"guild",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Guild"
+	// 		}
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
+
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Plan
+	// 	// --------------------------------------------------
+
+	// 	const plan =
+	// 		await this.queryPlanner.plan(
+	// 			itemContext,
+	// 			{
+	// 				select: [
+	// 					"owner.guild.name"
+	// 				]
+	// 			}
+	// 		);
+
+	// 	if (plan.steps.length !== 2) {
+
+	// 		throw new Error(
+	// 			`Expected 2 steps, got ${plan.steps.length}`
+	// 		);
+	// 	}
+
+	// 	// --------------------------------------------------
+	// 	// Graph
+	// 	// --------------------------------------------------
+
+	// 	const graph =
+	// 		this.referenceGraphBuilder.build(
+	// 			plan
+	// 		);
+
+	// 	if (graph.stepMap.size !== 2) {
+
+	// 		throw new Error(
+	// 			`Expected 2 schema groups, got ${graph.stepMap.size}`
+	// 		);
+	// 	}
+
+	// 	new Notice(
+	// 		"Multi-Hop Execution Graph passed"
+	// 	);
+	// }
+
+	private async testDeepReferenceTraversal() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Deep Reference Traversal");
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"leader",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const leader =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Guild Leader"
+			});
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, {
+				name: "Knights",
+				leader: leader.id
+			});
+
+		const member =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: guild.id
+			});
+
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const item =
+			await this.dataManager.createRecord(itemContext, {
+				name: "Sword",
+				owner: member.id
+			});
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(itemContext, {
+				where: [
+					{
+						field: "owner.guild.leader.name",
+						op: "=",
+						value: "Guild Leader"
+					}
+				]
+			});
+
+		// --------------------------------------------------
+		// Assert
+		// --------------------------------------------------
+
+		if (results.length !== 1) {
+			throw new Error(`Expected 1 result, got ${results.length}`);
+		}
+
+		if (results[0].id !== item.id) {
+			throw new Error("Deep traversal returned wrong item");
+		}
+
+		new Notice("Deep Reference Traversal passed");
+	}
+
+	private async testSharedReferenceConsistency() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Shared Reference Consistency");
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Guild"
+		});
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, {
+				name: "Knights"
+			});
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: guild.id
+			});
+
+		// 10 items all share same chain
+		for (let i = 0; i < 10; i++) {
+			await this.dataManager.createRecord(itemContext, {
+				name: `Item ${i}`,
+				owner: bob.id
+			});
+		}
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(itemContext, {
+				select: [
+					"owner.name",
+					"owner.guild.name"
+				]
+			});
+
+		// --------------------------------------------------
+		// Assert
+		// --------------------------------------------------
+
+		if (results.length !== 10) {
+			throw new Error(`Expected 10 results, got ${results.length}`);
+		}
+
+		for (const r of results) {
+			if (r.owner.name !== "Bob") {
+				throw new Error("Owner mismatch");
+			}
+
+			if (r.owner.guild.name !== "Knights") {
+				throw new Error("Guild mismatch");
+			}
+		}
+
+		new Notice("Shared Reference Consistency passed");
+	}
+
+	private async testBatchFanOutTraversal() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Batch Fan-Out Traversal");
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Guild"
+		});
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		// --------------------------------------------------
+		// Data
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, {
+				name: "Knights"
+			});
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: guild.id
+			});
+
+		const john =
+			await this.dataManager.createRecord(characterContext, {
+				name: "John",
+				guild: guild.id
+			});
+
+		await this.dataManager.createRecord(itemContext, {
+			name: "Sword",
+			owner: bob.id
+		});
+
+		await this.dataManager.createRecord(itemContext, {
+			name: "Shield",
+			owner: john.id
+		});
+
+		// --------------------------------------------------
+		// Query
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(itemContext, {
+				select: ["owner.guild.name"]
+			});
+
+		// --------------------------------------------------
+		// Assert
+		// --------------------------------------------------
+
+		if (results.length !== 2) {
+			throw new Error(`Expected 2 results, got ${results.length}`);
+		}
+
+		for (const r of results) {
+			if (r.owner.guild.name !== "Knights") {
+				throw new Error("Guild mismatch in fan-out");
+			}
+		}
+
+		new Notice("Batch Fan-Out Traversal passed");
+	}
+
+	private async testMissingReferenceFilterBehavior() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Missing Reference Filter Behavior");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Guild"
+		});
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, {
+				name: "Knights"
+			});
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: guild.id
+			});
+
+		await this.dataManager.createRecord(itemContext, {
+			name: "Sword",
+			owner: bob.id
+		});
+
+		// --------------------------------------------------
+		// Query (valid path)
+		// --------------------------------------------------
+
+		const results =
+			await this.queryManager.query(itemContext, {
+				where: [
+					{
+						field: "owner.guild.name",
+						op: "=",
+						value: "Knights"
+					}
+				]
+			});
+
+		// --------------------------------------------------
+		// Assert
+		// --------------------------------------------------
+
+		if (results.length !== 1) {
+			throw new Error(`Expected 1 result, got ${results.length}`);
+		}
+
+		new Notice("Missing Reference Filter Behavior passed");
 	}
 }

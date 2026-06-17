@@ -1,6 +1,6 @@
-import { IReferenceResolver } from "../interfaces/IReferenceResolver";
-import { SchemaContext } from "../types/ContextTypes";
-import { DataRecord } from "../types/DataTypes";
+import { IReferenceResolver } from "../../interfaces/IReferenceResolver";
+import { SchemaContext } from "../../types/ContextTypes";
+import { DataRecord } from "../../types/DataTypes";
 
 export class ReferenceBatchResolver {
 

@@ -196,6 +196,25 @@ export class DataManager implements IDataReader {
         );
     }
 
+    async getManyByIds(
+        context: SchemaContext,
+        ids: Set<string>
+    ): Promise<DataRecord[]> {
+
+        const all =
+            await this.getAll(context);
+
+        const result: DataRecord[] = [];
+
+        for (const record of all) {
+            if (ids.has(record.id)) {
+                result.push(record);
+            }
+        }
+
+        return result;
+    }
+
     async exists(
         context: SchemaContext,
         id: string

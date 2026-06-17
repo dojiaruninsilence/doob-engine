@@ -11,4 +11,9 @@ export interface IDataReader {
 	getAll(
 		context: SchemaContext
 	): Promise<DataRecord[]>;
+
+	getManyByIds(
+		context: SchemaContext,
+		ids: Set<string>
+	): Promise<DataRecord[]>;
 }

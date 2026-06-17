@@ -1,6 +1,6 @@
-import { IDataReader } from "../interfaces/IDataReader";
-import { SchemaContext } from "../types/ContextTypes";
-import { ContextFactory } from "./ContextFactory";
+import { IDataReader } from "../../interfaces/IDataReader";
+import { SchemaContext } from "../../types/ContextTypes";
+import { ContextFactory } from "../ContextFactory";
 
 export class ReferenceManager {
 

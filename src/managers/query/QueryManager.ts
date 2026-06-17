@@ -8,6 +8,7 @@ import { DataRecord } from "../../types/DataTypes";
 import { QueryPlanner } from "./QueryPlanner";
 //import { QueryPlan } from "../types/QueryPlannerTypes";
 import { QueryExecutor } from "./QueryExecutor";
+import { Notice } from "obsidian";
 
 export class QueryManager {
 

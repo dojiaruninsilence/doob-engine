@@ -1,5 +1,5 @@
 import { IReferenceResolver } from "../interfaces/IReferenceResolver";
-import { ReferenceManager } from "../managers/ReferenceManager";
+import { ReferenceManager } from "../managers/reference/ReferenceManager";
 import { SchemaContext } from "../types/ContextTypes";
 
 export class ReferenceResolverAdapter implements IReferenceResolver {

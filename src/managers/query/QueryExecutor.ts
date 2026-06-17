@@ -5,29 +5,100 @@ import { SchemaContext } from "../../types/ContextTypes";
 import { QueryRequest, QueryGroupResult, QueryFilter, QueryAggregate } from "../../types/QueryTypes";
 import { QueryPlan } from "../../types/QueryPlannerTypes";
 import { DataRecord } from "../../types/DataTypes";
-import { ReferenceBatchResolver } from "../ReferenceBatchResolver";
+import { ReferenceBatchResolver } from "../reference/ReferenceBatchResolver";
 import { QueryExecutionPlanRunner } from "./QueryExecutionPlanRunner";
+import { HydrationMap } from "../../types/QueryExecutionTypes";
+import { Notice } from "obsidian";
+import { ResolvedRecordGraphNavigator } from "./execution/ResolvedRecordGraphNavigator";
+import { ResolvedRecordGraph } from "../../types/ResolvedRecordGraph";
 
 export class QueryExecutor {
-    
-    private referenceCache = new Map<string, any>();
 
 	constructor(
 		private reader: IDataReader,
 		private referenceResolver: IReferenceResolver,
 		private contextFactory: ContextFactory,
         private batchResolver: ReferenceBatchResolver,
-        private runner: QueryExecutionPlanRunner
+        private runner: QueryExecutionPlanRunner,
+        private graphNavigator: ResolvedRecordGraphNavigator
 	) {}
 
     private async matches(
-        context: SchemaContext,
+        //context: SchemaContext,
         record: DataRecord,
-        filter: QueryFilter
+        filter: QueryFilter,
+        graph: ResolvedRecordGraph
+        //hydrationMap: HydrationMap
     ): Promise<boolean> {
 
-        const value =
-            await this.getValueByPath(context, record, filter.field);
+        const value = this.graphNavigator.getValue(graph, record.id, filter.field);
+
+        switch (filter.op) {
+
+            case "=":
+                return value === filter.value;
+
+            case "!=":
+                return value !== filter.value;
+
+            case ">":
+                const result = value > filter.value;
+
+                new Notice(
+                    `${value} > ${filter.value} = ${result}`
+                );
+                return value > filter.value;
+
+            case ">=":
+                return value >= filter.value;
+
+            case "<":
+                return value < filter.value;
+
+            case "<=":
+                return value <= filter.value;
+
+            case "in":
+                return Array.isArray(filter.value)
+                    ? filter.value.includes(value)
+                    : false;
+
+            case "contains":
+                return typeof value === "string"
+                    && value.includes(filter.value);
+
+            case "exists":
+                return value !== undefined && value !== null;
+
+            default:
+                return false;
+        }
+    }
+
+    private matchesGroup(
+        group: QueryGroupResult,
+        filter: QueryFilter
+    ): boolean {
+
+        let value: any;
+
+        switch (filter.field) {
+
+            case "value":
+                value = group.value;
+                break;
+
+            case "key":
+                value = group.key;
+                break;
+
+            case "count":
+                value = group.records.length;
+                break;
+
+            default:
+                return false;
+        }
 
         switch (filter.op) {
 
@@ -59,7 +130,8 @@ export class QueryExecutor {
                     && value.includes(filter.value);
 
             case "exists":
-                return value !== undefined && value !== null;
+                return value !== undefined
+                    && value !== null;
 
             default:
                 return false;
@@ -67,8 +139,10 @@ export class QueryExecutor {
     }
 
     private async sum(
-        context: SchemaContext,
+        //context: SchemaContext,
         records: DataRecord[],
+        graph: ResolvedRecordGraph,
+        //hydrationMap: HydrationMap,
         field?: string
     ): Promise<number> {
 
@@ -82,12 +156,7 @@ export class QueryExecutor {
 
         for (const record of records) {
 
-            const value =
-                await this.getValueByPath(
-                    context,
-                    record,
-                    field
-                );
+            const value = this.graphNavigator.getValue(graph, record.id, field);
 
             if (typeof value === "number") {
                 total += value;
@@ -98,8 +167,10 @@ export class QueryExecutor {
     }
 
     private async average(
-        context: SchemaContext,
+        //context: SchemaContext,
         records: DataRecord[],
+        graph: ResolvedRecordGraph,
+        //hydrationMap: HydrationMap,
         field?: string
     ): Promise<number> {
 
@@ -109,8 +180,10 @@ export class QueryExecutor {
 
         const total =
             await this.sum(
-                context,
+                //context,
                 records,
+                graph,
+                //hydrationMap,
                 field
             );
 
@@ -118,8 +191,10 @@ export class QueryExecutor {
     }
 
     private async minimum(
-        context: SchemaContext,
+        //context: SchemaContext,
         records: DataRecord[],
+        graph: ResolvedRecordGraph,
+        //hydrationMap: HydrationMap,
         field?: string
     ): Promise<number> {
 
@@ -134,12 +209,7 @@ export class QueryExecutor {
 
         for (const record of records) {
 
-            const value =
-                await this.getValueByPath(
-                    context,
-                    record,
-                    field
-                );
+            const value = this.graphNavigator.getValue(graph, record.id, field);
 
             if (
                 typeof value === "number" &&
@@ -155,8 +225,10 @@ export class QueryExecutor {
     }
 
     private async maximum(
-        context: SchemaContext,
+        //context: SchemaContext,
         records: DataRecord[],
+        graph: ResolvedRecordGraph,
+        //hydrationMap: HydrationMap,
         field?: string
     ): Promise<number> {
 
@@ -171,12 +243,7 @@ export class QueryExecutor {
 
         for (const record of records) {
 
-            const value =
-                await this.getValueByPath(
-                    context,
-                    record,
-                    field
-                );
+            const value = this.graphNavigator.getValue(graph, record.id, field);
 
             if (
                 typeof value === "number" &&
@@ -194,7 +261,9 @@ export class QueryExecutor {
     private async aggregate(
         context: SchemaContext,
         records: DataRecord[],
-        aggregate: QueryAggregate
+        aggregate: QueryAggregate,
+        graph: ResolvedRecordGraph
+        //hydrationMap: HydrationMap
     ): Promise<number> {
 
         switch (aggregate.op) {
@@ -204,29 +273,37 @@ export class QueryExecutor {
 
             case "sum":
                 return await this.sum(
-                    context,
+                    //context,
                     records,
+                    graph,
+                    //hydrationMap,
                     aggregate.field
                 );
 
             case "avg":
                 return await this.average(
-                    context,
+                    //context,
                     records,
+                    graph,
+                    //hydrationMap,
                     aggregate.field
                 );
 
             case "min":
                 return await this.minimum(
-                    context,
+                    //context,
                     records,
+                    graph,
+                    //hydrationMap,
                     aggregate.field
                 );
 
             case "max":
                 return await this.maximum(
-                    context,
+                    //context,
                     records,
+                    graph,
+                    //hydrationMap,
                     aggregate.field
                 );
 
@@ -264,29 +341,63 @@ export class QueryExecutor {
     }
 
     private async applyFilters(
-        context: SchemaContext,
+        //context: SchemaContext,
         records: DataRecord[],
-        filters: QueryFilter[]
+        filters: QueryFilter[],
+        graph: ResolvedRecordGraph
+        //hydrationMap: HydrationMap
     ): Promise<DataRecord[]> {
 
         let result = records;
 
         for (const filter of filters) {
 
-            const next: DataRecord[] = [];
+            const evaluated = await Promise.all(
+                result.map(async (record) => ({
+                    record,
+                    keep: await this.matches(
+                        //context,
+                        record,
+                        filter,
+                        graph
+                        //hydrationMap
+                    )
+                }))
+            );
 
-            for (const record of result) {
-
-                if (await this.matches(context, record, filter)) {
-                    next.push(record);
-                }
-            }
-
-            result = next;
+            result = evaluated
+                .filter(x => x.keep)
+                .map(x => x.record);
         }
 
         return result;
     }
+
+    // private async applyFilters(
+    //     context: SchemaContext,
+    //     records: DataRecord[],
+    //     filters: QueryFilter[],
+    //     hydrationMap: HydrationMap
+    // ): Promise<DataRecord[]> {
+
+    //     let result = records;
+
+    //     for (const filter of filters) {
+
+    //         const next: DataRecord[] = [];
+
+    //         for (const record of result) {
+
+    //             if (await this.matches(context, record, filter, hydrationMap)) {
+    //                 next.push(record);
+    //             }
+    //         }
+
+    //         result = next;
+    //     }
+
+    //     return result;
+    // }
 
     private applySort(
         records: DataRecord[],
@@ -377,8 +488,10 @@ export class QueryExecutor {
     }
 
     private async applyProjection(
-        context: SchemaContext,
+        //context: SchemaContext,
         records: DataRecord[],
+        graph: ResolvedRecordGraph,
+        //hydrationMap: HydrationMap,
         select?: string[]
     ): Promise<any[]> {
 
@@ -397,11 +510,15 @@ export class QueryExecutor {
             for (const path of select) {
 
                 const value =
-                    await this.getValueByPath(
-                        context,
-                        record,
+                    await this.graphNavigator.getValue(
+                        graph,
+                        record.id,
                         path
-                    );
+                    )
+
+                // new Notice(
+                //     `${path} -> ${String(value)}`
+                // );
 
                 this.setProjectedValue(
                     projected,
@@ -419,6 +536,8 @@ export class QueryExecutor {
     private async applyHaving(
         groups: QueryGroupResult[],
         context: SchemaContext,
+        graph: ResolvedRecordGraph,
+        //hydrationMap: HydrationMap,
         having?: QueryFilter[]
     ): Promise<QueryGroupResult[]> {
 
@@ -432,23 +551,36 @@ export class QueryExecutor {
 
             for (const group of result) {
 
+                // new Notice(
+                //     JSON.stringify(group)
+                // );
+
+                // new Notice(
+                //     `HAVING: field=${filter.field} value=${String(group[filter.field])}`
+                // );
                 // Build pseudo-record for reuse of existing matcher
-                const fakeRecord = {
-                    data: {
-                        key: group.key,
-                        value: group.value,
-                        count: group.records.length
-                    }
-                } as any;
+                // const fakeRecord = {
+                //     data: {
+                //         key: group.key,
+                //         value: group.value,
+                //         count: group.records.length
+                //     }
+                // } as any;
 
-                const matches =
-                    await this.matches(
-                        context,
-                        fakeRecord,
-                        filter
-                    );
+                // const matches =
+                //     await this.matches(
+                //         //context,
+                //         fakeRecord,
+                //         filter,
+                //         graph
+                //         //hydrationMap
+                //     );
 
-                if (matches) {
+                // if (matches) {
+                //     next.push(group);
+                // }
+
+                if (this.matchesGroup(group, filter)) {
                     next.push(group);
                 }
             }
@@ -458,29 +590,12 @@ export class QueryExecutor {
 
         return result;
     }
-    
-    private async resolveReference(
-        context: SchemaContext,
-        fieldName: string,
-        id: string
-    ) {
-
-        if (this.referenceCache.has(id)) {
-            return this.referenceCache.get(id);
-        }
-
-        const resolved =
-            await this.referenceResolver.resolve(context, fieldName, id);
-
-        this.referenceCache.set(id, resolved);
-
-        return resolved;
-    }
 
     private async getValueByPath(
         context: SchemaContext,
         record: DataRecord,
-        path: string
+        path: string,
+        hydrationMap: HydrationMap
     ): Promise<any> {
 
         const parts = path.split(".");
@@ -492,42 +607,57 @@ export class QueryExecutor {
 
             const part = parts[i];
 
-            if (current == null) return undefined;
+            if (current == null) {
+                return undefined;
+            }
 
             const value = current[part];
 
-            // LAST SEGMENT
+            // Last segment
             if (i === parts.length - 1) {
                 return value;
             }
 
-            // ONLY treat as reference if schema says so
-            const field = currentContext.schema.fields[part];
+            const field =
+                currentContext.schema.fields[part];
 
+            // Reference traversal
             if (field?.type === "reference") {
 
                 if (typeof value !== "string") {
                     return undefined;
                 }
 
-                let resolved =
-                    this.batchResolver.get(value);
+                const targetSchema =
+                    field.referenceTarget.schema;
+
+                const schemaMap =
+                    hydrationMap.get(targetSchema);
+
+                const resolved =
+                    schemaMap?.get(value);
+
+                // new Notice(
+                //     `Reference: ${part}`
+                // );
+
+                // new Notice(
+                //     `Target Schema: ${targetSchema}`
+                // );
+
+                // new Notice(
+                //     `Lookup Id: ${value}`
+                // );
+
+                // new Notice(
+                //     `Schema Map Size: ${schemaMap?.size ?? 0}`
+                // );
 
                 if (!resolved) {
-
-                    resolved =
-                        await this.referenceResolver.resolve(
-                            currentContext,
-                            part,
-                            value
-                        );
-
-                    if (resolved) {
-                        this.batchResolver.store(
-                            value,
-                            resolved
-                        );
-                    }
+                    // new Notice(
+                    //     `FAILED: ${part} -> ${value}`
+                    // );
+                    return undefined;
                 }
 
                 current = resolved.data;
@@ -535,76 +665,203 @@ export class QueryExecutor {
                 currentContext =
                     await this.contextFactory.getSchemaContext(
                         field.referenceTarget.ruleset,
-                        field.referenceTarget.schema
+                        targetSchema
                     );
 
                 continue;
             }
 
-            // 🔥 IMPORTANT FIX:
-            // After first hop OR non-reference:
-            // just treat as object traversal
-
+            // Normal object traversal
             current = value;
         }
 
         return current;
     }
 
-    /*private async preloadReferences(
-        context: SchemaContext,
-        records: DataRecord[],
-        plan: QueryPlan
-    ): Promise<void> {
+    // private async getValueByPath(
+    //     context: SchemaContext,
+    //     record: DataRecord,
+    //     path: string,
+    //     hydrationMap: HydrationMap
+    // ): Promise<any> {
 
-        if (plan.steps.length === 0) {
-            return;
-        }
+    //     const parts = path.split(".");
 
-        let currentRecords = records;
-        let currentContext = context;
+    //     let current: any = record.data;
 
-        for (const step of plan.steps) {
+    //     for (let i = 0; i < parts.length; i++) {
 
-            const resolvedMap =
-                await this.batchResolver.resolveBatch(
-                    currentContext,
-                    step.field,
-                    currentRecords
-                );
+    //         const part = parts[i];
 
-            const nextRecords: DataRecord[] = [];
+    //         if (current == null) return undefined;
 
-            for (const record of currentRecords) {
+    //         const value = current[part];
 
-                const id =
-                    record.data?.[step.field];
+    //         if (i === parts.length - 1) {
+    //             return value;
+    //         }
 
-                if (typeof id !== "string") {
-                    continue;
-                }
+    //         // 🚨 NO SCHEMA LOOKUP HERE ANYMORE
 
-                const resolved =
-                    resolvedMap.get(id);
+    //         if (typeof value === "string") {
 
-                if (!resolved) {
-                    continue;
-                }
+    //             // try hydration lookup across ALL schemas
+    //             for (const [, schemaMap] of hydrationMap) {
 
-                nextRecords.push(resolved);
-            }
+    //                 const resolved = schemaMap.get(value);
 
-            currentContext =
-                await this.contextFactory.getSchemaContext(
-                    step.toRuleset ?? context.ruleset,
-                    step.to
-                );
+    //                 if (resolved) {
+    //                     current = resolved.data;
+    //                     break;
+    //                 }
+    //             }
 
-            currentRecords = nextRecords;
-        }
-    }*/
+    //             continue;
+    //         }
 
-    
+    //         current = value;
+    //     }
+
+    //     return current;
+    // }
+
+    // private async getValueByPath(
+    //     context: SchemaContext,
+    //     record: DataRecord,
+    //     path: string,
+    //     hydrationMap: HydrationMap
+    // ): Promise<any> {
+
+    //     const parts = path.split(".");
+
+    //     let current: any = record.data;
+
+    //     for (let i = 0; i < parts.length; i++) {
+
+    //         const part = parts[i];
+
+    //         if (current == null) return undefined;
+
+    //         const value = current[part];
+
+    //         if (i === parts.length - 1) {
+    //             return value;
+    //         }
+
+    //         const field =
+    //             context.schema.fields[part];
+
+    //         if (field?.type === "reference") {
+
+    //             if (typeof value !== "string") {
+    //                 return undefined;
+    //             }
+
+    //             const schemaMap =
+    //                 hydrationMap.get(
+    //                     field.referenceTarget.schema
+    //                 );
+
+    //             const resolved =
+    //                 schemaMap?.get(value);
+
+    //             if (!resolved) {
+    //                 return undefined;
+    //             }
+
+    //             current = resolved.data;
+    //             continue;
+    //         }
+
+    //         current = value;
+    //     }
+
+    //     return current;
+    // }
+
+    // private async getValueByPath(
+    //     context: SchemaContext,
+    //     record: DataRecord,
+    //     path: string,
+    //     hydrationMap: HydrationMap
+    // ): Promise<any> {
+
+    //     const parts = path.split(".");
+
+    //     let current: any = record.data;
+    //     let currentContext = context;
+
+    //     for (let i = 0; i < parts.length; i++) {
+
+    //         const part = parts[i];
+
+    //         if (current == null) return undefined;
+
+    //         const value = current[part];
+
+    //         // LAST SEGMENT
+    //         if (i === parts.length - 1) {
+    //             return value;
+    //         }
+
+    //         // ONLY treat as reference if schema says so
+    //         const field = currentContext.schema.fields[part];
+
+    //         if (field?.type === "reference") {
+
+    //             if (typeof value !== "string") {
+    //                 return undefined;
+    //             }
+
+    //             const schemaMap =
+    //                 hydrationMap.get(
+    //                     field.referenceTarget.schema
+    //                 );
+
+    //             const resolved =
+    //                 schemaMap?.get(value);
+
+    //             if (!resolved) {
+    //                 /*new Notice(
+    //                     `Missing hydration: ${part} -> ${value}`
+    //                 );*/
+    //                 return undefined;
+    //                 /*resolved =
+    //                     await this.referenceResolver.resolve(
+    //                         currentContext,
+    //                         part,
+    //                         value
+    //                     );
+
+    //                 if (resolved) {
+    //                     this.batchResolver.store(
+    //                         value,
+    //                         resolved
+    //                     );
+    //                 }*/
+    //             }
+
+    //             current = resolved.data;
+
+    //             currentContext =
+    //                 await this.contextFactory.getSchemaContext(
+    //                     field.referenceTarget.ruleset,
+    //                     field.referenceTarget.schema
+    //                 );
+
+    //             continue;
+    //         }
+
+    //         // 🔥 IMPORTANT FIX:
+    //         // After first hop OR non-reference:
+    //         // just treat as object traversal
+
+    //         current = value;
+    //     }
+
+    //     return current;
+    // }
+
 	async executeQuery(
         context: SchemaContext,
         request: QueryRequest,
@@ -615,12 +872,14 @@ export class QueryExecutor {
 			await this.reader.getAll(context);
 
 		//await this.preloadReferences(context, records, plan);
-        await this.runner.run(context, records, plan);
+        const graph = await this.runner.run(context, records, plan);
+
+        
 
 		// 2. Apply filters
 		if (request.where?.length) {
 			records =
-				await this.applyFilters(context, records, request.where);
+				await this.applyFilters(records, request.where, graph);
 		}
 
 		// 3. Sort
@@ -634,8 +893,10 @@ export class QueryExecutor {
 			this.applyPagination(records, request);
 
 		return await this.applyProjection(
-			context,
+			//context,
 			records,
+            graph,
+            //hydrationMap,
 			request.select
 		);
 	}
@@ -649,22 +910,26 @@ export class QueryExecutor {
 			await this.reader.getAll(context);
 
 		//await this.preloadReferences(context, records, plan);
-        await this.runner.run(context, records, plan);
+        const graph = await this.runner.run(context, records, plan);
 
 		if (request.where?.length) {
 
 			records =
 				await this.applyFilters(
-					context,
+					//context,
 					records,
-					request.where
+					request.where,
+                    graph
+                    //hydrationMap
 				);
 		}
 
 		return await this.aggregate(
 			context,
 			records,
-			request.aggregate
+			request.aggregate,
+            graph
+            //hydrationMap
 		);
     }
 
@@ -677,15 +942,17 @@ export class QueryExecutor {
         let records = await this.reader.getAll(context);
         
 		//await this.preloadReferences(context, records, plan);
-        await this.runner.run(context, records, plan);
+        const graph = await this.runner.run(context, records, plan);
 
 		// 2. Apply filters
 		if (request.where?.length) {
 			records =
 				await this.applyFilters(
-					context,
+					//context,
 					records,
-					request.where
+					request.where,
+                    graph
+                    //hydrationMap
 				);
 		}
 
@@ -695,12 +962,13 @@ export class QueryExecutor {
 
 		for (const record of records) {
 
-			const key =
-				await this.getValueByPath(
-					context,
-					record,
-					request.groupBy
-				);
+			const key = this.graphNavigator.getValue(graph, record.id, request.groupBy);
+				// await this.getValueByPath(
+				// 	context,
+				// 	record,
+				// 	request.groupBy,
+                //     hydrationMap
+				// );
 
 			if (!groups.has(key)) {
 				groups.set(key, []);
@@ -718,7 +986,9 @@ export class QueryExecutor {
 				await this.aggregate(
 					context,
 					groupRecords,
-					request.aggregate
+					request.aggregate,
+                    graph
+                    //hydrationMap
 				);
 
 			results.push({
@@ -732,6 +1002,8 @@ export class QueryExecutor {
 			await this.applyHaving(
 				results,
 				context,
+                graph,
+                //hydrationMap,
 				request.having
 			);
 
