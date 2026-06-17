@@ -1,23 +1,13 @@
 import { SchemaContext } from "../../types/ContextTypes";
 import { QueryRequest, QueryFilter, QueryAggregate, QueryGroupResult } from "../../types/QueryTypes";
-//import { IDataReader } from "../interfaces/IDataReader";
-//import {IReferenceResolver} from "../interfaces/IReferenceResolver";
 import { DataRecord } from "../../types/DataTypes";
-//import { Notice } from "obsidian";
-//import { ContextFactory } from "./ContextFactory";
 import { QueryPlanner } from "./QueryPlanner";
-//import { QueryPlan } from "../types/QueryPlannerTypes";
 import { QueryExecutor } from "./QueryExecutor";
 import { Notice } from "obsidian";
 
 export class QueryManager {
 
-	//private referenceCache = new Map<string, any>();
-
 	constructor(
-		//private reader: IDataReader,
-		//private referenceResolver: IReferenceResolver,
-		//private contextFactory: ContextFactory,
 		private queryPlanner: QueryPlanner,
 		private queryExecutor: QueryExecutor
 	) {}

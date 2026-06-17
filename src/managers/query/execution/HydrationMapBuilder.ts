@@ -47,49 +47,6 @@ export class HydrationMapBuilder {
         return hydrationMap;
     }
 
-    // async build(
-    //     ruleset: string,
-    //     idsBySchema: SchemaIdMap
-    // ): Promise<HydrationMap> {
-
-    //     const hydrationMap: HydrationMap =
-    //         new Map();
-
-    //     for (const [schemaName, ids] of idsBySchema) {
-
-    //         const context =
-    //             await this.contextFactory.getSchemaContext(
-    //                 ruleset,
-    //                 schemaName
-    //             );
-
-    //         const records =
-    //             await this.reader.getAll(context);
-
-    //         const schemaMap =
-    //             new Map<string, any>();
-
-    //         for (const record of records) {
-
-    //             if (!ids.has(record.id)) {
-    //                 continue;
-    //             }
-
-    //             schemaMap.set(
-    //                 record.id,
-    //                 record
-    //             );
-    //         }
-
-    //         hydrationMap.set(
-    //             schemaName,
-    //             schemaMap
-    //         );
-    //     }
-
-    //     return hydrationMap;
-    // }
-
     async buildSchema(
         ruleset: string,
         schemaName: string,

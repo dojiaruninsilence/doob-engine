@@ -116,10 +116,6 @@ export default class DoobEngine extends Plugin {
 
 		this.queryExecutionPlanRunner = new QueryExecutionPlanRunner(
 			this.resolvedRecordGraphBuilcer
-			// this.contextFactory,
-			// this.referenceGraphBuilder,
-			// globalIdAccumulator,
-			// this.hydrationMapBuilder
 		)
 
 		this.queryExecutor = new QueryExecutor(

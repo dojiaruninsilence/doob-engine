@@ -15,7 +15,6 @@ export class QueryPlanner {
 		request: QueryRequest
 	): Promise<QueryPlan> {
 
-		//const steps: QueryPlanStep[] = [];
 		const stepMap =
     		new Map<string, QueryPlanStep>();
 
@@ -64,108 +63,6 @@ export class QueryPlanner {
 					);
 			}
 		}
-
-		// for (const path of fieldsToAnalyze) {
-
-		// 	const parts = path.split(".");
-		// 	let currentContext = context;
-
-		// 	let validChain = true;
-
-		// 	for (let i = 0; i < parts.length - 1; i++) {
-
-		// 		const field = parts[i];
-
-		// 		const fieldDef =
-		// 			currentContext.schema.fields[field];
-
-		// 		// 🚨 HARD STOP if invalid
-		// 		if (!fieldDef || fieldDef.type !== "reference") {
-		// 			validChain = false;
-		// 			break;
-		// 		}
-
-		// 		const key = [
-		// 			currentContext.schema.name,
-		// 			field,
-		// 			fieldDef.referenceTarget.ruleset,
-		// 			fieldDef.referenceTarget.schema
-		// 		].join("|");
-
-		// 		if (!stepMap.has(key)) {
-
-		// 			stepMap.set(key, {
-		// 				from: currentContext.schema.name,
-		// 				field,
-		// 				to: fieldDef.referenceTarget.schema,
-		// 				isReference: true,
-		// 				toRuleset: fieldDef.referenceTarget.ruleset
-		// 			});
-		// 		}
-
-		// 		currentContext =
-		// 			await this.contextFactory.getSchemaContext(
-		// 				fieldDef.referenceTarget.ruleset,
-		// 				fieldDef.referenceTarget.schema
-		// 			);
-		// 	}
-
-		// 	// 🚨 IMPORTANT: ONLY ACCEPT FULLY VALID PATHS
-		// 	if (!validChain) {
-		// 		continue;
-		// 	}
-		// }
-
-		// for (const path of fieldsToAnalyze) {
-
-		// 	const parts = path.split(".");
-		// 	let currentSchema = context.schema.name;
-
-        //     //let currentContext = context;
-
-		// 	for (let i = 0; i < parts.length - 1; i++) {
-
-		// 		const field = parts[i];
-
-		// 		const fieldDef = context.schema.fields[field];
-		//             //currentContext.schema.fields[field];
-
-		// 		if (!fieldDef || fieldDef.type !== "reference") {
-		// 			continue;
-		// 		}
-
-		// 		const key =
-		// 			[
-		// 				currentSchema,
-		// 				field,
-		// 				fieldDef.referenceTarget.ruleset,
-		// 				fieldDef.referenceTarget.schema
-		// 			].join("|");
-
-		// 		if (!stepMap.has(key)) {
-
-		// 			stepMap.set(
-		// 				key,
-		// 				{
-		// 					from: currentSchema,
-		// 					field,
-		// 					to: fieldDef.referenceTarget.schema,
-		// 					isReference: true,
-		// 					toRuleset: fieldDef.referenceTarget.ruleset
-		// 				}
-		// 			);
-		// 		}
-
-		// 		// currentContext =
-        //         //     await this.contextFactory.getSchemaContext(
-        //         //         fieldDef.referenceTarget.ruleset,
-        //         //         fieldDef.referenceTarget.schema
-        //         //     );
-
-        //         // currentSchema =
-		//         //     currentContext.schema.name;
-		// 	}
-		// }
 
 		return {
 			rootSchema: context.schema.name,

@@ -18,10 +18,6 @@ export class GlobalIdAccumulator {
 
             for (const step of steps) {
 
-                // new Notice(
-                //     `Collecting ${step.field} from ${step.from}`
-                // );
-
                 const targetSchema =
                     step.to;
 
@@ -39,10 +35,6 @@ export class GlobalIdAccumulator {
 
                     const id =
                         record.data?.[step.field];
-
-                    // new Notice(
-                    //     `${step.field} on record ${record.id}: ${String(record.data?.[step.field])}`
-                    // );
 
                     if (typeof id === "string") {
                         ids.add(id);
