@@ -1,12 +1,12 @@
-import { IReferenceResolver } from "../interfaces/IReferenceResolver";
-import { ReferenceManager } from "../managers/reference/ReferenceManager";
-import { SchemaContext } from "../types/ContextTypes";
+// import { IReferenceResolver } from "../interfaces/IReferenceResolver";
+// import { ReferenceManager } from "../managers/reference/ReferenceManager";
+// import { SchemaContext } from "../types/ContextTypes";
 
-export class ReferenceResolverAdapter implements IReferenceResolver {
+// export class ReferenceResolverAdapter implements IReferenceResolver {
 
-	constructor(private referenceManager: ReferenceManager) {}
+// 	constructor(private referenceManager: ReferenceManager) {}
 
-	async resolve(context: SchemaContext, fieldName: string, id: string) {
-		return this.referenceManager.resolve(context, fieldName, id);
-	}
-}
+// 	async resolve(context: SchemaContext, fieldName: string, id: string) {
+// 		return this.referenceManager.resolve(context, fieldName, id);
+// 	}
+// }

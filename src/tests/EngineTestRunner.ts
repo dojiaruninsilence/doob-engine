@@ -6,26 +6,26 @@ export class EngineTestRunner {
 	private dataManager: any;
 	private contextFactory: any;
 	private queryManager: any;
-	private referenceManager: any;
+	//private referenceManager: any;
 	private queryPlanner: any;
-	private referenceBatchResolver: any;
-	private dataReader: any;
-	private referenceGraphBuilder: any;
-	private globalIdAccumulator: any;
-	private hydrationMapBuilder: any;
+	//private referenceBatchResolver: any;
+	//private dataReader: any;
+	//private referenceGraphBuilder: any;
+	//private globalIdAccumulator: any;
+	//private hydrationMapBuilder: any;
 
 	constructor(
 		schemaManager: any, 
 		dataManager: any, 
 		contextFactory: any, 
 		queryManager: any, 
-		referenceManager: any, 
+		//referenceManager: any, 
 		queryPlanner: any, 
-		referenceBatchResolver: any, 
-		dataReader: any, 
-		referenceGraphBuilder: any,
-		globalIdAccumulator: any,
-		hydrationMapBuilder: any
+		//referenceBatchResolver: any, 
+		//dataReader: any, 
+		//referenceGraphBuilder: any,
+		//globalIdAccumulator: any,
+		//hydrationMapBuilder: any
 	) {
 
         if (!schemaManager) {
@@ -47,12 +47,12 @@ export class EngineTestRunner {
         this.dataManager = dataManager;
         this.contextFactory = contextFactory;
         this.queryManager = queryManager;
-        this.referenceManager = referenceManager;
+        //this.referenceManager = referenceManager;
 		this.queryPlanner = queryPlanner;
-		this.dataReader = dataReader;
-		this.referenceGraphBuilder = referenceGraphBuilder;
-		this.globalIdAccumulator = globalIdAccumulator;
-		this.hydrationMapBuilder = hydrationMapBuilder;
+		//this.dataReader = dataReader;
+		//this.referenceGraphBuilder = referenceGraphBuilder;
+		//this.globalIdAccumulator = globalIdAccumulator;
+		//this.hydrationMapBuilder = hydrationMapBuilder;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
@@ -166,18 +166,18 @@ export class EngineTestRunner {
         new Notice("🧪 Engine Tests Starting...");
 
         
-		/*await this.safeRun(
+		await this.safeRun(
 			"Query Manager",
 			() => this.testQueryManager()
 		);
 
-		await this.safeRun("Invalid Reference Validation", () =>
-			this.testInvalidReferenceValidation()
-		);
+		// await this.safeRun("Invalid Reference Validation", () =>
+		// 	this.testInvalidReferenceValidation()
+		// );
 
-		await this.safeRun("Valid Reference Validation", () =>
-			this.testValidReferenceValidation()
-		);
+		// await this.safeRun("Valid Reference Validation", () =>
+		// 	this.testValidReferenceValidation()
+		// );
 
 		await this.safeRun("Query Filter", () =>
 			this.testQueryFilter()
@@ -384,7 +384,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Runner Batch Deduplication",
 			() => this.testRunnerBatchDeduplication()
-		);*/
+		);
 
 		await this.safeRun(
 			"Runner Multi Hop Integrity",
@@ -901,102 +901,102 @@ export class EngineTestRunner {
 		new Notice("Query Manager Tests Completed");
 	}
 
-	private async testInvalidReferenceValidation() {
+	// private async testInvalidReferenceValidation() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		new Notice("Test: Invalid Reference Validation");
+	// 	new Notice("Test: Invalid Reference Validation");
 
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
 
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
 
-		const errors =
-			await this.referenceManager.validateRecordReferences(
-				itemContext,
-				{
-					owner: "fake-id"
-				}
-			);
+	// 	const errors =
+	// 		await this.referenceManager.validateRecordReferences(
+	// 			itemContext,
+	// 			{
+	// 				owner: "fake-id"
+	// 			}
+	// 		);
 
-		if (errors.length === 0) {
-			throw new Error(
-				"Invalid reference was accepted"
-			);
-		}
+	// 	if (errors.length === 0) {
+	// 		throw new Error(
+	// 			"Invalid reference was accepted"
+	// 		);
+	// 	}
 
-		new Notice(
-			"Invalid reference rejected correctly"
-		);
-	}
+	// 	new Notice(
+	// 		"Invalid reference rejected correctly"
+	// 	);
+	// }
 
-	private async testValidReferenceValidation() {
+	// private async testValidReferenceValidation() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		new Notice("Test: Valid Reference Validation");
+	// 	new Notice("Test: Valid Reference Validation");
 
-		const charContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Character"
-			);
+	// 	const charContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Character"
+	// 		);
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
 
-		const character =
-			await this.dataManager.createRecord(
-				charContext,
-				{
-					name: "Valid Bob"
-				}
-			);
+	// 	const character =
+	// 		await this.dataManager.createRecord(
+	// 			charContext,
+	// 			{
+	// 				name: "Valid Bob"
+	// 			}
+	// 		);
 
-		const errors =
-			await this.referenceManager.validateRecordReferences(
-				itemContext,
-				{
-					owner: character.id
-				}
-			);
+	// 	const errors =
+	// 		await this.referenceManager.validateRecordReferences(
+	// 			itemContext,
+	// 			{
+	// 				owner: character.id
+	// 			}
+	// 		);
 
-		if (errors.length > 0) {
-			throw new Error(
-				`Valid reference failed validation:\n${errors.join("\n")}`
-			);
-		}
+	// 	if (errors.length > 0) {
+	// 		throw new Error(
+	// 			`Valid reference failed validation:\n${errors.join("\n")}`
+	// 		);
+	// 	}
 
-		new Notice(
-			"Valid reference accepted"
-		);
-	}
+	// 	new Notice(
+	// 		"Valid reference accepted"
+	// 	);
+	// }
 
 	private async testQueryFilter() {
 

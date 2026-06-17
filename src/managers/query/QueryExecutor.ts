@@ -1,11 +1,11 @@
 import { IDataReader } from "../../interfaces/IDataReader";
-import { IReferenceResolver } from "../../interfaces/IReferenceResolver";
+//import { IReferenceResolver } from "../../interfaces/IReferenceResolver";
 import { ContextFactory } from "../ContextFactory";
 import { SchemaContext } from "../../types/ContextTypes";
 import { QueryRequest, QueryGroupResult, QueryFilter, QueryAggregate } from "../../types/QueryTypes";
 import { QueryPlan } from "../../types/QueryPlannerTypes";
 import { DataRecord } from "../../types/DataTypes";
-import { ReferenceBatchResolver } from "../reference/ReferenceBatchResolver";
+//import { ReferenceBatchResolver } from "../reference/ReferenceBatchResolver";
 import { QueryExecutionPlanRunner } from "./QueryExecutionPlanRunner";
 import { HydrationMap } from "../../types/QueryExecutionTypes";
 import { Notice } from "obsidian";
@@ -16,9 +16,9 @@ export class QueryExecutor {
 
 	constructor(
 		private reader: IDataReader,
-		private referenceResolver: IReferenceResolver,
+		//private referenceResolver: IReferenceResolver,
 		private contextFactory: ContextFactory,
-        private batchResolver: ReferenceBatchResolver,
+        //private batchResolver: ReferenceBatchResolver,
         private runner: QueryExecutionPlanRunner,
         private graphNavigator: ResolvedRecordGraphNavigator
 	) {}
@@ -504,73 +504,73 @@ export class QueryExecutor {
         return result;
     }
 
-    private async getValueByPath(
-        context: SchemaContext,
-        record: DataRecord,
-        path: string,
-        hydrationMap: HydrationMap
-    ): Promise<any> {
+    // private async getValueByPath(
+    //     context: SchemaContext,
+    //     record: DataRecord,
+    //     path: string,
+    //     hydrationMap: HydrationMap
+    // ): Promise<any> {
 
-        const parts = path.split(".");
+    //     const parts = path.split(".");
 
-        let current: any = record.data;
-        let currentContext = context;
+    //     let current: any = record.data;
+    //     let currentContext = context;
 
-        for (let i = 0; i < parts.length; i++) {
+    //     for (let i = 0; i < parts.length; i++) {
 
-            const part = parts[i];
+    //         const part = parts[i];
 
-            if (current == null) {
-                return undefined;
-            }
+    //         if (current == null) {
+    //             return undefined;
+    //         }
 
-            const value = current[part];
+    //         const value = current[part];
 
-            // Last segment
-            if (i === parts.length - 1) {
-                return value;
-            }
+    //         // Last segment
+    //         if (i === parts.length - 1) {
+    //             return value;
+    //         }
 
-            const field =
-                currentContext.schema.fields[part];
+    //         const field =
+    //             currentContext.schema.fields[part];
 
-            // Reference traversal
-            if (field?.type === "reference") {
+    //         // Reference traversal
+    //         if (field?.type === "reference") {
 
-                if (typeof value !== "string") {
-                    return undefined;
-                }
+    //             if (typeof value !== "string") {
+    //                 return undefined;
+    //             }
 
-                const targetSchema =
-                    field.referenceTarget.schema;
+    //             const targetSchema =
+    //                 field.referenceTarget.schema;
 
-                const schemaMap =
-                    hydrationMap.get(targetSchema);
+    //             const schemaMap =
+    //                 hydrationMap.get(targetSchema);
 
-                const resolved =
-                    schemaMap?.get(value);
+    //             const resolved =
+    //                 schemaMap?.get(value);
 
-                if (!resolved) {
-                    return undefined;
-                }
+    //             if (!resolved) {
+    //                 return undefined;
+    //             }
 
-                current = resolved.data;
+    //             current = resolved.data;
 
-                currentContext =
-                    await this.contextFactory.getSchemaContext(
-                        field.referenceTarget.ruleset,
-                        targetSchema
-                    );
+    //             currentContext =
+    //                 await this.contextFactory.getSchemaContext(
+    //                     field.referenceTarget.ruleset,
+    //                     targetSchema
+    //                 );
 
-                continue;
-            }
+    //             continue;
+    //         }
 
-            // Normal object traversal
-            current = value;
-        }
+    //         // Normal object traversal
+    //         current = value;
+    //     }
 
-        return current;
-    }
+    //     return current;
+    // }
 
 	async executeQuery(
         context: SchemaContext,

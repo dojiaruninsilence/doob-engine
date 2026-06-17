@@ -1,48 +1,48 @@
-import { SchemaContext } from "../../../types/ContextTypes";
-import { DataRecord } from "../../../types/DataTypes";
-import { ReferencePlan, SchemaIdMap } from "../../../types/QueryExecutionTypes";
-import { Notice } from "obsidian";
+// import { SchemaContext } from "../../../types/ContextTypes";
+// import { DataRecord } from "../../../types/DataTypes";
+// import { ReferencePlan, SchemaIdMap } from "../../../types/QueryExecutionTypes";
+// import { Notice } from "obsidian";
 
-export class GlobalIdAccumulator {
+// export class GlobalIdAccumulator {
 
-    async collect(
-        context: SchemaContext,
-        records: DataRecord[],
-        graph: ReferencePlan
-    ): Promise<SchemaIdMap> {
+//     async collect(
+//         context: SchemaContext,
+//         records: DataRecord[],
+//         graph: ReferencePlan
+//     ): Promise<SchemaIdMap> {
 
-        const result: SchemaIdMap =
-            new Map();
+//         const result: SchemaIdMap =
+//             new Map();
 
-        for (const [schema, steps] of graph.stepMap) {
+//         for (const [schema, steps] of graph.stepMap) {
 
-            for (const step of steps) {
+//             for (const step of steps) {
 
-                const targetSchema =
-                    step.to;
+//                 const targetSchema =
+//                     step.to;
 
-                if (!result.has(targetSchema)) {
-                    result.set(
-                        targetSchema,
-                        new Set<string>()
-                    );
-                }
+//                 if (!result.has(targetSchema)) {
+//                     result.set(
+//                         targetSchema,
+//                         new Set<string>()
+//                     );
+//                 }
 
-                const ids =
-                    result.get(targetSchema)!;
+//                 const ids =
+//                     result.get(targetSchema)!;
 
-                for (const record of records) {
+//                 for (const record of records) {
 
-                    const id =
-                        record.data?.[step.field];
+//                     const id =
+//                         record.data?.[step.field];
 
-                    if (typeof id === "string") {
-                        ids.add(id);
-                    }
-                }
-            }
-        }
+//                     if (typeof id === "string") {
+//                         ids.add(id);
+//                     }
+//                 }
+//             }
+//         }
 
-        return result;
-    }
-}
+//         return result;
+//     }
+// }

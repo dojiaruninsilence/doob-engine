@@ -1,83 +1,83 @@
-import { IReferenceResolver } from "../../interfaces/IReferenceResolver";
-import { SchemaContext } from "../../types/ContextTypes";
-import { DataRecord } from "../../types/DataTypes";
+// import { IReferenceResolver } from "../../interfaces/IReferenceResolver";
+// import { SchemaContext } from "../../types/ContextTypes";
+// import { DataRecord } from "../../types/DataTypes";
 
-export class ReferenceBatchResolver {
+// export class ReferenceBatchResolver {
 
-    private cache =
-        new Map<string, DataRecord>();
+//     private cache =
+//         new Map<string, DataRecord>();
 
-    constructor(
-        private referenceResolver: IReferenceResolver
-    ) {}
+//     constructor(
+//         private referenceResolver: IReferenceResolver
+//     ) {}
 
-    async resolveBatch(
-        context: SchemaContext,
-        fieldName: string,
-        records: DataRecord[]
-    ): Promise<Map<string, DataRecord>> {
+//     async resolveBatch(
+//         context: SchemaContext,
+//         fieldName: string,
+//         records: DataRecord[]
+//     ): Promise<Map<string, DataRecord>> {
 
-        const ids = new Set<string>();
+//         const ids = new Set<string>();
 
-        for (const record of records) {
+//         for (const record of records) {
 
-            const id = record.data?.[fieldName];
+//             const id = record.data?.[fieldName];
 
-            if (typeof id === "string") {
-                ids.add(id);
-            }
-        }
+//             if (typeof id === "string") {
+//                 ids.add(id);
+//             }
+//         }
 
-        const results =
-            new Map<string, DataRecord>();
+//         const results =
+//             new Map<string, DataRecord>();
 
-        for (const id of ids) {
+//         for (const id of ids) {
 
-            const cached =
-                this.cache.get(id);
+//             const cached =
+//                 this.cache.get(id);
 
-            if (cached) {
+//             if (cached) {
 
-                results.set(id, cached);
-                continue;
-            }
+//                 results.set(id, cached);
+//                 continue;
+//             }
 
-            const resolved =
-                await this.referenceResolver.resolve(
-                    context,
-                    fieldName,
-                    id
-                );
+//             const resolved =
+//                 await this.referenceResolver.resolve(
+//                     context,
+//                     fieldName,
+//                     id
+//                 );
 
-            if (!resolved) {
-                continue;
-            }
+//             if (!resolved) {
+//                 continue;
+//             }
 
-            this.cache.set(id, resolved);
-            results.set(id, resolved);
-        }
+//             this.cache.set(id, resolved);
+//             results.set(id, resolved);
+//         }
 
-        return results;
-    }
+//         return results;
+//     }
 
-    clear(): void {
+//     clear(): void {
 
-        this.cache.clear();
-    }
+//         this.cache.clear();
+//     }
 
-    get(id: string): DataRecord | undefined {
+//     get(id: string): DataRecord | undefined {
 
-        return this.cache.get(id);
-    }
+//         return this.cache.get(id);
+//     }
 
-    store(
-        id: string,
-        record: DataRecord
-    ): void {
+//     store(
+//         id: string,
+//         record: DataRecord
+//     ): void {
 
-        this.cache.set(
-            id,
-            record
-        );
-    }
-}
+//         this.cache.set(
+//             id,
+//             record
+//         );
+//     }
+// }

@@ -1,13 +1,13 @@
 import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import DoobEngine from "../main";
 import { EngineTestRunner } from "../tests/EngineTestRunner";
-import { GlobalIdAccumulator } from "../managers/query/execution/GlobalIdAccumulator";
+//import { GlobalIdAccumulator } from "../managers/query/execution/GlobalIdAccumulator";
 
 export class DoobToolPanel extends ItemView {
 	private plugin: DoobEngine;
 	private testRunner!: EngineTestRunner;
 
-	private globalIdAccumulator = new GlobalIdAccumulator();
+	//private globalIdAccumulator = new GlobalIdAccumulator();
 
 	constructor(leaf: WorkspaceLeaf, plugin: DoobEngine) {
 		super(leaf);
@@ -17,13 +17,13 @@ export class DoobToolPanel extends ItemView {
 			this.plugin.dataManager, 
 			this.plugin.contextFactory, 
 			this.plugin.queryManager, 
-			this.plugin.referenceManager, 
+			//this.plugin.referenceManager, 
 			this.plugin.queryPlanner, 
-			this.plugin.referenceBatchResolver,
-			this.plugin.dataManager,
-			this.plugin.referenceGraphBuilder,
-			this.globalIdAccumulator,
-			this.plugin.hydrationMapBuilder
+			//this.plugin.referenceBatchResolver,
+			//this.plugin.dataManager,
+			//this.plugin.referenceGraphBuilder,
+			//this.globalIdAccumulator,
+			//this.plugin.hydrationMapBuilder
 		);
 	}
 
