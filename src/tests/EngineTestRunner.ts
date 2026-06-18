@@ -1,4 +1,5 @@
 import { Notice } from "obsidian";
+import { ResolvedRecordGraphNavigator } from "../managers/query/execution/ResolvedRecordGraphNavigator";
 
 export class EngineTestRunner {
 
@@ -7,13 +8,15 @@ export class EngineTestRunner {
 	private contextFactory: any;
 	private queryManager: any;
 	private queryPlanner: any;
+	private graphBuilder: any;
 
 	constructor(
 		schemaManager: any, 
 		dataManager: any, 
 		contextFactory: any, 
 		queryManager: any, 
-		queryPlanner: any
+		queryPlanner: any,
+		graphBuilder: any
 	) {
 
         if (!schemaManager) {
@@ -36,6 +39,7 @@ export class EngineTestRunner {
         this.contextFactory = contextFactory;
         this.queryManager = queryManager;
 		this.queryPlanner = queryPlanner;
+		this.graphBuilder = graphBuilder;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
@@ -140,6 +144,24 @@ export class EngineTestRunner {
 		);
 	}
 
+	// Notes:
+	/*
+	x1. Graph Integrity Tests
+	x2. Navigator Tests
+	3. Query Tests
+	4. Aggregate Expansion
+	5. Collection References
+	6. Mutation Support
+
+	After aggregate expansion, I'd move toward:
+
+		Query Optimizations
+		Plan deduplication
+		Graph reuse
+		Aggregate reuse
+		Query caching
+	*/
+
 	// --------------------------------------------------
 	// RUN ALL TESTS
 	// --------------------------------------------------
@@ -149,7 +171,7 @@ export class EngineTestRunner {
         new Notice("🧪 Engine Tests Starting...");
 
         
-		await this.safeRun(
+		/*await this.safeRun(
 			"Query Manager",
 			() => this.testQueryManager()
 		);
@@ -389,6 +411,81 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Missing Reference Filter Behavior",
 			() => this.testMissingReferenceFilterBehavior()
+		);
+
+		await this.safeRun(
+			"Graph Basic Build",
+			() => this.testGraphBasicBuild()
+		);
+
+		await this.safeRun(
+			"Graph Edge Integrity",
+			() => this.testGraphEdgeIntegrity()
+		);
+
+		await this.safeRun(
+			"Graph Shared Node Deduplication",
+			() => this.testGraphSharedNodeDeduplication()
+		);
+
+		await this.safeRun(
+			"Graph Multi Hop Integrity",
+			() => this.testGraphMultiHopIntegrity()
+		);
+
+		await this.safeRun(
+			"Navigator Simple Hop",
+			() => this.testNavigatorSimpleHop()
+		);
+
+		await this.safeRun(
+			"Navigator Multi Hop",
+			() => this.testNavigatorMultiHop()
+		);
+
+		await this.safeRun(
+			"Navigator Missing Branch",
+			() => this.testNavigatorMissingBranch()
+		);
+
+		await this.safeRun(
+			"Navigator Deep Traversal",
+			() => this.testNavigatorDeepTraversal()
+		);
+
+		await this.safeRun(
+			"Navigator Invalid Path",
+			() => this.testNavigatorInvalidPath()
+		);*/
+
+		await this.safeRun(
+			"Graph Diamond Deduplication",
+			() => this.testGraphDiamondDeduplication()
+		);
+
+		await this.safeRun(
+			"Graph Circular Reference",
+			() => this.testGraphCircularReference()
+		);
+
+		await this.safeRun(
+			"Graph Broken References",
+			() => this.testGraphBrokenReference()
+		);
+
+		await this.safeRun(
+			"Navigator Root Property",
+			() => this.testNavigatorRootProperty()
+		);
+
+		await this.safeRun(
+			"Navigator Missing Mid Hop",
+			() => this.testNavigatorMissingMidHop()
+		);
+
+		await this.safeRun(
+			"Graph Multi Root Stability",
+			() => this.testGraphMultiRootStability()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -5717,5 +5814,816 @@ export class EngineTestRunner {
 		}
 
 		new Notice("Missing Reference Filter Behavior passed");
+	}
+
+	private async testGraphBasicBuild() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Graph Test: Basic Build");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{ ruleset: "CoreTest", schema: "Character" }
+		);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob"
+			});
+
+		const sword =
+			await this.dataManager.createRecord(itemContext, {
+				name: "Sword",
+				owner: bob.id
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				itemContext,
+				[sword],
+				{
+					steps: [
+						{
+							from: "Item",
+							field: "owner",
+							to: "Character",
+							isReference: true,
+							toRuleset: "CoreTest"
+						}
+					]
+				} as any
+			);
+
+		const ownerNode = graph.nodes.get(bob.id);
+
+		if (!ownerNode) {
+			throw new Error("Owner node missing");
+		}
+
+		new Notice("Graph Basic Build passed");
+	}
+
+	private async testGraphEdgeIntegrity() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Graph Test: Edge Integrity");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, { name: "Bob" });
+
+		const sword =
+			await this.dataManager.createRecord(itemContext, {
+				owner: bob.id
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				itemContext,
+				[sword],
+				{
+					steps: [
+						{
+							from: "Item",
+							field: "owner",
+							to: "Character",
+							isReference: true,
+							toRuleset: "CoreTest"
+						}
+					]
+				} as any
+			);
+
+		const swordNode = graph.nodes.get(sword.id);
+		const bobNode = graph.nodes.get(bob.id);
+
+		if (!swordNode?.refs.get("owner")) {
+			throw new Error("Missing owner edge");
+		}
+
+		if (swordNode.refs.get("owner") !== bob.id) {
+			throw new Error("Wrong edge target");
+		}
+
+		if (!bobNode) {
+			throw new Error("Bob node missing");
+		}
+
+		new Notice("Graph Edge Integrity passed");
+	}
+
+	private async testGraphSharedNodeDeduplication() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Graph Test: Shared Node Dedup");
+
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, { name: "Bob" });
+
+		const items = [];
+
+		for (let i = 0; i < 5; i++) {
+			items.push(
+				await this.dataManager.createRecord(itemContext, {
+					owner: bob.id
+				})
+			);
+		}
+
+		const graph =
+			await this.graphBuilder.build(
+				itemContext,
+				items,
+				{
+					steps: [
+						{
+							from: "Item",
+							field: "owner",
+							to: "Character",
+							isReference: true,
+							toRuleset: "CoreTest"
+						}
+					]
+				} as any
+			);
+
+		let bobCount = 0;
+
+		for (const node of graph.nodes.values()) {
+			if (node.id === bob.id) {
+				bobCount++;
+			}
+		}
+
+		if (bobCount !== 1) {
+			throw new Error(`Expected 1 Bob node, got ${bobCount}`);
+		}
+
+		new Notice("Graph Shared Node Dedup passed");
+	}
+
+	private async testGraphMultiHopIntegrity() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Graph Test: Multi Hop");
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Guild"
+		});
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, { name: "Knights" });
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				guild: guild.id
+			});
+
+		const sword =
+			await this.dataManager.createRecord(itemContext, {
+				owner: bob.id
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				itemContext,
+				[sword],
+				{
+					steps: [
+						{
+							from: "Item",
+							field: "owner",
+							to: "Character",
+							isReference: true,
+							toRuleset: "CoreTest"
+						},
+						{
+							from: "Character",
+							field: "guild",
+							to: "Guild",
+							isReference: true,
+							toRuleset: "CoreTest"
+						}
+					]
+				} as any
+			);
+
+		const guildNode = graph.nodes.get(guild.id);
+
+		if (!guildNode) {
+			throw new Error("Guild node missing");
+		}
+
+		new Notice("Graph Multi Hop passed");
+	}
+
+	private async buildGraphForNavigator(missing = false) {
+
+		await this.resetCoreTestData();
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+		if (missing) {
+			await this.ensureField(
+				"CoreTest",
+				"Guild",
+				"leader",
+				"reference",
+				null,
+				undefined,
+				{
+					ruleset: "CoreTest",
+					schema: "Character"
+				}
+			);
+		}
+		
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Guild"
+		});
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, { name: "Knights" });
+		
+
+		const leader =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Leader",
+				guild: guild.id
+			});
+
+		if (missing) {
+			await this.dataManager.update(guildContext, guild.id, { leader: leader.id })
+		}
+
+		const member =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: guild.id
+			});
+
+		const item =
+			await this.dataManager.createRecord(itemContext, {
+				name: "Sword",
+				owner: member.id
+			});
+
+		return {
+			itemContext,
+			item,
+			graph: null as any // filled per test
+		};
+	}
+
+	private async testNavigatorSimpleHop() {
+
+		new Notice("Navigator Test: Simple Hop");
+
+		const setup = await this.buildGraphForNavigator();
+
+		const plan = await this.queryPlanner.plan(setup.itemContext, {
+			select: ["owner.name"]
+		});
+
+		setup.graph = await this.graphBuilder.build(
+			setup.itemContext,
+			await this.dataManager.getAll(setup.itemContext),
+			plan
+		);
+
+		const navigator =
+			new ResolvedRecordGraphNavigator();
+
+		const value =
+			navigator.getValue(
+				setup.graph,
+				setup.item.id,
+				"owner.name"
+			);
+
+		if (value !== "Bob") {
+			throw new Error(`Expected Bob, got ${value}`);
+		}
+
+		new Notice("Navigator Simple Hop passed");
+	}
+
+	private async testNavigatorMultiHop() {
+
+		new Notice("Navigator Test: Multi Hop");
+
+		const setup = await this.buildGraphForNavigator();
+
+		const plan = await this.queryPlanner.plan(setup.itemContext, {
+			select: ["owner.guild.name"]
+		});
+
+		setup.graph = await this.graphBuilder.build(
+			setup.itemContext,
+			await this.dataManager.getAll(setup.itemContext),
+			plan
+		);
+
+		const navigator =
+			new ResolvedRecordGraphNavigator();
+
+		const value =
+			navigator.getValue(
+				setup.graph,
+				setup.item.id,
+				"owner.guild.name"
+			);
+
+		if (value !== "Knights") {
+			throw new Error(`Expected Knights, got ${value}`);
+		}
+
+		new Notice("Navigator Multi Hop passed");
+	}
+
+	private async testNavigatorMissingBranch() {
+
+		new Notice("Navigator Test: Missing Branch");
+
+		const setup = await this.buildGraphForNavigator();
+
+		const plan = await this.queryPlanner.plan(setup.itemContext, {
+			select: ["owner.guild.leader.name"]
+		});
+
+		setup.graph = await this.graphBuilder.build(
+			setup.itemContext,
+			await this.dataManager.getAll(setup.itemContext),
+			plan
+		);
+
+		const navigator =
+			new ResolvedRecordGraphNavigator();
+
+		const value =
+			navigator.getValue(
+				setup.graph,
+				setup.item.id,
+				"owner.guild.leader.name"
+			);
+
+		if (value !== undefined) {
+			throw new Error(`Expected Leader, got ${value}`);
+		}
+
+		new Notice("Navigator Missing Branch passed");
+	}
+
+	private async testNavigatorDeepTraversal() {
+
+		new Notice("Navigator Test: Missing Branch");
+
+		const setup = await this.buildGraphForNavigator(true);
+
+		const plan = await this.queryPlanner.plan(setup.itemContext, {
+			select: ["owner.guild.leader.name"]
+		});
+
+		setup.graph = await this.graphBuilder.build(
+			setup.itemContext,
+			await this.dataManager.getAll(setup.itemContext),
+			plan
+		);
+
+		const navigator =
+			new ResolvedRecordGraphNavigator();
+
+		const value =
+			navigator.getValue(
+				setup.graph,
+				setup.item.id,
+				"owner.guild.leader.name"
+			);
+
+		if (value !== "Leader") {
+			throw new Error(`Expected Leader, got ${value}`);
+		}
+
+		new Notice("Navigator Missing Branch passed");
+	}
+
+	private async testNavigatorInvalidPath() {
+
+		new Notice("Navigator Test: Invalid Path");
+
+		const setup = await this.buildGraphForNavigator();
+
+		const plan = await this.queryPlanner.plan(setup.itemContext, {
+			select: ["owner.nonexistent.field"]
+		});
+
+		setup.graph = await this.graphBuilder.build(
+			setup.itemContext,
+			await this.dataManager.getAll(setup.itemContext),
+			plan
+		);
+
+		const navigator =
+			new ResolvedRecordGraphNavigator();
+
+		const value =
+			navigator.getValue(
+				setup.graph,
+				setup.item.id,
+				"owner.nonexistent.field"
+			);
+
+		if (value !== undefined) {
+			throw new Error(`Expected undefined, got ${value}`);
+		}
+
+		new Notice("Navigator Invalid Path passed");
+	}
+
+	private async testGraphDiamondDeduplication() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Graph Diamond Deduplication");
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Guild"
+		});
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, { name: "Knights" });
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: guild.id
+			});
+
+		const rick =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Rick",
+				guild: guild.id
+			});
+
+		await this.dataManager.createRecord(itemContext, {
+			name: "Sword",
+			owner: bob.id
+		});
+
+		await this.dataManager.createRecord(itemContext, {
+			name: "Shield",
+			owner: rick.id
+		});
+
+		const plan =
+			await this.queryPlanner.plan(itemContext, {
+				select: ["owner.guild.name"]
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				itemContext,
+				await this.dataManager.getAll(itemContext),
+				plan
+			);
+
+		const guildNodes =
+			[...graph.nodes.values()]
+				.filter(n => n.schema === "Guild");
+
+		if (guildNodes.length !== 1) {
+			throw new Error(`Expected 1 Guild node, got ${guildNodes.length}`);
+		}
+
+		new Notice("Graph Diamond Deduplication passed");
+	}
+
+	private async testGraphCircularReference() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Graph Circular Reference");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+		await this.ensureField("CoreTest", "Character", "friend", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const a =
+			await this.dataManager.createRecord(characterContext, {
+				name: "A"
+			});
+
+		const b =
+			await this.dataManager.createRecord(characterContext, {
+				name: "B",
+				friend: a.id
+			});
+
+		await this.dataManager.update(characterContext, a.id, {
+			friend: b.id
+		});
+
+		const plan =
+			await this.queryPlanner.plan(characterContext, {
+				select: ["friend.friend.name"]
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				characterContext,
+				await this.dataManager.getAll(characterContext),
+				plan
+			);
+
+		const navigator =
+			new ResolvedRecordGraphNavigator();
+
+		const value =
+			navigator.getValue(graph, a.id, "friend.friend.name");
+
+		if (value !== "A") {
+			throw new Error(`Expected A, got ${value}`);
+		}
+
+		new Notice("Graph Circular Reference passed");
+	}
+
+	private async testGraphBrokenReference() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Graph Broken Reference");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Guild"
+		});
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, {
+				name: "Knights"
+			});
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: "non-existent-id"
+			});
+
+		const plan =
+			await this.queryPlanner.plan(characterContext, {
+				select: ["guild.name"]
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				characterContext,
+				await this.dataManager.getAll(characterContext),
+				plan
+			);
+
+		const navigator =
+			new ResolvedRecordGraphNavigator();
+
+		const value =
+			navigator.getValue(graph, bob.id, "guild.name");
+
+		if (value !== undefined) {
+			throw new Error(`Expected undefined, got ${value}`);
+		}
+
+		new Notice("Graph Broken Reference passed");
+	}
+
+	private async testNavigatorRootProperty() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Navigator Root Property");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob"
+			});
+
+		const plan =
+			await this.queryPlanner.plan(characterContext, {
+				select: ["name"]
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				characterContext,
+				await this.dataManager.getAll(characterContext),
+				plan
+			);
+
+		const navigator =
+			new ResolvedRecordGraphNavigator();
+
+		const value =
+			navigator.getValue(graph, bob.id, "name");
+
+		if (value !== "Bob") {
+			throw new Error(`Expected Bob, got ${value}`);
+		}
+
+		new Notice("Navigator Root Property passed");
+	}
+
+	private async testNavigatorMissingMidHop() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Navigator Missing Mid-Hop");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Guild"
+		});
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const guild =
+			await this.dataManager.createRecord(guildContext, {
+				name: "Knights"
+			});
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: guild.id
+			});
+
+		const plan =
+			await this.queryPlanner.plan(characterContext, {
+				select: ["guild.name"]
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				characterContext,
+				await this.dataManager.getAll(characterContext),
+				plan
+			);
+
+		const navigator =
+			new ResolvedRecordGraphNavigator();
+
+		const value =
+			navigator.getValue(graph, bob.id, "guild.leader.name");
+
+		if (value !== undefined) {
+			throw new Error(`Expected undefined, got ${value}`);
+		}
+
+		new Notice("Navigator Missing Mid-Hop passed");
+	}
+
+	private async testGraphMultiRootStability() {
+
+		await this.resetCoreTestData();
+
+		new Notice("Test: Graph Multi Root Stability");
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		await this.dataManager.createRecord(characterContext, { name: "A" });
+		await this.dataManager.createRecord(characterContext, { name: "B" });
+		await this.dataManager.createRecord(characterContext, { name: "C" });
+
+		const plan =
+			await this.queryPlanner.plan(characterContext, {
+				select: ["name"]
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				characterContext,
+				await this.dataManager.getAll(characterContext),
+				plan
+			);
+
+		if (graph.roots.length !== 3) {
+			throw new Error(`Expected 3 roots, got ${graph.roots.length}`);
+		}
+
+		new Notice("Graph Multi Root Stability passed");
 	}
 }

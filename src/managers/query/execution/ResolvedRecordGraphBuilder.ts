@@ -1,6 +1,6 @@
 import { SchemaContext } from "../../../types/ContextTypes";
 import { DataRecord } from "../../../types/DataTypes";
-import { QueryPlan, QueryPlanStep } from "../../../types/QueryPlannerTypes";
+import { QueryPlan } from "../../../types/QueryPlannerTypes";
 import { ContextFactory } from "../../ContextFactory";
 import { IDataReader } from "../../../interfaces/IDataReader";
 import { ResolvedRecordGraph, ResolvedNode } from "../../../types/ResolvedRecordGraph";
@@ -20,7 +20,6 @@ export class ResolvedRecordGraphBuilder {
     ): Promise<ResolvedRecordGraph> {
 
         const nodes = new Map<string, ResolvedNode>();
-
         const rootIds: string[] = [];
 
         // --------------------------------------------------
@@ -40,39 +39,42 @@ export class ResolvedRecordGraphBuilder {
         }
 
         // --------------------------------------------------
-        // STEP 2: expand graph per plan step
+        // STEP 2: BFS-style expansion per step
         // --------------------------------------------------
 
-        let currentSchema = rootContext;
-        let frontier = rootRecords;
+        let frontier = new Set<string>(rootRecords.map(r => r.id));
 
         for (const step of plan.steps) {
+
+            const nextFrontier = new Set<string>();
+            const idsToFetch = new Set<string>();
+
+            // --------------------------------------------------
+            // collect references ONLY from current frontier
+            // --------------------------------------------------
+
+            for (const nodeId of frontier) {
+
+                const node = nodes.get(nodeId);
+                if (!node) continue;
+
+                const refId = node.data?.[step.field];
+
+                if (typeof refId === "string") {
+                    idsToFetch.add(refId);
+                }
+            }
+
+            if (idsToFetch.size === 0) {
+                frontier = new Set();
+                continue;
+            }
 
             const nextSchema =
                 await this.contextFactory.getSchemaContext(
                     step.toRuleset,
                     step.to
                 );
-
-            const idsToFetch = new Set<string>();
-
-            // 🔥 IMPORTANT: ONLY use nodes of correct schema
-            for (const node of nodes.values()) {
-
-                if (node.schema !== step.from) {
-                    continue;
-                }
-
-                const value = node.data?.[step.field];
-
-                if (typeof value === "string") {
-                    idsToFetch.add(value);
-                }
-            }
-
-            if (idsToFetch.size === 0) {
-                continue;
-            }
 
             const referencedRecords =
                 await this.reader.getManyByIds(nextSchema, idsToFetch);
@@ -83,25 +85,27 @@ export class ResolvedRecordGraphBuilder {
                 byId.set(r.id, r);
             }
 
-            for (const node of nodes.values()) {
+            // --------------------------------------------------
+            // attach edges + build next frontier
+            // --------------------------------------------------
 
-                if (node.schema !== step.from) {
-                    continue;
-                }
+            for (const nodeId of frontier) {
 
-                const id = node.data?.[step.field];
+                const node = nodes.get(nodeId);
+                
+                if (!node) continue;
 
-                if (typeof id !== "string") {
-                    continue;
-                }
+                const refId = node.data?.[step.field];
 
-                const target = byId.get(id);
+                if (typeof refId !== "string") continue;
 
-                if (!target) {
-                    continue;
-                }
+                const target = byId.get(refId);
 
+                if (!target) continue;
+
+                // ensure target node exists
                 if (!nodes.has(target.id)) {
+
                     nodes.set(target.id, {
                         id: target.id,
                         schema: step.to,
@@ -110,10 +114,12 @@ export class ResolvedRecordGraphBuilder {
                     });
                 }
 
-                const targetNode = nodes.get(target.id)!;
-
+                // attach edge
                 node.refs.set(step.field, target.id);
+
+                nextFrontier.add(target.id);
             }
+            frontier = nextFrontier;
         }
 
         // --------------------------------------------------

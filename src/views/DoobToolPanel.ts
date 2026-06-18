@@ -14,7 +14,8 @@ export class DoobToolPanel extends ItemView {
 			this.plugin.dataManager, 
 			this.plugin.contextFactory, 
 			this.plugin.queryManager, 
-			this.plugin.queryPlanner
+			this.plugin.queryPlanner,
+			this.plugin.resolvedRecordGraphBuilcer
 		);
 	}
 
