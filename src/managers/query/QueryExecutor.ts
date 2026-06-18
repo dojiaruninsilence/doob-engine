@@ -5,10 +5,12 @@ import { QueryRequest, QueryGroupResult, QueryFilter, QueryAggregate } from "../
 import { QueryPlan } from "../../types/QueryPlannerTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryExecutionPlanRunner } from "./QueryExecutionPlanRunner";
-import { HydrationMap } from "../../types/QueryExecutionTypes";
+//import { HydrationMap } from "../../types/QueryExecutionTypes";
 import { Notice } from "obsidian";
-import { ResolvedRecordGraphNavigator } from "./execution/ResolvedRecordGraphNavigator";
+import { ResolvedRecordGraphNavigator } from "./graph/ResolvedRecordGraphNavigator";
 import { ResolvedRecordGraph } from "../../types/ResolvedRecordGraph";
+import { AggregateRequest } from "../../types/AggregateTypes";
+import { AggregateResolver } from "./aggregate/AggregateResolver";
 
 export class QueryExecutor {
 
@@ -16,7 +18,8 @@ export class QueryExecutor {
 		private reader: IDataReader,
 		private contextFactory: ContextFactory,
         private runner: QueryExecutionPlanRunner,
-        private graphNavigator: ResolvedRecordGraphNavigator
+        private graphNavigator: ResolvedRecordGraphNavigator,
+        private aggregateResolver: AggregateResolver
 	) {}
 
     private async matches(
@@ -132,161 +135,24 @@ export class QueryExecutor {
         }
     }
 
-    private async sum(
-        records: DataRecord[],
+    private async evaluateAggregate(
         graph: ResolvedRecordGraph,
-        field?: string
-    ): Promise<number> {
-
-        if (!field) {
-            throw new Error(
-                "Sum aggregate requires a field"
-            );
-        }
-
-        let total = 0;
-
-        for (const record of records) {
-
-            const value = this.graphNavigator.getValue(graph, record.id, field);
-
-            if (typeof value === "number") {
-                total += value;
-            }
-        }
-
-        return total;
-    }
-
-    private async average(
         records: DataRecord[],
-        graph: ResolvedRecordGraph,
-        field?: string
-    ): Promise<number> {
+        request: AggregateRequest
+    ): Promise<any> {
 
-        if (records.length === 0) {
-            return 0;
-        }
+        const group: QueryGroupResult = {
+            key: "__all__",
+            records,
+            value: 0
+        };
 
-        const total =
-            await this.sum(
-                records,
-                graph,
-                field
-            );
-
-        return total / records.length;
-    }
-
-    private async minimum(
-        records: DataRecord[],
-        graph: ResolvedRecordGraph,
-        field?: string
-    ): Promise<number> {
-
-        if (!field) {
-            throw new Error(
-                "Min aggregate requires a field"
-            );
-        }
-
-        let min =
-            Infinity;
-
-        for (const record of records) {
-
-            const value = this.graphNavigator.getValue(graph, record.id, field);
-
-            if (
-                typeof value === "number" &&
-                value < min
-            ) {
-                min = value;
-            }
-        }
-
-        return min === Infinity
-            ? 0
-            : min;
-    }
-
-    private async maximum(
-        records: DataRecord[],
-        graph: ResolvedRecordGraph,
-        field?: string
-    ): Promise<number> {
-
-        if (!field) {
-            throw new Error(
-                "Max aggregate requires a field"
-            );
-        }
-
-        let max =
-            -Infinity;
-
-        for (const record of records) {
-
-            const value = this.graphNavigator.getValue(graph, record.id, field);
-
-            if (
-                typeof value === "number" &&
-                value > max
-            ) {
-                max = value;
-            }
-        }
-
-        return max === -Infinity
-            ? 0
-            : max;
-    }
-
-    private async aggregate(
-        context: SchemaContext,
-        records: DataRecord[],
-        aggregate: QueryAggregate,
-        graph: ResolvedRecordGraph
-    ): Promise<number> {
-
-        switch (aggregate.op) {
-
-            case "count":
-                return records.length;
-
-            case "sum":
-                return await this.sum(
-                    records,
-                    graph,
-                    aggregate.field
-                );
-
-            case "avg":
-                return await this.average(
-                    records,
-                    graph,
-                    aggregate.field
-                );
-
-            case "min":
-                return await this.minimum(
-                    records,
-                    graph,
-                    aggregate.field
-                );
-
-            case "max":
-                return await this.maximum(
-                    records,
-                    graph,
-                    aggregate.field
-                );
-
-            default:
-                throw new Error(
-                    `Unknown aggregate operation: ${aggregate.op}`
-                );
-        }
+        return this.aggregateResolver.evaluate(
+            graph,
+            group,
+            records[0]?.id,
+            request
+        );
     }
 
     private setProjectedValue(
@@ -556,12 +422,11 @@ export class QueryExecutor {
 				);
 		}
 
-		return await this.aggregate(
-			context,
-			records,
-			request.aggregate,
-            graph
-		);
+		return await this.evaluateAggregate(
+            graph,
+            records,
+            request.aggregate
+        );
     }
 
     async executeGroup(
@@ -605,12 +470,11 @@ export class QueryExecutor {
 		for (const [key, groupRecords] of groups) {
 
 			const value =
-				await this.aggregate(
-					context,
-					groupRecords,
-					request.aggregate,
-                    graph
-				);
+				await this.evaluateAggregate(
+                    graph,
+                    groupRecords,
+                    request.aggregate
+                )
 
 			results.push({
 				key,
@@ -635,5 +499,4 @@ export class QueryExecutor {
 
 		return results;
     }
-
 }

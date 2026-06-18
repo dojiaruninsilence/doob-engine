@@ -1,5 +1,14 @@
 import { Notice } from "obsidian";
-import { ResolvedRecordGraphNavigator } from "../managers/query/execution/ResolvedRecordGraphNavigator";
+import { ResolvedRecordGraphNavigator } from "../managers/query/graph/ResolvedRecordGraphNavigator";
+import { AggregateResolver } from "../managers/query/aggregate/AggregateResolver";
+import { QueryGroupResult } from "../types/QueryTypes";
+import { AggregateStrategyRegistry } from "../managers/query/aggregate/AggregateStrategyRegistry";
+import { CountStrategy } from "../managers/query/aggregate/strategies/CountStrategy";
+import { SumStrategy } from "../managers/query/aggregate/strategies/SumStrategy";
+import { AvgStrategy } from "../managers/query/aggregate/strategies/AvgStrategy";
+import { MinStrategy } from "../managers/query/aggregate/strategies/MinStrategy";
+import { MaxStrategy } from "../managers/query/aggregate/strategies/MaxStrategy";
+import { DistinctStrategy } from "../managers/query/aggregate/strategies/DistinctStrategy";
 
 export class EngineTestRunner {
 
@@ -148,8 +157,44 @@ export class EngineTestRunner {
 	/*
 	x1. Graph Integrity Tests
 	x2. Navigator Tests
-	3. Query Tests
+	x3. Query Tests
 	4. Aggregate Expansion
+
+			🧠 What you need to design next
+
+			You need 3 layers:
+
+					x1. Aggregate Resolver (core new component)
+
+					This is the key missing piece.
+
+					It answers:
+
+					“Given a group + graph, how do I compute sum(owner.guild.rank)?”
+
+					It should:
+
+					use ResolvedRecordGraphNavigator
+					support field paths
+					return a computed scalar
+			2. Aggregate Executor (group level)
+
+			For each group:
+
+			for group in groups:
+				value = aggregateResolver.evaluate(group, graph)
+			3. Aggregate Strategy Registry (optional but recommended)
+
+			So later you can add:
+
+			count
+			sum
+			avg
+			min
+			max
+			distinct count
+			weighted aggregates
+
 	5. Collection References
 	6. Mutation Support
 
@@ -171,7 +216,7 @@ export class EngineTestRunner {
         new Notice("🧪 Engine Tests Starting...");
 
         
-		/*await this.safeRun(
+		await this.safeRun(
 			"Query Manager",
 			() => this.testQueryManager()
 		);
@@ -456,7 +501,7 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Navigator Invalid Path",
 			() => this.testNavigatorInvalidPath()
-		);*/
+		);
 
 		await this.safeRun(
 			"Graph Diamond Deduplication",
@@ -486,6 +531,31 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Graph Multi Root Stability",
 			() => this.testGraphMultiRootStability()
+		);
+
+		await this.safeRun(
+			"Aggregate Count",
+			() => this.testAggregateCount()
+		);
+
+		await this.safeRun(
+			"Aggregate Sum",
+			() => this.testAggregateSum()
+		);
+
+		await this.safeRun(
+			"Aggregate Avg",
+			() => this.testAggregateAvg()
+		);
+
+		await this.safeRun(
+			"Aggregate Min Max",
+			() => this.testAggregateMinMax()
+		);
+
+		await this.safeRun(
+			"Aggregate Tests Manager",
+			() => this.testAggregateManager()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -6625,5 +6695,344 @@ export class EngineTestRunner {
 		}
 
 		new Notice("Graph Multi Root Stability passed");
+	}
+
+	private async buildAggregateTestFixture(swdVal = 10, shdVal = 10, missing = false, emptyGroup = false) {
+
+		await this.resetCoreTestData();
+
+		// -----------------------------
+		// Schema
+		// -----------------------------
+
+		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Guild"
+		});
+
+		await this.ensureField("CoreTest", "Item", "name", "string", "");
+
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+			ruleset: "CoreTest",
+			schema: "Character"
+		});
+
+		await this.ensureField("CoreTest", "Item", "power", "number", 0);
+
+		// -----------------------------
+		// Data
+		// -----------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const knights =
+			await this.dataManager.createRecord(guildContext, { name: "Knights" });
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob",
+				guild: knights.id
+			});
+
+		const sword =
+			await this.dataManager.createRecord(itemContext, {
+				name: "Sword",
+				owner: bob.id,
+				power: swdVal
+			});
+
+		const shield =
+			await this.dataManager.createRecord(itemContext, {
+				name: "Shield",
+				owner: bob.id,
+				power: shdVal
+			});
+
+		if (missing) {
+			await this.dataManager.update(itemContext, shield.id, {power: undefined});
+		}
+
+		// -----------------------------
+		// Build graph (NO executor)
+		// -----------------------------
+
+		const plan =
+			await this.queryPlanner.plan(itemContext, {
+				select: ["owner.guild.name"]
+			});
+
+		const graph =
+			await this.graphBuilder.build(
+				itemContext,
+				await this.dataManager.getAll(itemContext),
+				plan
+			);
+
+		// -----------------------------
+		// Fake group (this is the key)
+		// -----------------------------
+
+		let group: QueryGroupResult;
+		if (emptyGroup) {
+			group = {
+				key: "Knights",
+				records: [],
+				value: 0
+			};
+		} else {
+			group = {
+				key: "Knights",
+				records: [sword, shield],
+				value: 2
+			};
+		}
+
+		const registry = new AggregateStrategyRegistry();
+		const graphNav = new ResolvedRecordGraphNavigator;
+
+		registry.register("count", new CountStrategy());
+		registry.register("sum", new SumStrategy(graphNav));
+		registry.register("avg", new AvgStrategy(graphNav));
+		registry.register("min", new MinStrategy(graphNav));
+		registry.register("max", new MaxStrategy(graphNav));
+		registry.register("distinct", new DistinctStrategy(graphNav));
+
+		return {
+			graph,
+			group,
+			itemContext,
+			sword,
+			bob,
+			knights,
+			registry
+		};
+	}
+
+	private async testAggregateCount() {
+
+		new Notice("Aggregate Resolver: Count");
+
+		const fx = await this.buildAggregateTestFixture();
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+
+		const value =
+			await resolver.evaluate(
+				fx.graph,
+				fx.group,
+				fx.sword.id,
+				{ op: "count" }
+			);
+
+		if (value !== 2) {
+			throw new Error(`Expected 2, got ${value}`);
+		}
+
+		new Notice("Aggregate Count passed");
+	}
+
+	private async testAggregateSum() {
+
+		new Notice("Aggregate Resolver: Sum");
+
+		const fx = await this.buildAggregateTestFixture();
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+
+		const value =
+			await resolver.evaluate(
+				fx.graph,
+				fx.group,
+				fx.sword.id,
+				{ op: "sum", field: "power" }
+			);
+
+		if (value !== 20) {
+			throw new Error(`Expected 20, got ${value}`);
+		}
+
+		new Notice("Aggregate Sum passed");
+	}
+
+	private async testAggregateAvg() {
+
+		new Notice("Aggregate Resolver: Avg");
+
+		const fx = await this.buildAggregateTestFixture(10, 20);
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+
+		const value =
+			await resolver.evaluate(
+				fx.graph,
+				fx.group,
+				fx.sword.id,
+				{ op: "avg", field: "power" }
+			);
+
+		if (value !== 15) {
+			throw new Error(`Expected 15, got ${value}`);
+		}
+
+		new Notice("Aggregate Avg passed");
+	}
+
+	private async testAggregateMinMax() {
+
+		new Notice("Aggregate Resolver: Min/Max");
+
+		const fx = await this.buildAggregateTestFixture(5, 15);
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+
+		const min =
+			await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "min", field: "power" });
+
+		const max =
+			await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "max", field: "power" });
+
+		if (min !== 5) throw new Error(`Expected min 5, got ${min}`);
+		if (max !== 15) throw new Error(`Expected max 15, got ${max}`);
+
+		new Notice("Aggregate Min/Max passed");
+	}
+
+	private async testAggregateDistinctOne() {
+		new Notice("Aggregate Resolver: Distinct One");
+
+		const fx = await this.buildAggregateTestFixture();
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+		
+		const distinct = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "distinct", field: "power" });
+		if (distinct !== 1) throw new Error(`Expected distinct 1, got ${distinct}`);
+		new Notice("Aggregate Distinct One Passed");
+	}
+
+	private async testAggregateDistinctTwo() {
+		new Notice("Aggregate Resolver: Distinct Two");
+
+		const fx = await this.buildAggregateTestFixture(10, 20);
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+		
+		const distinct = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "distinct", field: "power" });
+		if (distinct !== 2) throw new Error(`Expected distinct 2, got ${distinct}`);
+		new Notice("Aggregate Distinct Two Passed");
+	}
+
+	private async testAggregateSumMissingNum() {
+		new Notice("Aggregate Resolver: Sum Missing Number");
+
+		const fx = await this.buildAggregateTestFixture(10, 10, true);
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+		
+		const sum = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "sum", field: "power" });
+		if (sum !== 10) throw new Error(`Expected sum 2, got ${sum}`);
+		new Notice("Aggregate Sum Missing Number Passed");
+	}
+
+	private async testAggregateAvgMissingNum() {
+		new Notice("Aggregate Resolver: Avg Missing Number");
+
+		const fx = await this.buildAggregateTestFixture(10, 10, true);
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+		
+		const avg = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "avg", field: "power" });
+		if (avg !== 10) throw new Error(`Expected Avg 2, got ${avg}`);
+		new Notice("Aggregate Avg Missing Number Passed");
+	}
+
+	private async testAggregateCountEmpty() {
+		new Notice("Aggregate Resolver: Count Empty");
+
+		const fx = await this.buildAggregateTestFixture(10, 10, false, true);
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+		
+		const count = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "count" });
+		if (count !== 0) throw new Error(`Expected count 0, got ${count}`);
+		new Notice("Aggregate Count Empty Passed");
+	}
+
+	private async testAggregateAvgEmpty() {
+		new Notice("Aggregate Resolver: Avg Empty");
+
+		const fx = await this.buildAggregateTestFixture(10, 10, false, true);
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+		
+		const avg = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "avg", field: "power" });
+		if (avg !== 0) throw new Error(`Expected Avg 0, got ${avg}`);
+		new Notice("Aggregate Avg Empty Passed");
+	}
+
+	private async testAggregateMinEmpty() {
+		new Notice("Aggregate Resolver: min Empty");
+
+		const fx = await this.buildAggregateTestFixture(10, 10, false, true);
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+		
+		const min = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "min", field: "power" });
+		if (min !== null) throw new Error(`Expected Avg 0, got ${min}`);
+		new Notice("Aggregate min Empty Passed");
+	}
+
+	private async testAggregateMaxEmpty() {
+		new Notice("Aggregate Resolver: max Empty");
+
+		const fx = await this.buildAggregateTestFixture(10, 10, false, true);
+
+		const resolver =
+			new AggregateResolver(fx.registry);
+		
+		const max = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "max", field: "power" });
+		if (max !== null) throw new Error(`Expected Avg 0, got ${max}`);
+		new Notice("Aggregate max Empty Passed");
+	}
+
+	private async testAggregateManager() {
+
+		new Notice("Test Aggregate Manager Suite");
+
+		await this.testAggregateCount();
+		await this.testAggregateMinMax();
+		await this.testAggregateAvg();
+		await this.testAggregateSum();
+		await this.testAggregateDistinctOne();
+		await this.testAggregateDistinctTwo();
+		await this.testAggregateSumMissingNum();
+		await this.testAggregateAvgMissingNum();
+		await this.testAggregateCountEmpty();
+		await this.testAggregateAvgEmpty();
+		await this.testAggregateMinEmpty();
+		await this.testAggregateMaxEmpty();
+
+
+		new Notice("Aggregate Manager Tests Completed");
 	}
 }

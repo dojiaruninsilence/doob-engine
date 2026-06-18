@@ -9,8 +9,10 @@ import { QueryManager } from "./managers/query/QueryManager";
 import { QueryPlanner } from "./managers/query/QueryPlanner";
 import { QueryExecutor } from "./managers/query/QueryExecutor";
 import { QueryExecutionPlanRunner } from "./managers/query/QueryExecutionPlanRunner";
-import { ResolvedRecordGraphBuilder } from "./managers/query/execution/ResolvedRecordGraphBuilder";
-import { ResolvedRecordGraphNavigator } from "./managers/query/execution/ResolvedRecordGraphNavigator";
+import { ResolvedRecordGraphBuilder } from "./managers/query/graph/ResolvedRecordGraphBuilder";
+import { ResolvedRecordGraphNavigator } from "./managers/query/graph/ResolvedRecordGraphNavigator";
+//import { AggregateResolver } from "./managers/query/aggregate/AggregateResolver";
+import { AggregateBootstrap } from "./managers/query/aggregate/AggregateBootstrap";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -29,6 +31,7 @@ export default class DoobEngine extends Plugin {
 	public queryExecutor!: QueryExecutor;
 	public queryExecutionPlanRunner!: QueryExecutionPlanRunner;
 	public resolvedRecordGraphBuilcer!: ResolvedRecordGraphBuilder;
+	//public aggregateResolver!: AggregateResolver;
 	
 	async onload() {
 
@@ -71,6 +74,7 @@ export default class DoobEngine extends Plugin {
 		);
 
 		const resolvedRecordGraphNavigator = new ResolvedRecordGraphNavigator();
+		const aggregateResolver = AggregateBootstrap.build(resolvedRecordGraphNavigator);
 
 		this.queryPlanner = new QueryPlanner(
 			this.contextFactory
@@ -89,7 +93,8 @@ export default class DoobEngine extends Plugin {
 			this.dataManager,
 			this.contextFactory,
 			this.queryExecutionPlanRunner,
-			resolvedRecordGraphNavigator
+			resolvedRecordGraphNavigator,
+			aggregateResolver
 		);
 		
 		this.queryManager = new QueryManager(

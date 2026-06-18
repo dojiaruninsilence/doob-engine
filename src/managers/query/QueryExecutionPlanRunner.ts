@@ -2,7 +2,7 @@ import { SchemaContext } from "../../types/ContextTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryPlan } from "../../types/QueryPlannerTypes";
 import { ResolvedRecordGraph } from "../../types/ResolvedRecordGraph";
-import { ResolvedRecordGraphBuilder } from "./execution/ResolvedRecordGraphBuilder";
+import { ResolvedRecordGraphBuilder } from "./graph/ResolvedRecordGraphBuilder";
 import { Notice } from "obsidian";
 
 export class QueryExecutionPlanRunner {
