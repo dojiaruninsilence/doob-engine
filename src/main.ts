@@ -93,7 +93,6 @@ export default class DoobEngine extends Plugin {
 
 		this.queryExecutor = new QueryExecutor(
 			this.dataManager,
-			this.contextFactory,
 			this.queryExecutionPlanRunner,
 			resolvedRecordGraphNavigator,
 			aggregateResolver,

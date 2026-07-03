@@ -1,7 +1,6 @@
 import { IDataReader } from "../../interfaces/IDataReader";
-import { ContextFactory } from "../ContextFactory";
 import { SchemaContext } from "../../types/ContextTypes";
-import { QueryRequest, QueryGroupResult, QueryFilter/*, QueryAggregate*/ } from "../../types/QueryTypes";
+import { QueryRequest, QueryGroupResult, QueryFilter } from "../../types/QueryTypes";
 import { QueryPlan } from "../../types/QueryPlannerTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryExecutionPlanRunner } from "./QueryExecutionPlanRunner";
@@ -13,13 +12,11 @@ import { AggregateResolver } from "./aggregate/AggregateResolver";
 import { Schema } from "../../types/SchemaTypes";
 import { QueryMatchBuilder } from "./match/QueryMatchBuilder";
 import { QueryMatchNavigator } from "./match/QueryMatchNavigator";
-import { QueryMatch } from "../../types/QueryMatchTypes";
 
 export class QueryExecutor {
 
 	constructor(
 		private reader: IDataReader,
-		private contextFactory: ContextFactory,
         private runner: QueryExecutionPlanRunner,
         private graphNavigator: ResolvedRecordGraphNavigator,
         private aggregateResolver: AggregateResolver,
@@ -437,41 +434,6 @@ export class QueryExecutor {
         }
 
         return result;
-    }
-
-    private resolveGroupByFromRoot(
-        graph: ResolvedRecordGraph,
-        match: QueryMatch,
-        path: string
-    ): any {
-
-        const parts = path.split(".");
-
-        let node = graph.nodes.get(match.rootId);
-
-        if (!node) return undefined;
-
-        for (let i = 0; i < parts.length; i++) {
-
-            const part = parts[i];
-            const isLast = i === parts.length - 1;
-
-            if (isLast) {
-                return node.data?.[part];
-            }
-
-            const refs = node.refs.get(part);
-
-            if (!refs?.length) {
-                return undefined;
-            }
-
-            node = graph.nodes.get(refs[0]);
-
-            if (!node) return undefined;
-        }
-
-        return undefined;
     }
 
 	async executeQuery(

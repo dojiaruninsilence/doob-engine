@@ -1,5 +1,4 @@
 import { IAggregateStrategy } from "../IAggregateStrategy";
-import { ResolvedRecordGraphNavigator } from "../../graph/ResolvedRecordGraphNavigator";
 import { ResolvedRecordGraph } from "../../../../types/ResolvedRecordGraph";
 import { QueryGroupResult } from "../../../../types/QueryTypes";
 import { AggregateRequest } from "../../../../types/AggregateTypes";
@@ -10,7 +9,6 @@ export class SumStrategy
     implements IAggregateStrategy {
 
     constructor(
-        //private navigator: ResolvedRecordGraphNavigator,
         private matchNavigator: QueryMatchNavigator
     ) {}
 

@@ -1,4 +1,3 @@
-import { ResolvedRecordGraphNavigator } from "../graph/ResolvedRecordGraphNavigator";
 import { AggregateResolver } from "./AggregateResolver";
 import { AggregateStrategyRegistry } from "./AggregateStrategyRegistry";
 import { CountMatchesStrategy } from "./strategies/CountMatchesStrategy";
@@ -14,7 +13,6 @@ import { CountRootsStrategy } from "./strategies/CountRootsStrategy";
 export class AggregateBootstrap {
 
     static build(
-        // navigator: ResolvedRecordGraphNavigator,
         matchNavigator: QueryMatchNavigator
     ): AggregateResolver {
 
