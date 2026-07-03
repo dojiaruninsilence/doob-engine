@@ -1,4 +1,4 @@
-import { ResolvedRecordGraph } from "../../../types/ResolvedRecordGraph";
+import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
 
 export class ResolvedRecordGraphNavigator {
 

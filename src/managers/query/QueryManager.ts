@@ -1,5 +1,5 @@
 import { SchemaContext } from "../../types/ContextTypes";
-import { QueryRequest, QueryGroupResult } from "../../types/QueryTypes";
+import { QueryRequest, QueryGroupResult } from "../../types/query/QueryTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryPlanner } from "./QueryPlanner";
 import { QueryExecutor } from "./QueryExecutor";

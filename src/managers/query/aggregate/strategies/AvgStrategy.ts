@@ -1,7 +1,7 @@
 import { IAggregateStrategy } from "../IAggregateStrategy";
-import { AggregateRequest } from "../../../../types/AggregateTypes";
-import { ResolvedRecordGraph } from "../../../../types/ResolvedRecordGraph";
-import { QueryGroupResult } from "../../../../types/QueryTypes";
+import { AggregateRequest } from "../../../../types/query/AggregateTypes";
+import { ResolvedRecordGraph } from "../../../../types/query/ResolvedRecordGraph";
+import { QueryGroupResult } from "../../../../types/query/QueryTypes";
 import { QueryMatchNavigator } from "../../match/QueryMatchNavigator";
 
 export class AvgStrategy implements IAggregateStrategy {

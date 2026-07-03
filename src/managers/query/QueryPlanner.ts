@@ -1,6 +1,6 @@
 import { SchemaContext } from "../../types/ContextTypes";
-import { QueryRequest } from "../../types/QueryTypes";
-import { QueryPlan, QueryPlanStep } from "../../types/QueryPlannerTypes";
+import { QueryRequest } from "../../types/query/QueryTypes";
+import { QueryPlan, QueryPlanStep } from "../../types/query/QueryPlannerTypes";
 import { ContextFactory } from "../ContextFactory";
 
 export class QueryPlanner {

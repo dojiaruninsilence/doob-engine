@@ -1,7 +1,7 @@
 import { Notice } from "obsidian";
 import { ResolvedRecordGraphNavigator } from "../managers/query/graph/ResolvedRecordGraphNavigator";
 import { AggregateResolver } from "../managers/query/aggregate/AggregateResolver";
-import { QueryGroupResult } from "../types/QueryTypes";
+import { QueryGroupResult } from "../types/query/QueryTypes";
 import { AggregateStrategyRegistry } from "../managers/query/aggregate/AggregateStrategyRegistry";
 import { CountMatchesStrategy } from "../managers/query/aggregate/strategies/CountMatchesStrategy";
 import { SumStrategy } from "../managers/query/aggregate/strategies/SumStrategy";

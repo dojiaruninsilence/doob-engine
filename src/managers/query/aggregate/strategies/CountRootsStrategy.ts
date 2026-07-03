@@ -1,7 +1,7 @@
 import { IAggregateStrategy } from "../IAggregateStrategy";
-import { ResolvedRecordGraph } from "../../../../types/ResolvedRecordGraph";
-import { QueryGroupResult } from "../../../../types/QueryTypes";
-import { AggregateRequest } from "../../../../types/AggregateTypes";
+import { ResolvedRecordGraph } from "../../../../types/query/ResolvedRecordGraph";
+import { QueryGroupResult } from "../../../../types/query/QueryTypes";
+import { AggregateRequest } from "../../../../types/query/AggregateTypes";
 
 export class CountRootsStrategy implements IAggregateStrategy {
 

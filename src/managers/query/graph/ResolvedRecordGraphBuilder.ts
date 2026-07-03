@@ -1,9 +1,9 @@
 import { SchemaContext } from "../../../types/ContextTypes";
 import { DataRecord } from "../../../types/DataTypes";
-import { QueryPlan } from "../../../types/QueryPlannerTypes";
+import { QueryPlan } from "../../../types/query/QueryPlannerTypes";
 import { ContextFactory } from "../../ContextFactory";
 import { IDataReader } from "../../../interfaces/IDataReader";
-import { ResolvedRecordGraph, ResolvedNode } from "../../../types/ResolvedRecordGraph";
+import { ResolvedRecordGraph, ResolvedNode } from "../../../types/query/ResolvedRecordGraph";
 import { Notice } from "obsidian";
 
 export class ResolvedRecordGraphBuilder {

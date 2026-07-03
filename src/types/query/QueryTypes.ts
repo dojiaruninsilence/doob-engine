@@ -1,5 +1,5 @@
 import { AggregateRequest } from "./AggregateTypes";
-import { DataRecord } from "./DataTypes";
+import { DataRecord } from "../DataTypes";
 import { QueryMatch } from "./QueryMatchTypes";
 
 export interface Query {

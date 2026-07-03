@@ -1,4 +1,4 @@
-import { DataRecord } from "./DataTypes";
+import { DataRecord } from "../DataTypes";
 import { QueryPlanStep } from "./QueryPlannerTypes";
 
 export type SchemaDependencyMap =

@@ -1,4 +1,4 @@
-import { SchemaContext } from "./ContextTypes";
+import { SchemaContext } from "../ContextTypes";
 import { QueryPlan } from "./QueryPlannerTypes";
 import { QueryRequest } from "./QueryTypes";
 

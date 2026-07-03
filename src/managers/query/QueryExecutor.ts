@@ -1,13 +1,13 @@
 import { IDataReader } from "../../interfaces/IDataReader";
 import { SchemaContext } from "../../types/ContextTypes";
-import { QueryRequest, QueryGroupResult, QueryFilter } from "../../types/QueryTypes";
-import { QueryPlan } from "../../types/QueryPlannerTypes";
+import { QueryRequest, QueryGroupResult, QueryFilter } from "../../types/query/QueryTypes";
+import { QueryPlan } from "../../types/query/QueryPlannerTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryExecutionPlanRunner } from "./QueryExecutionPlanRunner";
 import { Notice } from "obsidian";
 import { ResolvedRecordGraphNavigator } from "./graph/ResolvedRecordGraphNavigator";
-import { ResolvedRecordGraph } from "../../types/ResolvedRecordGraph";
-import { AggregateRequest } from "../../types/AggregateTypes";
+import { ResolvedRecordGraph } from "../../types/query/ResolvedRecordGraph";
+import { AggregateRequest } from "../../types/query/AggregateTypes";
 import { AggregateResolver } from "./aggregate/AggregateResolver";
 import { Schema } from "../../types/SchemaTypes";
 import { QueryMatchBuilder } from "./match/QueryMatchBuilder";

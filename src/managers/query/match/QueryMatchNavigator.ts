@@ -1,6 +1,6 @@
 import { Notice } from "obsidian";
-import { QueryMatch, ValueMode } from "../../../types/QueryMatchTypes";
-import { ResolvedRecordGraph } from "../../../types/ResolvedRecordGraph";
+import { QueryMatch, ValueMode } from "../../../types/query/QueryMatchTypes";
+import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
 
 export class QueryMatchNavigator {
 

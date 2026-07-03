@@ -1,6 +1,6 @@
-import { QueryPlan } from "../../../types/QueryPlannerTypes";
-import { QueryMatch } from "../../../types/QueryMatchTypes";
-import { ResolvedRecordGraph } from "../../../types/ResolvedRecordGraph";
+import { QueryPlan } from "../../../types/query/QueryPlannerTypes";
+import { QueryMatch } from "../../../types/query/QueryMatchTypes";
+import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
 import { Notice } from "obsidian";
 
 export class QueryMatchBuilder {
