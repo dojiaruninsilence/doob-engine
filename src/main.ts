@@ -13,6 +13,8 @@ import { ResolvedRecordGraphBuilder } from "./managers/query/graph/ResolvedRecor
 import { ResolvedRecordGraphNavigator } from "./managers/query/graph/ResolvedRecordGraphNavigator";
 //import { AggregateResolver } from "./managers/query/aggregate/AggregateResolver";
 import { AggregateBootstrap } from "./managers/query/aggregate/AggregateBootstrap";
+import { QueryMatchBuilder } from "./managers/query/match/QueryMatchBuilder";
+import { QueryMatchNavigator } from "./managers/query/match/QueryMatchNavigator";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -30,7 +32,7 @@ export default class DoobEngine extends Plugin {
 	public queryPlanner!: QueryPlanner;
 	public queryExecutor!: QueryExecutor;
 	public queryExecutionPlanRunner!: QueryExecutionPlanRunner;
-	public resolvedRecordGraphBuilcer!: ResolvedRecordGraphBuilder;
+	public resolvedRecordGraphBuilder!: ResolvedRecordGraphBuilder;
 	//public aggregateResolver!: AggregateResolver;
 	
 	async onload() {
@@ -52,16 +54,20 @@ export default class DoobEngine extends Plugin {
 		// INIT CORE SYSTEMS FIRST (CRITICAL FIX)
 		// --------------------------------------------------
 
+		//new Notice("1");
 		this.cacheManager = new CacheManager();
 
+		//new Notice("2");
 		this.rulesetManager = new RulesetManager(this.app);
 
+		//new Notice("3");
 		this.schemaManager = new SchemaManager(
 			this.app,
 			this.rulesetManager,
 			this.cacheManager
 		);
 
+		//new Notice("4");
 		this.dataManager = new DataManager(
 			this.app,
 			this.schemaManager,
@@ -69,34 +75,48 @@ export default class DoobEngine extends Plugin {
 			this.cacheManager
 		);
 
+		//new Notice("5");
 		this.contextFactory = new ContextFactory(
 			this.schemaManager
 		);
 
+		//new Notice("6");
 		const resolvedRecordGraphNavigator = new ResolvedRecordGraphNavigator();
-		const aggregateResolver = AggregateBootstrap.build(resolvedRecordGraphNavigator);
+		//new Notice("7");
+		const queryMatchBuilder = new QueryMatchBuilder();
+		//new Notice("8");
+		const queryMatchNavigator = new QueryMatchNavigator();
+		//new Notice("9");
+		const aggregateResolver = AggregateBootstrap.build(queryMatchNavigator);
 
+		//new Notice("10");
 		this.queryPlanner = new QueryPlanner(
 			this.contextFactory
 		);
 
-		this.resolvedRecordGraphBuilcer = new ResolvedRecordGraphBuilder(
+		//new Notice("11");
+		this.resolvedRecordGraphBuilder = new ResolvedRecordGraphBuilder(
 			this.dataManager,
 			this.contextFactory
 		);
 
+		//new Notice("12");
 		this.queryExecutionPlanRunner = new QueryExecutionPlanRunner(
-			this.resolvedRecordGraphBuilcer
+			this.resolvedRecordGraphBuilder
 		)
 
+		//new Notice("13");
 		this.queryExecutor = new QueryExecutor(
 			this.dataManager,
 			this.contextFactory,
 			this.queryExecutionPlanRunner,
 			resolvedRecordGraphNavigator,
-			aggregateResolver
+			aggregateResolver,
+			queryMatchBuilder,
+			queryMatchNavigator
 		);
 		
+		//new Notice("14");
 		this.queryManager = new QueryManager(
 			this.queryPlanner,
 			this.queryExecutor
@@ -106,7 +126,9 @@ export default class DoobEngine extends Plugin {
 		// NOW SAFE TO BUILD UI
 		// --------------------------------------------------
 
+		//new Notice("15");
 		this.initUI();
+		//new Notice("16");
 		this.initCommands?.();
 
 		new Notice("Doob Engine is alive!");
@@ -118,13 +140,16 @@ export default class DoobEngine extends Plugin {
 	private initUI() {
 
 		// register panel view
+		//new Notice("ui1");
 		this.registerView(
 			VIEW_TYPE_DOOB_PANEL,
 			(leaf) => new DoobToolPanel(leaf, this)
 		);
 
 		// open panel on startup
+		//new Notice("ui2");
 		this.app.workspace.onLayoutReady(() => {
+			//new Notice("ui3");
 			this.openToolPanel();
 		});
 	}

@@ -8,6 +8,8 @@ export interface QueryPlanStep {
 	from: string;      // schema
 	field: string;     // field name
 	to: string;        // target schema
-	isReference: boolean;
+	path: string;
+	cardinality: "one" | "many";
     toRuleset: string;
+	refType?: "reference" | "referenceCollection";
 }

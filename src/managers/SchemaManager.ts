@@ -57,6 +57,9 @@ export class SchemaManager {
 			case "reference":
 				return null;
 
+			case "referenceCollection":
+				return [];
+
 			default:
 				throw new Error(
 					`Unhandled field type: ${type}`
@@ -110,6 +113,15 @@ export class SchemaManager {
 				return (
 					typeof value === "string" ||
 					value === null
+				);
+
+			case "referenceCollection":
+				return (
+					value === null ||
+					(
+						Array.isArray(value) &&
+						value.every(x => typeof x === "string")
+					)
 				);
 		}
 	}
@@ -234,7 +246,10 @@ export class SchemaManager {
 				);
 			}
 
-			if (field.type === "reference") {
+			if (
+				field.type === "reference" ||
+				field.type === "referenceCollection"
+			) {
 
 				if (
 					!field.referenceTarget ||
@@ -473,7 +488,7 @@ export class SchemaManager {
 			type,
 			default: structuredClone(finalDefault),
 			enumValues: type === "enum" ? enumValues : undefined,
-			referenceTarget: type === "reference"
+			referenceTarget: type === "reference" || type === "referenceCollection"
 				? referenceTarget
 				: undefined
 		};

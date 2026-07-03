@@ -1,28 +1,34 @@
 import { ResolvedRecordGraphNavigator } from "../graph/ResolvedRecordGraphNavigator";
 import { AggregateResolver } from "./AggregateResolver";
 import { AggregateStrategyRegistry } from "./AggregateStrategyRegistry";
-import { CountStrategy } from "./strategies/CountStrategy";
+import { CountMatchesStrategy } from "./strategies/CountMatchesStrategy";
 import { SumStrategy } from "./strategies/SumStrategy";
 import { AvgStrategy } from "./strategies/AvgStrategy";
 import { MinStrategy } from "./strategies/MinStrategy";
 import { MaxStrategy } from "./strategies/MaxStrategy";
-import { DistinctStrategy } from "./strategies/DistinctStrategy";
+import { DistinctCountStrategy } from "./strategies/DistinctCountStrategy";
+import { DistinctValuesStrategy } from "./strategies/DistinctValuesStrategy";
+import { QueryMatchNavigator } from "../match/QueryMatchNavigator";
+import { CountRootsStrategy } from "./strategies/CountRootsStrategy";
 
 export class AggregateBootstrap {
 
     static build(
-        navigator: ResolvedRecordGraphNavigator
+        // navigator: ResolvedRecordGraphNavigator,
+        matchNavigator: QueryMatchNavigator
     ): AggregateResolver {
 
         const registry =
             new AggregateStrategyRegistry();
 
-        registry.register("count", new CountStrategy());
-        registry.register("sum", new SumStrategy(navigator));
-        registry.register("avg", new AvgStrategy(navigator));
-        registry.register("min", new MinStrategy(navigator));
-        registry.register("max", new MaxStrategy(navigator));
-        registry.register("distinct", new DistinctStrategy(navigator));
+        registry.register("count-matches", new CountMatchesStrategy());
+        registry.register("count-roots", new CountRootsStrategy());
+        registry.register("sum", new SumStrategy(matchNavigator));
+        registry.register("avg", new AvgStrategy(matchNavigator));
+        registry.register("min", new MinStrategy(matchNavigator));
+        registry.register("max", new MaxStrategy(matchNavigator));
+        registry.register("distinct-count", new DistinctCountStrategy(matchNavigator));
+        registry.register("distinct-values", new DistinctValuesStrategy(matchNavigator));
 
         return new AggregateResolver(registry);
     }

@@ -3,8 +3,7 @@ import { AggregateRequest } from "../../../../types/AggregateTypes";
 import { ResolvedRecordGraph } from "../../../../types/ResolvedRecordGraph";
 import { QueryGroupResult } from "../../../../types/QueryTypes";
 
-export class CountStrategy
-    implements IAggregateStrategy {
+export class CountMatchesStrategy implements IAggregateStrategy {
 
     async evaluate(
         graph: ResolvedRecordGraph,
@@ -13,6 +12,20 @@ export class CountStrategy
         request: AggregateRequest
     ): Promise<any> {
 
-        return group.records.length;
+        return group.matches.length;
     }
 }
+
+// export class CountStrategy
+//     implements IAggregateStrategy {
+
+//     async evaluate(
+//         graph: ResolvedRecordGraph,
+//         group: QueryGroupResult,
+//         rootId: string,
+//         request: AggregateRequest
+//     ): Promise<any> {
+
+//         return group.records.length;
+//     }
+// }

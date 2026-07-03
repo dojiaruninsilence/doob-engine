@@ -5,7 +5,8 @@ export const FIELD_TYPES = [
 	"object",
 	"array",
 	"enum",
-	"reference"
+	"reference",
+	"referenceCollection"
 ] as const;
 
 export type FieldType =

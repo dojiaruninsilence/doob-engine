@@ -1,4 +1,6 @@
+import { AggregateRequest } from "./AggregateTypes";
 import { DataRecord } from "./DataTypes";
+import { QueryMatch } from "./QueryMatchTypes";
 
 export interface Query {
 	where?: Record<string, any>;
@@ -21,16 +23,16 @@ export type QueryOperator =
 	| "contains"
 	| "exists";
 
-export interface QueryAggregate {
-	op:
-		| "count"
-		| "sum"
-		| "avg"
-		| "min"
-		| "max";
+// export interface QueryAggregate {
+// 	op:
+// 		| "count"
+// 		| "sum"
+// 		| "avg"
+// 		| "min"
+// 		| "max";
 
-	field?: string;
-}
+// 	field?: string;
+// }
 
 export interface QueryFilter {
 	field: string;
@@ -47,13 +49,15 @@ export interface QueryRequest {
 		dir: "asc" | "desc";
 	};
 	select?: string[];
-	aggregate?: QueryAggregate;
+	aggregate?: AggregateRequest;
 	groupBy?: string;
+	groupByMode?: "fanout" | "collapse" | "first" | "distinct";
 	having?: QueryFilter[];
 }
 
 export interface QueryGroupResult {
 	key: any;
 	records: DataRecord[];
+	matches: QueryMatch[];
 	value: number; // aggregation result
 }

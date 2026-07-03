@@ -3,12 +3,15 @@ import { ResolvedRecordGraphNavigator } from "../managers/query/graph/ResolvedRe
 import { AggregateResolver } from "../managers/query/aggregate/AggregateResolver";
 import { QueryGroupResult } from "../types/QueryTypes";
 import { AggregateStrategyRegistry } from "../managers/query/aggregate/AggregateStrategyRegistry";
-import { CountStrategy } from "../managers/query/aggregate/strategies/CountStrategy";
+import { CountMatchesStrategy } from "../managers/query/aggregate/strategies/CountMatchesStrategy";
 import { SumStrategy } from "../managers/query/aggregate/strategies/SumStrategy";
 import { AvgStrategy } from "../managers/query/aggregate/strategies/AvgStrategy";
 import { MinStrategy } from "../managers/query/aggregate/strategies/MinStrategy";
 import { MaxStrategy } from "../managers/query/aggregate/strategies/MaxStrategy";
-import { DistinctStrategy } from "../managers/query/aggregate/strategies/DistinctStrategy";
+import { DistinctCountStrategy } from "../managers/query/aggregate/strategies/DistinctCountStrategy";
+import { DistinctValuesStrategy } from "../managers/query/aggregate/strategies/DistinctValuesStrategy";
+import { QueryMatchNavigator } from "../managers/query/match/QueryMatchNavigator";
+import { CountRootsStrategy } from "../managers/query/aggregate/strategies/CountRootsStrategy";
 
 export class EngineTestRunner {
 
@@ -158,7 +161,7 @@ export class EngineTestRunner {
 	x1. Graph Integrity Tests
 	x2. Navigator Tests
 	x3. Query Tests
-	4. Aggregate Expansion
+	x4. Aggregate Expansion
 
 			🧠 What you need to design next
 
@@ -177,25 +180,59 @@ export class EngineTestRunner {
 					use ResolvedRecordGraphNavigator
 					support field paths
 					return a computed scalar
-			2. Aggregate Executor (group level)
+					x2. Aggregate Executor (group level)
 
-			For each group:
+					For each group:
 
-			for group in groups:
-				value = aggregateResolver.evaluate(group, graph)
-			3. Aggregate Strategy Registry (optional but recommended)
+					for group in groups:
+						value = aggregateResolver.evaluate(group, graph)
+					x3. Aggregate Strategy Registry (optional but recommended)
 
-			So later you can add:
+					So later you can add:
 
-			count
-			sum
-			avg
-			min
-			max
-			distinct count
-			weighted aggregates
+					count
+					sum
+					avg
+					min
+					max
+					distinct count
+					weighted aggregates
 
 	5. Collection References
+			What I would physically touch first
+				x types/
+					SchemaTypes.ts
+
+				x schema/
+					SchemaValidator.ts
+
+				x query/
+					QueryPlanner.ts
+
+				x query/graph/
+					ResolvedRecordGraphBuilder.ts
+
+				x query/graph/
+					ResolvedRecordGraphNavigator.ts
+
+				x Then add a new test helper similar to your navigator helper:
+
+				x buildCollectionGraphFixture()
+
+				x and write collection graph + navigator tests before touching anything aggregate-related.
+
+					x Graph Builder collection edge test
+					x Navigator collection traversal test
+					x Query filter test
+					x Projection test
+					x Group-by collection test
+					x Aggregate collection test
+					Deep collection traversal test
+
+								QueryExecutionContext {
+									graph: ResolvedRecordGraph;
+									matches: QueryMatch[];
+								}
 	6. Mutation Support
 
 	After aggregate expansion, I'd move toward:
@@ -215,7 +252,6 @@ export class EngineTestRunner {
 
         new Notice("🧪 Engine Tests Starting...");
 
-        
 		await this.safeRun(
 			"Query Manager",
 			() => this.testQueryManager()
@@ -556,6 +592,11 @@ export class EngineTestRunner {
 		await this.safeRun(
 			"Aggregate Tests Manager",
 			() => this.testAggregateManager()
+		);
+
+		await this.safeRun(
+			"Reference Collection Tests Manager",
+			() => this.testReferenceCollectionManager()
 		);
 
         new Notice("✅ All Engine Tests Completed");
@@ -2014,7 +2055,7 @@ export class EngineTestRunner {
 				itemContext,
 				{
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					}
 				}
 			);
@@ -2315,7 +2356,7 @@ export class EngineTestRunner {
 						}
 					],
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					}
 				}
 			);
@@ -2476,7 +2517,7 @@ export class EngineTestRunner {
 			await this.queryManager.queryGroup(itemContext, {
 				groupBy: "owner.guild.name",
 				aggregate: {
-					op: "count"
+					op: "count-matches"
 				}
 			});
 
@@ -2530,6 +2571,43 @@ export class EngineTestRunner {
 			}
 		);
 
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
 		const guildContext =
 			await this.contextFactory.getSchemaContext(
 				"CoreTest",
@@ -2563,12 +2641,12 @@ export class EngineTestRunner {
 				}
 			);
 
-		await this.dataManager.createRecord(
+		const sword = await this.dataManager.createRecord(
 			itemContext,
 			{ name: "Sword", damage: 10, owner: char.id }
 		);
 
-		await this.dataManager.createRecord(
+		const shield = await this.dataManager.createRecord(
 			itemContext,
 			{ name: "Shield", damage: 20, owner: char.id }
 		);
@@ -2715,7 +2793,7 @@ export class EngineTestRunner {
 			await this.queryManager.queryGroup(itemContext, {
 				groupBy: "owner.guild.name",
 				aggregate: {
-					op: "count"
+					op: "count-matches"
 				}
 			});
 
@@ -2756,7 +2834,7 @@ export class EngineTestRunner {
 			await this.queryManager.queryGroup(itemContext, {
 				groupBy: "owner.guild.name",
 				aggregate: {
-					op: "count"
+					op: "count-matches"
 				}
 			});
 
@@ -2928,7 +3006,7 @@ export class EngineTestRunner {
 				{
 					groupBy: "owner.guild.name",
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					},
 					having: [
 						{
@@ -3301,7 +3379,7 @@ export class EngineTestRunner {
 				{
 					groupBy: "owner.guild.name",
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					},
 					having: [
 						{
@@ -3360,7 +3438,7 @@ export class EngineTestRunner {
 				{
 					groupBy: "name",
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					},
 					having: [
 						{
@@ -3535,7 +3613,7 @@ export class EngineTestRunner {
 				{
 					groupBy: "owner.guild.name",
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					},
 					sort: {
 						field: "value",
@@ -3713,7 +3791,7 @@ export class EngineTestRunner {
 				{
 					groupBy: "owner.guild.name",
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					},
 					sort: {
 						field: "value",
@@ -3932,7 +4010,7 @@ export class EngineTestRunner {
 				{
 					groupBy: "owner.guild.name",
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					},
 					sort: {
 						field: "key",
@@ -4136,7 +4214,7 @@ export class EngineTestRunner {
 				{
 					groupBy: "owner.guild.name",
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					},
 					sort: {
 						field: "count",
@@ -5003,7 +5081,7 @@ export class EngineTestRunner {
 				{
 					groupBy: "owner.guild.name",
 					aggregate: {
-						op: "count"
+						op: "count-matches"
 					}
 				}
 			);
@@ -5993,16 +6071,26 @@ export class EngineTestRunner {
 		const swordNode = graph.nodes.get(sword.id);
 		const bobNode = graph.nodes.get(bob.id);
 
-		if (!swordNode?.refs.get("owner")) {
-			throw new Error("Missing owner edge");
-		}
-
-		if (swordNode.refs.get("owner") !== bob.id) {
-			throw new Error("Wrong edge target");
-		}
-
 		if (!bobNode) {
 			throw new Error("Bob node missing");
+		}
+
+		const ownerRefs = swordNode.refs.get("owner");
+
+		if (!Array.isArray(ownerRefs)) {
+			throw new Error("Owner refs should be array");
+		}
+
+		if (ownerRefs.length !== 1) {
+			throw new Error(
+				`Expected 1 owner ref, got ${ownerRefs.length}`
+			);
+		}
+
+		if (ownerRefs[0] !== bob.id) {
+			throw new Error(
+				`Expected owner ${bob.id}, got ${ownerRefs[0]}`
+			);
 		}
 
 		new Notice("Graph Edge Integrity passed");
@@ -6787,25 +6875,45 @@ export class EngineTestRunner {
 			group = {
 				key: "Knights",
 				records: [],
+				matches: [],
 				value: 0
 			};
 		} else {
 			group = {
 				key: "Knights",
 				records: [sword, shield],
+				matches: [
+					{
+						rootId: sword.id,
+						currentId: sword.id,
+						pathIndexes: [],
+						pathNodes: [sword.id],
+						bindings: {}
+					},
+					{
+						rootId: shield.id,
+						currentId: shield.id,
+						pathIndexes: [],
+						pathNodes: [shield.id],
+						bindings: {}
+					}
+				],
 				value: 2
 			};
 		}
 
 		const registry = new AggregateStrategyRegistry();
-		const graphNav = new ResolvedRecordGraphNavigator;
+		//const graphNav = new ResolvedRecordGraphNavigator;
+		const matchNav = new QueryMatchNavigator();
 
-		registry.register("count", new CountStrategy());
-		registry.register("sum", new SumStrategy(graphNav));
-		registry.register("avg", new AvgStrategy(graphNav));
-		registry.register("min", new MinStrategy(graphNav));
-		registry.register("max", new MaxStrategy(graphNav));
-		registry.register("distinct", new DistinctStrategy(graphNav));
+		registry.register("count-matches", new CountMatchesStrategy());
+		registry.register("count-roots", new CountRootsStrategy());
+		registry.register("sum", new SumStrategy(matchNav));
+		registry.register("avg", new AvgStrategy(matchNav));
+		registry.register("min", new MinStrategy(matchNav));
+		registry.register("max", new MaxStrategy(matchNav));
+		registry.register("distinct-count", new DistinctCountStrategy(matchNav));
+		registry.register("distinct-values", new DistinctValuesStrategy(matchNav));
 
 		return {
 			graph,
@@ -6832,7 +6940,7 @@ export class EngineTestRunner {
 				fx.graph,
 				fx.group,
 				fx.sword.id,
-				{ op: "count" }
+				{ op: "count-matches" }
 			);
 
 		if (value !== 2) {
@@ -6919,7 +7027,7 @@ export class EngineTestRunner {
 		const resolver =
 			new AggregateResolver(fx.registry);
 		
-		const distinct = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "distinct", field: "power" });
+		const distinct = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "distinct-count", field: "power" });
 		if (distinct !== 1) throw new Error(`Expected distinct 1, got ${distinct}`);
 		new Notice("Aggregate Distinct One Passed");
 	}
@@ -6932,7 +7040,7 @@ export class EngineTestRunner {
 		const resolver =
 			new AggregateResolver(fx.registry);
 		
-		const distinct = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "distinct", field: "power" });
+		const distinct = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "distinct-count", field: "power" });
 		if (distinct !== 2) throw new Error(`Expected distinct 2, got ${distinct}`);
 		new Notice("Aggregate Distinct Two Passed");
 	}
@@ -6971,7 +7079,7 @@ export class EngineTestRunner {
 		const resolver =
 			new AggregateResolver(fx.registry);
 		
-		const count = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "count" });
+		const count = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "count-matches" });
 		if (count !== 0) throw new Error(`Expected count 0, got ${count}`);
 		new Notice("Aggregate Count Empty Passed");
 	}
@@ -7034,5 +7142,3037 @@ export class EngineTestRunner {
 
 
 		new Notice("Aggregate Manager Tests Completed");
+	}
+
+	private async testReferenceCollectionSchemaRecordValidate() {
+		new Notice("Test Schema Record Creation");
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"members",
+			"referenceCollection",
+			[],
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		await this.ensureField("CoreTest", "Character", "name", "string", "");
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+
+		const characterContext = await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+		const bob =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Bob"
+			});
+
+		const rick =
+			await this.dataManager.createRecord(characterContext, {
+				name: "Rick"
+			});
+			
+		await this.dataManager.createRecord(
+			guildContext,
+			{
+				name: "Knights",
+				members: [bob.id, rick.id]
+			}
+		);
+		new Notice("Test Schema Record Created");
+	}
+
+	private async testReferenceCollectionSchemaValidation() {
+
+		await this.resetCoreTestData();
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"members",
+			"referenceCollection",
+			[],
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const schema =
+			await this.schemaManager.getSchema(
+				"CoreTest",
+				"Guild"
+			);
+
+		const validation =
+			this.schemaManager.validateSchema(schema);
+
+		if (!validation.valid) {
+			throw new Error(
+				"referenceCollection schema should validate"
+			);
+		}
+	}
+
+	private async testReferenceCollectionInvalidDefault() {
+
+		let failed = false;
+
+		try {
+
+			await this.schemaManager.addField(
+				"CoreTest",
+				"Guild",
+				"members",
+				"referenceCollection",
+				"Bob" // invalid
+			);
+
+		} catch {
+			failed = true;
+		}
+
+		if (!failed) {
+			throw new Error(
+				"Expected invalid default rejection"
+			);
+		}
+	}
+
+	private async testReferenceCollectionRecordValidation() {
+
+		await this.resetCoreTestData();
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const guild =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					members: [
+						"id1",
+						"id2"
+					]
+				}
+			);
+
+		if (!guild) {
+			throw new Error(
+				"Failed creating referenceCollection record"
+			);
+		}
+	}
+
+	private async buildReferenceCollectionGraphFixture() {
+
+		await this.resetCoreTestData();
+
+		// -----------------------------
+		// Schema
+		// -----------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"members",
+			"referenceCollection",
+			[],
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			"",
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		)
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"level",
+			"number",
+			0
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"items",
+			"referenceCollection",
+			[],
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Item"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		// -----------------------------
+		// Contexts
+		// -----------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		// -----------------------------
+		// Data
+		// -----------------------------
+
+		const sword =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Sword"
+				}
+			);
+
+		const shield =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Shield"
+				}
+			);
+
+		const wand =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Wand"
+				}
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					items: [
+						sword.id,
+						shield.id
+					],
+					level: 10
+				}
+			);
+
+		const alice =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Alice",
+					items: [
+						wand.id
+					],
+					level: 20
+				}
+			);
+		
+		const poop =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Poop",
+					items: [
+						wand.id
+					]
+				}
+			);
+
+		const sam = await this.dataManager.createRecord(characterContext, { name: "Sam" });
+		const smith = await this.dataManager.createRecord(characterContext, { name: "Smith" });
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Knights",
+					members: [
+						bob.id,
+						alice.id
+					]
+				}
+			);
+
+		const bandits =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Bandits",
+					members: [
+						bob.id
+					]
+				}
+			);
+
+		const poopers =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Poopers"
+				}
+			);
+
+		const ninjas = await this.dataManager.createRecord(guildContext, { name: "Ninjas", members: [sam.id, smith.id]});
+
+		await this.dataManager.update(characterContext, sam.id, { guild: ninjas.id });
+		await this.dataManager.update(characterContext, smith.id, { guild: ninjas.id });
+
+		await this.dataManager.update(
+			characterContext,
+			bob.id,
+			{
+				guild: bandits.id
+			}
+		)
+
+		// -----------------------------
+		// Plan
+		// -----------------------------
+
+		const plan =
+			await this.queryPlanner.plan(
+				guildContext,
+				{
+					select: [
+						"members.name",
+						"members.items.name"
+					]
+				}
+			);
+
+		const plan2 =
+			await this.queryPlanner.plan(
+				guildContext,
+				{
+					select: [
+						"members.name",
+						"members.guild.name"
+					]
+				}
+			);
+
+		const graph1 =
+			await this.graphBuilder.build(
+				guildContext,
+				[knights],
+				plan
+			);
+
+		const graph2 = 
+			await this.graphBuilder.build(
+				guildContext,
+				[bandits],
+				plan
+			);
+
+		const graph3 = 
+			await this.graphBuilder.build(
+				guildContext,
+				[poopers],
+				plan
+			);
+
+		const graph4 = 
+			await this.graphBuilder.build(
+				guildContext,
+				[bandits],
+				plan2
+			);
+
+		const graph5 = 
+			await this.graphBuilder.build(
+				guildContext,
+				[ninjas],
+				plan2
+			);
+
+		const navigator = new ResolvedRecordGraphNavigator();
+
+		return {
+			graph1,
+			graph2,
+			graph3,
+			graph4,
+			graph5,
+			plan,
+			navigator,
+
+			guildContext,
+			characterContext,
+			itemContext,
+
+			knights,
+			bandits,
+			poopers,
+			ninjas,
+			bob,
+			alice,
+			poop,
+			sam,
+			smith,
+
+			sword,
+			shield,
+			wand
+		};
+	}
+
+	private async testGraphReferenceCollectionSingle() {
+
+		const {
+			bandits,
+			bob,
+			graph2
+		} = await this.buildReferenceCollectionGraphFixture();
+
+		const guildNode =
+			graph2.nodes.get(bandits.id);
+
+		const members =
+			guildNode?.refs.get("members");
+
+		if (members.length !== 1) {
+			throw new Error(
+				`Expected 2 members, got ${members.length}`
+			);
+		}
+
+		if (!members.includes(bob.id)) {
+			throw new Error("Bob missing");
+		}
+	}
+
+	private async testGraphReferenceCollectionMultiple() {
+
+		const {
+			knights,
+			bob,
+			alice,
+			poop,
+			graph1
+		} = await this.buildReferenceCollectionGraphFixture();
+
+		const guildNode =
+			graph1.nodes.get(knights.id);
+
+		const members =
+			guildNode?.refs.get("members");
+
+		if (!members) {
+			throw new Error("Members edge missing");
+		}
+
+		if (members.length !== 2) {
+			throw new Error(
+				`Expected 2 members, got ${members.length}`
+			);
+		}
+
+		const ids =
+			new Set(members);
+
+		if (
+			!ids.has(bob.id) ||
+			!ids.has(alice.id)
+		) {
+			throw new Error(
+				"Missing expected members"
+			);
+		}
+	}
+
+	private async testGraphReferenceCollectionEmpty() {
+
+		const {
+			poopers,
+			graph3
+		} = await this.buildReferenceCollectionGraphFixture();
+
+		const guildNode =
+			graph3.nodes.get(poopers.id);
+
+		const members =
+			guildNode?.refs.get("members");
+
+		if (members !== undefined) {
+			throw new Error(
+				"Expected no edge for empty collection"
+			);
+		}
+
+		new Notice(
+			"Graph ReferenceCollection Empty passed"
+		);
+	}
+
+	private async testGraphReferenceCollectionLoadsTargets() {
+
+		const {
+			bob,
+			alice,
+			poop,
+			graph1
+		} = await this.buildReferenceCollectionGraphFixture();
+
+		if (!graph1.nodes.has(bob.id)) {
+			throw new Error("Character 1 missing");
+		}
+
+		if (!graph1.nodes.has(alice.id)) {
+			throw new Error("Character 2 missing");
+		}
+
+		// if (!graph1.nodes.has(poop.id)) {
+		// 	throw new Error("Character 3 missing");
+		// }
+
+		new Notice(
+			"Graph ReferenceCollection Loads Targets passed"
+		);
+	}
+
+	private async testGraphReferenceCollectionMultiHop() {
+
+		const {
+			bandits,
+			bob,
+			graph4
+		} = await this.buildReferenceCollectionGraphFixture();
+
+		const guildNode =
+			graph4.nodes.get(bandits.id);
+
+		const members =
+			guildNode?.refs.get("members");
+
+		if (!members?.length) {
+			throw new Error("Members missing");
+		}
+
+		const charNode =
+			graph4.nodes.get(bob.id);
+
+		if (!charNode) {
+			throw new Error(
+				"Character node missing"
+			);
+		}
+
+		const homeGuild =
+			charNode.refs.get("guild");
+
+		if (!homeGuild?.length) {
+			throw new Error(
+				"Second hop missing"
+			);
+		}
+
+		if (homeGuild[0] !== bandits.id) {
+			throw new Error(
+				"Incorrect second hop target"
+			);
+		}
+
+		new Notice(
+			"Graph ReferenceCollection MultiHop passed"
+		);
+	}
+
+	private async testNavigatorDirectField() {
+
+		const {
+			graph1,
+			knights,
+			navigator
+		} = await this.buildReferenceCollectionGraphFixture();
+
+		const value =
+			navigator.getValue(
+				graph1,
+				knights.id,
+				"name"
+			);
+
+		if (value !== "Knights") {
+			throw new Error(
+				`Expected Knights, got ${value}`
+			);
+		}
+	}
+
+	private async testNavigatorCollectionNames() {
+
+		const {
+			graph1,
+			knights,
+			navigator
+		} = await this.buildReferenceCollectionGraphFixture();
+
+		const value =
+			navigator.getValue(
+				graph1,
+				knights.id,
+				"members.name"
+			);
+
+		if (!Array.isArray(value)) {
+			throw new Error(
+				"Expected array result"
+			);
+		}
+
+		if (value.length !== 2) {
+			throw new Error(
+				`Expected 2 names, got ${value.length}`
+			);
+		}
+
+		if (
+			!value.includes("Bob") ||
+			!value.includes("Alice")
+		) {
+			throw new Error(
+				"Missing member names"
+			);
+		}
+	}
+
+	private async testNavigatorCollectionNumbers() {
+
+		const {
+			graph1,
+			knights,
+			navigator
+		} = await this.buildReferenceCollectionGraphFixture();
+
+		const value =
+			navigator.getValue(
+				graph1,
+				knights.id,
+				"members.level"
+			);
+
+		if (!Array.isArray(value)) {
+			throw new Error(
+				"Expected array result"
+			);
+		}
+
+		if (
+			!value.includes(10) ||
+			!value.includes(20)
+		) {
+			throw new Error(
+				"Missing levels"
+			);
+		}
+	}
+
+	private async testNavigatorCollectionMultiHop() {
+
+		const {
+			graph5,
+			ninjas,
+			navigator
+		} = await this.buildReferenceCollectionGraphFixture();
+
+		const value =
+			navigator.getValue(
+				graph5,
+				ninjas.id,
+				"members.guild.name"
+			);
+
+		if (!Array.isArray(value)) {
+			throw new Error(
+				"Expected array"
+			);
+		}
+
+		if (value.length !== 2) {
+			throw new Error(
+				`Expected 2 values, got ${value.length}`
+			);
+		}
+
+		if (
+			value[0] !== "Ninjas" ||
+			value[1] !== "Ninjas"
+		) {
+			throw new Error(
+				"Wrong traversal result"
+			);
+		}
+	}
+
+	private async buildReferenceCollectionQueryFixture() {
+
+		await this.resetCoreTestData();
+
+		// --------------------------------------------------
+		// Schema
+		// --------------------------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"members",
+			"referenceCollection",
+			[],
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"level",
+			"number",
+			0
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		// --------------------------------------------------
+		// Contexts
+		// --------------------------------------------------
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		// --------------------------------------------------
+		// Guilds
+		// --------------------------------------------------
+
+		const knights =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Knights"
+				}
+			);
+
+		const ninjas =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Ninjas"
+				}
+			);
+
+		const merchants =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Merchants",
+					members: []
+				}
+			);
+
+		// --------------------------------------------------
+		// Characters
+		// --------------------------------------------------
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					level: 10,
+					guild: knights.id
+				}
+			);
+
+		const alice =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Alice",
+					level: 20,
+					guild: knights.id
+				}
+			);
+
+		const carl =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Carl",
+					level: 30,
+					guild: ninjas.id
+				}
+			);
+
+		// --------------------------------------------------
+		// Update guild member collections
+		// --------------------------------------------------
+
+		await this.dataManager.update(
+			guildContext,
+			knights.id,
+			{
+				members: [
+					bob.id,
+					alice.id
+				]
+			}
+		);
+
+		await this.dataManager.update(
+			guildContext,
+			ninjas.id,
+			{
+				members: [
+					carl.id
+				]
+			}
+		);
+
+		return {
+			guildContext,
+			characterContext,
+			knights,
+			ninjas,
+			merchants,
+			bob,
+			alice,
+			carl
+		};
+	}
+
+	private async testFilterCollectionEquals() {
+
+		const {
+			guildContext,
+			knights
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.name",
+							op: "=",
+							value: "Bob"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].id !== knights.id) {
+			throw new Error(
+				"Wrong guild returned"
+			);
+		}
+	}
+
+	private async testFilterCollectionEqualsNoMatch() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.name",
+							op: "=",
+							value: "Zelda"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 0) {
+			throw new Error(
+				`Expected 0 results, got ${results.length}`
+			);
+		}
+	}
+
+	private async testFilterCollectionNotEquals() {
+
+		const {
+			guildContext,
+			ninjas
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.name",
+							op: "!=",
+							value: "Bob"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 results, got ${results.length}`
+			);
+		}
+
+		if (
+			!results.some(r => r.id === ninjas.id)
+		) {
+			throw new Error(
+				"Ninjas missing"
+			);
+		}
+	}
+
+	private async testFilterCollectionGreaterThan() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.level",
+							op: ">",
+							value: 15
+						}
+					]
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 results, got ${results.length}`
+			);
+		}
+	}
+
+	private async testFilterCollectionGreaterThanHigh() {
+
+		const {
+			guildContext,
+			ninjas
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.level",
+							op: ">",
+							value: 25
+						}
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].id !== ninjas.id) {
+			throw new Error(
+				"Wrong guild returned"
+			);
+		}
+	}
+
+	private async testFilterCollectionContains() {
+
+		const {
+			guildContext,
+			knights
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.name",
+							op: "contains",
+							value: "Ali"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].id !== knights.id) {
+			throw new Error(
+				"Wrong guild returned"
+			);
+		}
+	}
+
+	private async testFilterCollectionIn() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.name",
+							op: "in",
+							value: [
+								"Bob",
+								"Carl"
+							]
+						}
+					]
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 results, got ${results.length}`
+			);
+		}
+	}
+
+	private async testFilterCollectionExists() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.name",
+							op: "exists"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 results, got ${results.length}`
+			);
+		}
+	}
+
+	private async testFilterCollectionEmptyExcluded() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.level",
+							op: "exists"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 populated guilds, got ${results.length}`
+			);
+		}
+	}
+
+	private async testFilterCollectionMultiHop() {
+
+		const {
+			guildContext,
+			knights
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					where: [
+						{
+							field: "members.guild.name",
+							op: "=",
+							value: "Knights"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].id !== knights.id) {
+			throw new Error(
+				"Wrong guild returned"
+			);
+		}
+	}
+
+	private async testProjectionCollectionNames() {
+
+		const {
+			guildContext,
+			knights
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					select: [
+						"members.name"
+					]
+				}
+			);
+
+		const guild =
+			results.find(r => r.id === knights.id);
+
+		if (!guild) {
+			throw new Error("Knights missing");
+		}
+
+		if (!Array.isArray(guild.members.name)) {
+			throw new Error(
+				"Expected members.name array"
+			);
+		}
+
+		if (
+			guild.members.name.length !== 2
+		) {
+			throw new Error(
+				`Expected 2 names, got ${guild.members.name.length}`
+			);
+		}
+	}
+
+	private async testProjectionCollectionNumbers() {
+
+		const {
+			guildContext,
+			knights
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					select: [
+						"members.level"
+					]
+				}
+			);
+
+		const guild =
+			results.find(r => r.id === knights.id);
+
+		if (!Array.isArray(guild.members.level)) {
+			throw new Error(
+				"Expected level array"
+			);
+		}
+
+		if (
+			!guild.members.level.includes(10)
+		) {
+			throw new Error(
+				"Missing level 10"
+			);
+		}
+
+		if (
+			!guild.members.level.includes(20)
+		) {
+			throw new Error(
+				"Missing level 20"
+			);
+		}
+	}
+
+	private async testProjectionCollectionMultipleFields() {
+
+		const {
+			guildContext,
+			knights
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					select: [
+						"members.name",
+						"members.level"
+					]
+				}
+			);
+
+		const guild =
+			results.find(r => r.id === knights.id);
+
+		if (!guild?.members) {
+			throw new Error(
+				"Members missing"
+			);
+		}
+
+		if (
+			!Array.isArray(guild.members.name)
+		) {
+			throw new Error(
+				"Name projection missing"
+			);
+		}
+
+		if (
+			!Array.isArray(guild.members.level)
+		) {
+			throw new Error(
+				"Level projection missing"
+			);
+		}
+	}
+
+	private async testProjectionCollectionMultiHop() {
+
+		const {
+			guildContext,
+			knights
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					select: [
+						"members.guild.name"
+					]
+				}
+			);
+
+		const guild =
+			results.find(r => r.id === knights.id);
+
+		if (
+			!Array.isArray(
+				guild.members.guild.name
+			)
+		) {
+			throw new Error(
+				"Expected array"
+			);
+		}
+
+		if (
+			guild.members.guild.name.length !== 2
+		) {
+			throw new Error(
+				"Expected two values"
+			);
+		}
+	}
+
+	private async testProjectionEmptyCollection() {
+
+		const {
+			guildContext,
+			merchants
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					select: [
+						"members.name"
+					]
+				}
+			);
+
+		const guild =
+			results.find(r => r.id === merchants.id);
+
+		if (!guild) {
+			throw new Error(
+				"Merchants missing"
+			);
+		}
+
+		if (!Array.isArray(guild.members?.name)) {
+			throw new Error("Expected array");
+		}
+
+		if (guild.members.name.length !== 0) {
+			throw new Error("Expected empty array");
+		}
+	}
+
+	private async testProjectionMixedFields() {
+
+		const {
+			guildContext,
+			knights
+		} = await this.buildReferenceCollectionQueryFixture();
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					select: [
+						"name",
+						"members.name"
+					]
+				}
+			);
+
+		const guild =
+			results.find(r => r.id === knights.id);
+
+		if (
+			guild.name !== "Knights"
+		) {
+			throw new Error(
+				"Guild name missing"
+			);
+		}
+
+		if (
+			!Array.isArray(
+				guild.members.name
+			)
+		) {
+			throw new Error(
+				"Member names missing"
+			);
+		}
+	}
+
+	private async buildReferenceCollectionGroupFixture() {
+		await this.resetCoreTestData();
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"members",
+			"referenceCollection",
+			[],
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			"",
+			undefined,
+			{ ruleset: "CoreTest", schema: "Guild" }
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"level",
+			"number",
+			0
+		);
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					level: 10
+				}
+			);
+
+		const alice =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Alice",
+					level: 20
+				}
+			);
+
+		const guild =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Knights",
+					members: [
+						bob.id,
+						alice.id
+					]
+				}
+			);
+		
+		await this.dataManager.update(characterContext, bob.id, { guild: guild.id });
+		await this.dataManager.update(characterContext, alice.id, { guild: guild.id });
+
+		return {
+			guildContext,
+			characterContext,
+			guild,
+			bob,
+			alice
+		};
+	}
+
+	private async testGroupByCollectionName() {
+
+		const {
+			guildContext
+		} =
+			await this.buildReferenceCollectionGroupFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.name",
+					aggregate: {
+						op: "count-matches"
+					}
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 groups, got ${results.length}`
+			);
+		}
+
+		const names =
+			results.map(x => x.key);
+
+		if (
+			!names.includes("Bob") ||
+			!names.includes("Alice")
+		) {
+			throw new Error(
+				"Missing member groups"
+			);
+		}
+	}
+
+	private async testGroupByCollectionNumber() {
+
+		const {
+			guildContext
+		} =
+			await this.buildReferenceCollectionGroupFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.level",
+					aggregate: {
+						op: "count-matches"
+					}
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 groups, got ${results.length}`
+			);
+		}
+
+		const levels =
+			results.map(x => x.key);
+
+		if (
+			!levels.includes(10) ||
+			!levels.includes(20)
+		) {
+			throw new Error(
+				"Missing level groups"
+			);
+		}
+	}
+
+	private async testGroupByEmptyCollection() {
+
+		const {
+			guildContext
+		} =
+			await this.buildReferenceCollectionGroupFixture();
+
+		await this.dataManager.createRecord(
+			guildContext,
+			{
+				name: "Merchants",
+				members: []
+			}
+		);
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.name",
+					aggregate: {
+						op: "count-matches"
+					}
+				}
+			);
+
+		const merchantGroup =
+			results.find(
+				x => x.key === "Merchants"
+			);
+
+		if (merchantGroup) {
+			throw new Error(
+				"Empty collection should not create group"
+			);
+		}
+	}
+
+	private async testGroupByCollectionMultiHop() {
+
+		const {
+			guildContext
+		} =
+			await this.buildReferenceCollectionGroupFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.guild.name",
+					aggregate: {
+						op: "count-roots"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		const group = results[0];
+
+		if (group.key !== "Knights") {
+			throw new Error(
+				`Expected Knights, got ${group.key}`
+			);
+		}
+
+		if (group.value !== 1) {
+			throw new Error(
+				`Expected count 1, got ${group.value}`
+			);
+		}
+	}
+
+	private async testGroupByCollectionDuplicateValues() {
+
+		const {
+			guildContext,
+			characterContext,
+			guild,
+			alice
+		} =
+			await this.buildReferenceCollectionGroupFixture();
+
+		await this.dataManager.update(
+			characterContext,
+			alice.id,
+			{
+				level: 10
+			}
+		);
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.level",
+					aggregate: {
+						op: "count-roots"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		const group = results[0];
+
+		if (group.key !== 10) {
+			throw new Error(
+				`Expected key 10, got ${group.key}`
+			);
+		}
+
+		if (group.value !== 1) {
+			throw new Error(
+				`Expected count 1, got ${group.value}`
+			);
+		}
+	}
+
+	private async testAggregateSumReferenceCollection() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionGroupFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.name",
+					aggregate: {
+						op: "sum",
+						field: "members.level"
+					}
+				}
+			);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 groups, got ${results.length}`
+			);
+		}
+
+		//new Notice(`key: ${results[0].key}, ${results[0].value}`);
+		//new Notice(`key: ${results[1].key}, ${results[1].value}`);
+
+		for (const group of results) {
+
+			//new Notice(`key: ${group.key}, ${group.value}`);
+
+			if (group.key === "Bob" && group.value !== 10) {
+				throw new Error(`Expected Bob sum 10, got ${group.value}`);
+			}
+
+			if (group.key === "Alice" && group.value !== 20) {
+				throw new Error(`Expected Alice sum 20, got ${group.value}`);
+			}
+		}
+	}
+
+	private async testAggregateSumMultiHopReferenceCollection() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionGroupFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.guild.name",
+					aggregate: {
+						op: "sum",
+						field: "members.level"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		const group = results[0];
+
+		if (group.key !== "Knights") {
+			throw new Error(
+				`Expected Knights, got ${group.key}`
+			);
+		}
+
+		if (group.value !== 30) {
+			throw new Error(
+				`Expected sum 30, got ${group.value}`
+			);
+		}
+	}
+
+	private async testAggregateAvgReferenceCollection() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionGroupFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.name",
+					aggregate: {
+						op: "avg",
+						field: "members.level"
+					}
+				}
+			);
+
+		// for (const result of results) {
+		// 	new Notice(`Test Results: ${result.value}`);
+		// }
+
+		// new Notice(results.length);
+		// new Notice(results[0].value);
+		// new Notice(results[0].key);
+
+		const bob =
+			results.find(r => r.key === "Bob");
+
+		if (!bob) {
+			throw new Error("Missing Bob group");
+		}
+
+		if (bob.value !== 10) {
+			throw new Error(`Expected avg 10, got ${bob.value}`);
+		}
+	}
+
+	private async testAggregateMinMaxReferenceCollection() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionGroupFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.guild.name",
+					aggregate: {
+						op: "max",
+						field: "members.level"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error("Expected 1 group");
+		}
+
+		if (results[0].value !== 20) {
+			throw new Error(`Expected max 20, got ${results[0].value}`);
+		}
+	}
+
+	private async testAggregateDistinctReferenceCollection() {
+
+		const {
+			guildContext
+		} = await this.buildReferenceCollectionGroupFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.guild.name",
+					aggregate: {
+						op: "distinct-values",
+						field: "members.name"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		const group = results[0];
+
+		const values = group.value;
+
+		new Notice(`Distinct values: ${values}`);
+
+		if (!Array.isArray(values)) {
+			throw new Error("Expected array from distinct");
+		}
+
+		if (values.length !== 2) {
+			throw new Error(
+				`Expected 2 distinct values, got ${values.length}`
+			);
+		}
+
+		if (!values.includes("Bob") || !values.includes("Alice")) {
+			throw new Error("Missing distinct values");
+		}
+	}
+
+	private async buildDeepCollectionFixture() {
+
+		await this.resetCoreTestData();
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"members",
+			"referenceCollection",
+			[],
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"guild",
+			"reference",
+			"",
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Guild"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"items",
+			"referenceCollection",
+			[],
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Item"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"power",
+			"number",
+			0
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"type",
+			"string",
+			""
+		);
+
+		const guildContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Guild"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const sword =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Sword",
+					power: 10,
+					type: "Weapon"
+				}
+			);
+
+		const shield =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Shield",
+					power: 20,
+					type: "Armor"
+				}
+			);
+
+		const wand =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Wand",
+					power: 30,
+					type: "Weapon"
+				}
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob",
+					items: [
+						sword.id,
+						shield.id
+					]
+				}
+			);
+
+		const alice =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Alice",
+					items: [
+						wand.id
+					]
+				}
+			);
+
+		const guild =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Knights",
+					members: [
+						bob.id,
+						alice.id
+					]
+				}
+			);
+
+		await this.dataManager.update(
+			characterContext,
+			bob.id,
+			{
+				guild: guild.id
+			}
+		);
+
+		await this.dataManager.update(
+			characterContext,
+			alice.id,
+			{
+				guild: guild.id
+			}
+		);
+
+		return {
+			guildContext,
+			characterContext,
+			itemContext,
+			guild,
+			bob,
+			alice,
+			sword,
+			shield,
+			wand
+		};
+	}
+
+	private async testAggregateSumDeepCollection() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		if (results[0].value !== 60) {
+			throw new Error(
+				`Expected sum 60, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testCountDeepCollectionMatches() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "count-matches",
+						field: "members.items.name"
+					}
+				}
+			);
+
+		if (results[0].value !== 3) {
+			throw new Error(
+				`Expected 3 matches, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testGroupByDeepCollectionType() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.items.type",
+					aggregate: {
+						op: "count-matches"
+					}
+				}
+			);
+
+		const weapon =
+			results.find(
+				x => x.key === "Weapon"
+			);
+
+		const armor =
+			results.find(
+				x => x.key === "Armor"
+			);
+
+		new Notice(weapon.value);
+		new Notice(armor.value);
+
+		if (!weapon || weapon.value !== 2) {
+			throw new Error(
+				"Weapon count incorrect"
+			);
+		}
+
+		if (!armor || armor.value !== 1) {
+			throw new Error(
+				"Armor count incorrect"
+			);
+		}
+	}
+
+	private async testDistinctValuesDeepCollection() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "distinct-values",
+						field: "members.items.type"
+					}
+				}
+			);
+
+		//new Notice(JSON.stringify(results, null, 2));
+
+		// new Notice(results.length);
+
+		// for (const result of results) {
+		// 	new Notice(`Test Result: ${result.value} ${result.key}`);
+		// }
+
+		const values = results[0].value;
+
+		if (!Array.isArray(values)) {
+			throw new Error(
+				"Expected array"
+			);
+		}
+
+		if (
+			!values.includes("Weapon") ||
+			!values.includes("Armor")
+		) {
+			throw new Error(
+				"Distinct values missing"
+			);
+		}
+	}
+
+	private async testAggregateAvgDeepCollection() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "avg",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		// (10 + 20 + 30) / 3 = 20
+
+		if (results[0].value !== 20) {
+			throw new Error(
+				`Expected avg 20, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testAggregateMinDeepCollection() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "min",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (results[0].value !== 10) {
+			throw new Error(
+				`Expected min 10, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testAggregateMaxDeepCollection() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "max",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (results[0].value !== 30) {
+			throw new Error(
+				`Expected max 30, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testAggregateDistinctCountDeepCollection() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "distinct-count",
+						field: "members.items.type"
+					}
+				}
+			);
+
+		if (results[0].value !== 2) {
+			throw new Error(
+				`Expected 2 distinct values, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testGroupByDeepCollectionTypeNew() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.items.type",
+					aggregate: {
+						op: "count-matches"
+					}
+				}
+			);
+
+		const weapon =
+				results.find(
+					r => r.key === "Weapon"
+				);
+
+		const armor =
+				results.find(
+					r => r.key === "Armor"
+				);
+
+		if (!weapon) {
+			throw new Error(
+				"Missing Weapon group"
+			);
+		}
+
+		if (!armor) {
+			throw new Error(
+				"Missing Armor group"
+			);
+		}
+
+		if (weapon.value !== 2) {
+			throw new Error(
+				`Expected Weapon count 2, got ${weapon.value}`
+			);
+		}
+
+		if (armor.value !== 1) {
+			throw new Error(
+				`Expected Armor count 1, got ${armor.value}`
+			);
+		}
+	}
+
+	private async testGroupByCharacterNameDeepCollection() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		const bob =
+				results.find(
+					r => r.key === "Bob"
+				);
+
+		const alice =
+				results.find(
+					r => r.key === "Alice"
+				);
+
+		if (!bob || bob.value !== 30) {
+			throw new Error(
+				`Expected Bob sum 30, got ${bob?.value}`
+			);
+		}
+
+		if (!alice || alice.value !== 30) {
+			throw new Error(
+				`Expected Alice sum 30, got ${alice?.value}`
+			);
+		}
+	}
+
+	private async testAggregateCountRootsDeepCollection() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.items.type",
+					aggregate: {
+						op: "count-roots"
+					}
+				}
+			);
+
+		const weapon =
+				results.find(
+					r => r.key === "Weapon"
+				);
+
+		if (!weapon) {
+			throw new Error(
+				"Missing Weapon group"
+			);
+		}
+
+		// Both weapon items originate
+		// from the same guild root.
+
+		if (weapon.value !== 1) {
+			throw new Error(
+				`Expected 1 root, got ${weapon.value}`
+			);
+		}
+	}
+
+	private async buildSharedItemFixture() {
+
+		const {
+			guildContext,
+			characterContext,
+			itemContext,
+			sword,
+			bob,
+			alice,
+			guild
+		} =
+			await this.buildDeepCollectionFixture();
+
+		// await this.resetCoreTestData();
+
+		
+		await this.dataManager.update(
+			itemContext,
+			sword.id,
+			{
+				name: "Sword",
+				power: 10,
+				type: "Weapon"
+			}
+		);
+
+		await this.dataManager.update(
+			characterContext,
+			bob.id,
+			{
+				name: "Bob",
+				items: [sword.id]
+			}
+		);
+
+		await this.dataManager.update(
+			characterContext,
+			alice.id,
+			{
+				name: "Alice",
+				items: [sword.id]
+				}
+			);
+
+		return {
+			guildContext,
+			guild,
+			bob,
+			alice,
+			sword
+		};
+	}
+
+	// private async testSharedItemCountMatches() {
+
+	// 	const {
+	// 		guildContext
+	// 	} =
+	// 		await this.buildSharedItemFixture();
+
+	// 	const results =
+	// 		await this.queryManager.queryGroup(
+	// 			guildContext,
+	// 			{
+	// 				groupBy: "name",
+	// 				aggregate: {
+	// 					op: "count-matches"
+	// 				}
+	// 			}
+	// 		);
+
+	// 	if (results[0].value !== 2) {
+
+	// 		throw new Error(
+	// 			`Expected 2 matches, got ${results[0].value}`
+	// 		);
+	// 	}
+	// }
+
+	private async testSharedItemCountMatches() {
+
+		const {
+			guildContext
+		} =
+			await this.buildSharedItemFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "count-matches",
+						field: "members.items.name"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Knights") {
+			throw new Error(
+				`Expected Knights group, got ${results[0].key}`
+			);
+		}
+
+		if (results[0].value !== 2) {
+			throw new Error(
+				`Expected 2 matches, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testGroupByDeepSharedItemName() {
+
+		const {
+			guildContext
+		} =
+			await this.buildSharedItemFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.items.name",
+					aggregate: {
+						op: "count-matches",
+						field: "members.items.name"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Sword") {
+			throw new Error(
+				`Expected Sword group, got ${results[0].key}`
+			);
+		}
+
+		if (results[0].value !== 2) {
+			throw new Error(
+				`Expected 2 matches, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testSharedItemSumDedupes() {
+
+		const {
+			guildContext
+		} =
+			await this.buildSharedItemFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (results[0].value !== 10) {
+
+			throw new Error(
+				`Expected sum 10, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testSharedItemDistinctValues() {
+
+		const {
+			guildContext
+		} =
+			await this.buildSharedItemFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "distinct-values",
+						field: "members.items.name"
+					}
+				}
+			);
+
+		const values = results[0].value;
+
+		if (values.length !== 1) {
+
+			throw new Error(
+				`Expected 1 value, got ${values.length}`
+			);
+		}
+	}
+
+	private async testSharedItemCountRoots() {
+
+		const {
+			guildContext
+		} =
+			await this.buildSharedItemFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.items.type",
+					aggregate: {
+						op: "count-roots"
+					}
+				}
+			);
+
+		if (results[0].value !== 1) {
+
+			throw new Error(
+				`Expected 1 root, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testWhereDeepCollectionTypePositive() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					where: [
+						{
+							field: "members.items.type",
+							op: "=",
+							value: "Armor"
+						}
+					],
+					aggregate: {
+						op: "count-roots"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Knights") {
+			throw new Error(
+				`Expected Knights, got ${results[0].key}`
+			);
+		}
+	}
+
+	private async testWhereDeepCollectionTypeNegative() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					where: [
+						{
+							field: "members.items.type",
+							op: "=",
+							value: "Potion"
+						}
+					],
+					aggregate: {
+						op: "count-roots"
+					}
+				}
+			);
+
+		if (results.length !== 0) {
+			throw new Error(
+				`Expected 0 groups, got ${results.length}`
+			);
+		}
+	}
+
+	private async testHavingDeepCollectionSumPositive() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					},
+					having: [
+						{
+							field: "value",
+							op: ">",
+							value: 50
+						}
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		if (results[0].value !== 60) {
+			throw new Error(
+				`Expected sum 60, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testHavingDeepCollectionSumNegative() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					},
+					having: [
+						{
+							field: "value",
+							op: ">",
+							value: 100
+						}
+					]
+				}
+			);
+
+		if (results.length !== 0) {
+			throw new Error(
+				`Expected 0 groups, got ${results.length}`
+			);
+		}
+	}
+
+	private async testWhereSharedReferenceItem() {
+
+		const {
+			guildContext
+		} =
+			await this.buildSharedItemFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					where: [
+						{
+							field: "members.items.name",
+							op: "=",
+							value: "Sword"
+						}
+					],
+					aggregate: {
+						op: "count-matches"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		if (results[0].value !== 2) {
+			throw new Error(
+				`Expected 2 matches, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testGroupBySharedReferenceName() {
+
+		const {
+			guildContext
+		} =
+			await this.buildSharedItemFixture();
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "members.items.name",
+					aggregate: {
+						op: "count-roots"
+					}
+				}
+			);
+
+		if (results.length !== 1) {
+			throw new Error(
+				`Expected 1 group, got ${results.length}`
+			);
+		}
+
+		if (results[0].key !== "Sword") {
+			throw new Error(
+				`Expected Sword, got ${results[0].key}`
+			);
+		}
+
+		if (results[0].value !== 1) {
+			throw new Error(
+				`Expected 1 root, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testReferenceCollectionManager() {
+		new Notice("Test Reference Collection Manager Suite");
+
+		await this.testReferenceCollectionSchemaRecordValidate();
+		await this.testReferenceCollectionSchemaValidation();
+		await this.testReferenceCollectionInvalidDefault();
+		await this.testReferenceCollectionRecordValidation();
+		await this.testGraphReferenceCollectionSingle();
+		await this.testGraphReferenceCollectionMultiple();
+		await this.testGraphReferenceCollectionEmpty();
+		await this.testGraphReferenceCollectionLoadsTargets();
+		await this.testGraphReferenceCollectionMultiHop();
+		await this.testNavigatorDirectField();
+		await this.testNavigatorCollectionNames();
+		await this.testNavigatorCollectionNumbers();
+		await this.testNavigatorCollectionMultiHop();
+		await this.testFilterCollectionEquals();
+		await this.testFilterCollectionEqualsNoMatch();
+		await this.testFilterCollectionNotEquals();
+		await this.testFilterCollectionGreaterThan();
+		await this.testFilterCollectionGreaterThanHigh();
+		await this.testFilterCollectionContains();
+		await this.testFilterCollectionIn();
+		await this.testFilterCollectionExists();
+		await this.testFilterCollectionEmptyExcluded();
+		await this.testFilterCollectionMultiHop();
+		await this.testProjectionCollectionNames();
+		await this.testProjectionCollectionNumbers();
+		await this.testProjectionCollectionMultipleFields();
+		await this.testProjectionCollectionMultiHop();
+		await this.testProjectionEmptyCollection();
+		await this.testProjectionMixedFields();
+		await this.testGroupByCollectionName();
+		await this.testGroupByCollectionNumber();
+		await this.testGroupByEmptyCollection();
+		await this.testGroupByCollectionMultiHop();
+		await this.testGroupByCollectionDuplicateValues();
+		await this.testAggregateSumReferenceCollection();
+		await this.testAggregateSumMultiHopReferenceCollection();
+		await this.testAggregateAvgReferenceCollection();
+		await this.testAggregateMinMaxReferenceCollection();
+		await this.testAggregateDistinctReferenceCollection();
+		await this.testAggregateSumDeepCollection();
+		await this.testCountDeepCollectionMatches();
+		await this.testGroupByDeepCollectionType();
+		await this.testDistinctValuesDeepCollection();
+		await this.testAggregateAvgDeepCollection();
+		await this.testAggregateMinDeepCollection();
+		await this.testAggregateMaxDeepCollection();
+		await this.testAggregateDistinctCountDeepCollection();
+		await this.testGroupByDeepCollectionTypeNew();
+		await this.testGroupByCharacterNameDeepCollection();
+		await this.testAggregateCountRootsDeepCollection();
+		await this.testSharedItemCountMatches();
+		await this.testGroupByDeepSharedItemName();
+		await this.testSharedItemSumDedupes();
+		await this.testSharedItemDistinctValues();
+		await this.testSharedItemCountRoots();
+		await this.testWhereDeepCollectionTypePositive();
+		await this.testWhereDeepCollectionTypeNegative();
+		await this.testHavingDeepCollectionSumPositive();
+		await this.testHavingDeepCollectionSumNegative();
+		await this.testWhereSharedReferenceItem();
+		await this.testGroupBySharedReferenceName();
+
+		new Notice("Reference Collection Manager Tests Completed");
 	}
 }

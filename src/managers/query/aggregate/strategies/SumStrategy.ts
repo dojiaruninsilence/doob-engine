@@ -3,12 +3,15 @@ import { ResolvedRecordGraphNavigator } from "../../graph/ResolvedRecordGraphNav
 import { ResolvedRecordGraph } from "../../../../types/ResolvedRecordGraph";
 import { QueryGroupResult } from "../../../../types/QueryTypes";
 import { AggregateRequest } from "../../../../types/AggregateTypes";
+import { QueryMatchNavigator } from "../../match/QueryMatchNavigator";
+import { Notice } from "obsidian";
 
 export class SumStrategy
     implements IAggregateStrategy {
 
     constructor(
-        private navigator: ResolvedRecordGraphNavigator
+        //private navigator: ResolvedRecordGraphNavigator,
+        private matchNavigator: QueryMatchNavigator
     ) {}
 
     async evaluate(
@@ -18,19 +21,58 @@ export class SumStrategy
         request: AggregateRequest
     ): Promise<any> {
 
+        // let sum = 0;
+
+        // for (const match of group.matches) {
+
+        //     const value =
+        //         this.matchNavigator.getDataValue(
+        //             graph,
+        //             match,
+        //             request.field!
+        //         );
+
+        //     if (Array.isArray(value)) {
+
+        //         for (const v of value) {
+
+        //             if (typeof v === "number") {
+        //                 sum += v;
+        //             }
+        //         }
+
+        //     } else if (typeof value === "number") {
+
+        //         sum += value;
+        //     }
+        // }
+
+        // return sum;
+
+        const seen = new Set<string>();
         let sum = 0;
 
-        for (const record of group.records) {
+        for (const match of group.matches) {
 
-            const value =
-                this.navigator.getValue(
+            const values =
+                this.matchNavigator.resolveValues(
                     graph,
-                    record.id,
+                    match,
                     request.field!
                 );
 
-            if (typeof value === "number") {
-                sum += value;
+            for (const v of values) {
+
+                const key =
+                    `${match.rootId}:${v.sourceId}:${request.field}`;
+
+                if (seen.has(key)) continue;
+
+                seen.add(key);
+
+                if (typeof v.value === "number") {
+                    sum += v.value;
+                }
             }
         }
 

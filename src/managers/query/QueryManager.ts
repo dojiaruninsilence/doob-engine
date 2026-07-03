@@ -1,5 +1,5 @@
 import { SchemaContext } from "../../types/ContextTypes";
-import { QueryRequest, QueryFilter, QueryAggregate, QueryGroupResult } from "../../types/QueryTypes";
+import { QueryRequest, QueryFilter, /*QueryAggregate, */QueryGroupResult } from "../../types/QueryTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryPlanner } from "./QueryPlanner";
 import { QueryExecutor } from "./QueryExecutor";
@@ -88,7 +88,11 @@ export class QueryManager {
 		}
 
 		const plan = await this.queryPlanner.plan(context, request);
-		
+
+		// new Notice(
+		// 	JSON.stringify(plan.steps, null, 2)
+		// );
+
 		return await this.queryExecutor.executeGroup(
 			context,
 			request,

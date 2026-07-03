@@ -2,47 +2,210 @@ import { ResolvedRecordGraph } from "../../../types/ResolvedRecordGraph";
 
 export class ResolvedRecordGraphNavigator {
 
+//     getValue(
+//         graph: ResolvedRecordGraph,
+//         rootId: string,
+//         path: string
+//     ): any | any[] {
+
+//         const parts = path.split(".");
+
+//         let currentNodes = [graph.nodes.get(rootId)]
+//             .filter((n): n is NonNullable<typeof n> => Boolean(n));
+
+//         if (currentNodes.length === 0) {
+//             return undefined;
+//         }
+
+//         for (let i = 0; i < parts.length; i++) {
+
+//             const part = parts[i];
+//             const isLast = i === parts.length - 1;
+
+//             // -----------------------------
+//             // INTERMEDIATE STEP: traverse graph edges
+//             // -----------------------------
+//             if (!isLast) {
+
+//                 const nextNodes: typeof currentNodes = [];
+
+//                 for (const node of currentNodes) {
+
+//                     const refs = node.refs.get(part);
+
+//                     if (!refs || refs.length === 0) {
+//                         continue;
+//                     }
+
+//                     for (const refId of refs) {
+
+//                         const next = graph.nodes.get(refId);
+
+//                         if (next) {
+//                             nextNodes.push(next);
+//                         }
+//                     }
+//                 }
+
+//                 if (nextNodes.length === 0) {
+//                     return undefined;
+//                 }
+
+//                 currentNodes = nextNodes;
+//                 continue;
+//             }
+
+//             // -----------------------------
+//             // FINAL STEP: collect values
+//             // -----------------------------
+//             const results: any[] = [];
+
+//             for (const node of currentNodes) {
+
+//                 const value = node.data?.[part];
+
+//                 if (Array.isArray(value)) {
+//                     results.push(...value);
+//                 } else if (value !== undefined && value !== null) {
+//                     results.push(value);
+//                 }
+//             }
+
+//             if (results.length === 0) {
+//                 return undefined;
+//             }
+
+//             // IMPORTANT CHANGE:
+//             // ALWAYS return array for collections (no collapsing)
+//             return results;
+//         }
+
+//         return undefined;
+//     }
+// }
     getValue(
         graph: ResolvedRecordGraph,
         rootId: string,
         path: string
-    ): any {
+    ): any | any[] {
 
         const parts = path.split(".");
 
-        let node =
-            graph.nodes.get(rootId);
+        let currentNodes = [graph.nodes.get(rootId)]
+            .filter((n): n is NonNullable<typeof n> => Boolean(n));
 
-        if (!node) {
+        if (currentNodes.length === 0) {
             return undefined;
         }
 
         for (let i = 0; i < parts.length; i++) {
 
             const part = parts[i];
+            const isLast = i === parts.length - 1;
 
-            const isLast =
-                i === parts.length - 1;
-
+            // -----------------------------
+            // FINAL STEP → return values
+            // -----------------------------
             if (isLast) {
-                return node.data?.[part];
+
+                const results: any[] = [];
+
+                for (const node of currentNodes) {
+                    const value = node.data?.[part];
+
+                    if (Array.isArray(value)) {
+                        results.push(...value);
+                    } else if (value !== undefined && value !== null) {
+                        results.push(value);
+                    }
+                }
+
+                if (results.length === 0) {
+                    return undefined;
+                }
+
+                return results.length === 1 ? results[0] : results;
             }
 
-            const ref =
-                node.refs.get(part);
+            // -----------------------------
+            // INTERMEDIATE STEP → traverse refs
+            // -----------------------------
+            const nextNodes: typeof currentNodes = [];
 
-            if (typeof ref !== "string") {
+            for (const node of currentNodes) {
+
+                const refs = node.refs.get(part);
+
+                if (!refs || refs.length === 0) {
+                    continue;
+                }
+
+                for (const refId of refs) {
+
+                    const next = graph.nodes.get(refId);
+
+                    if (next) {
+                        nextNodes.push(next);
+                    }
+                }
+            }
+
+            if (nextNodes.length === 0) {
                 return undefined;
             }
 
-            node =
-                graph.nodes.get(ref);
-
-            if (!node) {
-                return undefined;
-            }
+            currentNodes = nextNodes;
         }
 
         return undefined;
     }
 }
+
+// import { ResolvedRecordGraph } from "../../../types/ResolvedRecordGraph";
+
+// export class ResolvedRecordGraphNavigator {
+
+//     getValue(
+//         graph: ResolvedRecordGraph,
+//         rootId: string,
+//         path: string
+//     ): any | any[] {
+
+//         const parts = path.split(".");
+
+//         let node =
+//             graph.nodes.get(rootId);
+
+//         if (!node) {
+//             return undefined;
+//         }
+
+//         for (let i = 0; i < parts.length; i++) {
+
+//             const part = parts[i];
+
+//             const isLast =
+//                 i === parts.length - 1;
+
+//             if (isLast) {
+//                 return node.data?.[part];
+//             }
+
+//             const ref =
+//                 node.refs.get(part);
+
+//             if (typeof ref !== "string") {
+//                 return undefined;
+//             }
+
+//             node =
+//                 graph.nodes.get(ref);
+
+//             if (!node) {
+//                 return undefined;
+//             }
+//         }
+
+//         return undefined;
+//     }
+// }

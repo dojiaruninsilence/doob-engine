@@ -13,6 +13,13 @@ export class ResolvedRecordGraphBuilder {
         private contextFactory: ContextFactory
     ) {}
 
+    private normalizeRefs(value: any): string[] {
+        if (!value) return [];
+        if (Array.isArray(value)) return value.filter(v => typeof v === "string");
+        if (typeof value === "string") return [value];
+        return [];
+    }
+
     async build(
         rootContext: SchemaContext,
         rootRecords: DataRecord[],
@@ -58,9 +65,15 @@ export class ResolvedRecordGraphBuilder {
                 const node = nodes.get(nodeId);
                 if (!node) continue;
 
-                const refId = node.data?.[step.field];
+                // const refId = node.data?.[step.field];
 
-                if (typeof refId === "string") {
+                // if (typeof refId === "string") {
+                //     idsToFetch.add(refId);
+                // }
+
+                const refs = this.normalizeRefs(node.data?.[step.field]);
+
+                for (const refId of refs) {
                     idsToFetch.add(refId);
                 }
             }
@@ -95,29 +108,54 @@ export class ResolvedRecordGraphBuilder {
                 
                 if (!node) continue;
 
-                const refId = node.data?.[step.field];
+                // const refId = node.data?.[step.field];
 
-                if (typeof refId !== "string") continue;
+                // if (typeof refId !== "string") continue;
 
-                const target = byId.get(refId);
+                const refs = this.normalizeRefs(node.data?.[step.field]);
+                const resolvedTargets = new Set<string>();
 
-                if (!target) continue;
+                for (const refId of refs) {
 
-                // ensure target node exists
-                if (!nodes.has(target.id)) {
+                    const target = byId.get(refId);
+                    if (!target) continue;
 
-                    nodes.set(target.id, {
-                        id: target.id,
-                        schema: step.to,
-                        data: target.data,
-                        refs: new Map()
-                    });
+                    if (!nodes.has(target.id)) {
+                        nodes.set(target.id, {
+                            id: target.id,
+                            schema: step.to,
+                            data: target.data,
+                            refs: new Map()
+                        });
+                    }
+
+                    resolvedTargets.add(target.id);
+                    nextFrontier.add(target.id);
                 }
 
-                // attach edge
-                node.refs.set(step.field, target.id);
+                if (resolvedTargets.size > 0) {
+                    node.refs.set(step.field, [...resolvedTargets]);
+                }
 
-                nextFrontier.add(target.id);
+                //const target = byId.get(refId);
+
+                //if (!target) continue;
+
+                // ensure target node exists
+                // if (!nodes.has(target.id)) {
+
+                //     nodes.set(target.id, {
+                //         id: target.id,
+                //         schema: step.to,
+                //         data: target.data,
+                //         refs: new Map()
+                //     });
+                // }
+
+                // attach edge
+                // node.refs.set(step.field, target.id);
+
+                //nextFrontier.add(target.id);
             }
             frontier = nextFrontier;
         }

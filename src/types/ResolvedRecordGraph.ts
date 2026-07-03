@@ -12,5 +12,5 @@ export type ResolvedNode = {
 
     data: any;
 
-    refs: Map<string, string | string[]>; 
+    refs: Map<string, string[]>; 
 };
