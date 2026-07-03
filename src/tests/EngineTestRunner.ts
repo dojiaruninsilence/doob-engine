@@ -12,6 +12,8 @@ import { DistinctCountStrategy } from "../managers/query/aggregate/strategies/Di
 import { DistinctValuesStrategy } from "../managers/query/aggregate/strategies/DistinctValuesStrategy";
 import { QueryMatchNavigator } from "../managers/query/match/QueryMatchNavigator";
 import { CountRootsStrategy } from "../managers/query/aggregate/strategies/CountRootsStrategy";
+import { Logger } from "../infrastructure/logging/Logger";
+import { LoggerFactory } from "../infrastructure/logging/LoggerFactory";
 
 export class EngineTestRunner {
 
@@ -21,6 +23,8 @@ export class EngineTestRunner {
 	private queryManager: any;
 	private queryPlanner: any;
 	private graphBuilder: any;
+	private logger!: Logger;
+	private loggerFactory!: LoggerFactory;
 
 	constructor(
 		schemaManager: any, 
@@ -28,7 +32,9 @@ export class EngineTestRunner {
 		contextFactory: any, 
 		queryManager: any, 
 		queryPlanner: any,
-		graphBuilder: any
+		graphBuilder: any,
+		//logger: Logger,
+		loggerFactory: LoggerFactory
 	) {
 
         if (!schemaManager) {
@@ -52,22 +58,28 @@ export class EngineTestRunner {
         this.queryManager = queryManager;
 		this.queryPlanner = queryPlanner;
 		this.graphBuilder = graphBuilder;
+		//this.logger = logger;
+		this.loggerFactory = loggerFactory;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
+		this.logger?.log({ level: "info", scope: "TEST", message: `START: ${name}` });
         try {
             await fn();
-            new Notice(`✔ ${name}`);
+            // new Notice(`✔ ${name}`);
+			this.logger?.log({ level: "info", scope: "TEST", message: `✔ PASS: ${name}` });
         } catch (e) {
             console.error(`❌ ${name} failed`, e);
-            new Notice(`❌ ${name} failed\n${(e as Error).message}`);
+            // new Notice(`❌ ${name} failed\n${(e as Error).message}`);
+			this.logger?.log({ level: "error", scope: "TEST", message: `❌ FAIL: ${name}`, data: e });
             throw e;
         }
     }
 
 	private async resetCoreTestData() {
 
-		new Notice("Reset: CoreTest Data + Schema");
+		// new Notice("Reset: CoreTest Data + Schema");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Resetting CoreTest Data + Schema" });
 
 		const schemas = ["Item", "Character", "Guild"];
 
@@ -119,7 +131,8 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Reset complete");
+		// new Notice("Reset complete");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Reset complete" });
 	}
 
 	private async ensureField(
@@ -249,6 +262,15 @@ export class EngineTestRunner {
 	// --------------------------------------------------
 
 	async runAll() {
+
+		const logger = await this.loggerFactory.create({
+			filePath: "tests/coreTests.jsonl",
+			mode: "replace",
+			defaultScope: "TestRunner",
+			includeTimestamp: true
+		});
+		
+		this.logger = logger;
 
         new Notice("🧪 Engine Tests Starting...");
 
@@ -600,6 +622,8 @@ export class EngineTestRunner {
 		);
 
         new Notice("✅ All Engine Tests Completed");
+
+		await this.logger.flush();
     }
 
 	// --------------------------------------------------

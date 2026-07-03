@@ -1,7 +1,13 @@
 import { Schema } from "../types/SchemaTypes";
 import { DataFile } from "../types/DataTypes";
+import { Logger } from "../infrastructure/logging/Logger";
 
 export class CacheManager {
+	private engineLog: Logger;
+
+	constructor(engineLog: Logger) {
+		this.engineLog = engineLog;
+	}
 
 	// --------------------------------------------------
 	// SCHEMA CACHE

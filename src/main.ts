@@ -14,6 +14,8 @@ import { ResolvedRecordGraphNavigator } from "./managers/query/graph/ResolvedRec
 import { AggregateBootstrap } from "./managers/query/aggregate/AggregateBootstrap";
 import { QueryMatchBuilder } from "./managers/query/match/QueryMatchBuilder";
 import { QueryMatchNavigator } from "./managers/query/match/QueryMatchNavigator";
+import { LoggerFactory } from "./infrastructure/logging/LoggerFactory";
+import { Logger } from "./infrastructure/logging/Logger";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -22,7 +24,9 @@ export default class DoobEngine extends Plugin {
 	// optional global reference (useful for debugging + reload)
 	public softReload?: () => Promise<void>;
 
-  	public dataManager!: DataManager;
+  	public loggerFactory!: LoggerFactory;
+	public engineLog!: Logger;
+	public dataManager!: DataManager;
   	public schemaManager!: SchemaManager;
   	public rulesetManager!: RulesetManager;
   	public contextFactory!: ContextFactory;
@@ -52,7 +56,13 @@ export default class DoobEngine extends Plugin {
 		// INIT CORE SYSTEMS FIRST (CRITICAL FIX)
 		// --------------------------------------------------
 
-		this.cacheManager = new CacheManager();
+		this.loggerFactory = new LoggerFactory(this.app, {
+			rootFolder: "Doob Engine/Logs"
+		});
+
+		this.engineLog = await this.loggerFactory.create({ filePath: "Engine/main.jsonl", mode: "append", defaultScope: "ENGINE", includeTimestamp: true });
+
+		this.cacheManager = new CacheManager(this.engineLog);
 
 		this.rulesetManager = new RulesetManager(this.app);
 
