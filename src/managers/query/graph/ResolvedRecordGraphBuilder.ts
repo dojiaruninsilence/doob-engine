@@ -65,12 +65,6 @@ export class ResolvedRecordGraphBuilder {
                 const node = nodes.get(nodeId);
                 if (!node) continue;
 
-                // const refId = node.data?.[step.field];
-
-                // if (typeof refId === "string") {
-                //     idsToFetch.add(refId);
-                // }
-
                 const refs = this.normalizeRefs(node.data?.[step.field]);
 
                 for (const refId of refs) {
@@ -108,10 +102,6 @@ export class ResolvedRecordGraphBuilder {
                 
                 if (!node) continue;
 
-                // const refId = node.data?.[step.field];
-
-                // if (typeof refId !== "string") continue;
-
                 const refs = this.normalizeRefs(node.data?.[step.field]);
                 const resolvedTargets = new Set<string>();
 
@@ -137,25 +127,6 @@ export class ResolvedRecordGraphBuilder {
                     node.refs.set(step.field, [...resolvedTargets]);
                 }
 
-                //const target = byId.get(refId);
-
-                //if (!target) continue;
-
-                // ensure target node exists
-                // if (!nodes.has(target.id)) {
-
-                //     nodes.set(target.id, {
-                //         id: target.id,
-                //         schema: step.to,
-                //         data: target.data,
-                //         refs: new Map()
-                //     });
-                // }
-
-                // attach edge
-                // node.refs.set(step.field, target.id);
-
-                //nextFrontier.add(target.id);
             }
             frontier = nextFrontier;
         }

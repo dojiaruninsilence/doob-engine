@@ -7,14 +7,3 @@ export type QueryMatch = {
 };
 
 export type ValueMode = "aggregate" | "group";
-
-// export type MatchIdentity = {
-//     rootId: string;
-//     leafId: string;
-//     pathKey: string;
-// };
-
-// export type NormalizedMatchGroup = {
-//     key: string;
-//     matches: QueryMatch[];
-// };

@@ -21,34 +21,6 @@ export class SumStrategy
         request: AggregateRequest
     ): Promise<any> {
 
-        // let sum = 0;
-
-        // for (const match of group.matches) {
-
-        //     const value =
-        //         this.matchNavigator.getDataValue(
-        //             graph,
-        //             match,
-        //             request.field!
-        //         );
-
-        //     if (Array.isArray(value)) {
-
-        //         for (const v of value) {
-
-        //             if (typeof v === "number") {
-        //                 sum += v;
-        //             }
-        //         }
-
-        //     } else if (typeof value === "number") {
-
-        //         sum += value;
-        //     }
-        // }
-
-        // return sum;
-
         const seen = new Set<string>();
         let sum = 0;
 

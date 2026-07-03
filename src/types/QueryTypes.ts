@@ -23,17 +23,6 @@ export type QueryOperator =
 	| "contains"
 	| "exists";
 
-// export interface QueryAggregate {
-// 	op:
-// 		| "count"
-// 		| "sum"
-// 		| "avg"
-// 		| "min"
-// 		| "max";
-
-// 	field?: string;
-// }
-
 export interface QueryFilter {
 	field: string;
 	op: QueryOperator;

@@ -89,10 +89,6 @@ export class QueryManager {
 
 		const plan = await this.queryPlanner.plan(context, request);
 
-		// new Notice(
-		// 	JSON.stringify(plan.steps, null, 2)
-		// );
-
 		return await this.queryExecutor.executeGroup(
 			context,
 			request,

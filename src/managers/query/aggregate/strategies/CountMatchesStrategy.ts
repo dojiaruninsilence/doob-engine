@@ -15,17 +15,3 @@ export class CountMatchesStrategy implements IAggregateStrategy {
         return group.matches.length;
     }
 }
-
-// export class CountStrategy
-//     implements IAggregateStrategy {
-
-//     async evaluate(
-//         graph: ResolvedRecordGraph,
-//         group: QueryGroupResult,
-//         rootId: string,
-//         request: AggregateRequest
-//     ): Promise<any> {
-
-//         return group.records.length;
-//     }
-// }

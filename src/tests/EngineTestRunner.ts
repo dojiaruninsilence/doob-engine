@@ -227,7 +227,7 @@ export class EngineTestRunner {
 					x Projection test
 					x Group-by collection test
 					x Aggregate collection test
-					Deep collection traversal test
+					x Deep collection traversal test
 
 								QueryExecutionContext {
 									graph: ResolvedRecordGraph;
@@ -9393,14 +9393,6 @@ export class EngineTestRunner {
 				}
 			);
 
-		//new Notice(JSON.stringify(results, null, 2));
-
-		// new Notice(results.length);
-
-		// for (const result of results) {
-		// 	new Notice(`Test Result: ${result.value} ${result.key}`);
-		// }
-
 		const values = results[0].value;
 
 		if (!Array.isArray(values)) {
@@ -9671,9 +9663,6 @@ export class EngineTestRunner {
 		} =
 			await this.buildDeepCollectionFixture();
 
-		// await this.resetCoreTestData();
-
-		
 		await this.dataManager.update(
 			itemContext,
 			sword.id,
@@ -9710,32 +9699,6 @@ export class EngineTestRunner {
 			sword
 		};
 	}
-
-	// private async testSharedItemCountMatches() {
-
-	// 	const {
-	// 		guildContext
-	// 	} =
-	// 		await this.buildSharedItemFixture();
-
-	// 	const results =
-	// 		await this.queryManager.queryGroup(
-	// 			guildContext,
-	// 			{
-	// 				groupBy: "name",
-	// 				aggregate: {
-	// 					op: "count-matches"
-	// 				}
-	// 			}
-	// 		);
-
-	// 	if (results[0].value !== 2) {
-
-	// 		throw new Error(
-	// 			`Expected 2 matches, got ${results[0].value}`
-	// 		);
-	// 	}
-	// }
 
 	private async testSharedItemCountMatches() {
 
