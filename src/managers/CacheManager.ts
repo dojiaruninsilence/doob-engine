@@ -1,6 +1,6 @@
 import { Schema } from "../types/SchemaTypes";
 import { DataFile } from "../types/DataTypes";
-import { Logger } from "../infrastructure/logging/Logger";
+import { Logger } from "./logging/Logger";
 
 export class CacheManager {
 	private engineLog: Logger;

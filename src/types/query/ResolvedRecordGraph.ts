@@ -1,3 +1,5 @@
+import { DataRecord } from "../DataTypes";
+
 export type ResolvedRecordGraph = {
     rootSchema: string;
 
@@ -10,7 +12,8 @@ export type ResolvedNode = {
     id: string;
     schema: string;
 
-    data: any;
+    // data: any;
+    record: DataRecord;
 
     refs: Map<string, string[]>; 
 };

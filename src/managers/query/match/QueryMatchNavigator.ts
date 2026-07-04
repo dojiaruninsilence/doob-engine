@@ -1,213 +1,399 @@
-import { Notice } from "obsidian";
-import { QueryMatch, ValueMode } from "../../../types/query/QueryMatchTypes";
+import { QueryMatch } from "../../../types/query/QueryMatchTypes";
 import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
 
 export class QueryMatchNavigator {
 
-    private resolveFieldTarget(
-        match: QueryMatch,
-        fieldPath: string
-    ): {
-        nodeIndex: number;
-        remainingPath: string[];
-    } {
+	// --------------------------------------------------
+	// FIELD TARGET RESOLUTION
+	// --------------------------------------------------
 
-        const fieldParts =
-            fieldPath.split(".");
+	private resolveFieldTarget(
+		match: QueryMatch,
+		fieldPath: string
+	): {
+		nodeIndex: number;
+		remainingPath: string[];
+	} {
 
-        let bestDepth = 0;
+		const fieldParts = fieldPath.split(".");
+		let bestDepth = 0;
 
-        for (const bindingKey of Object.keys(match.bindings)) {
+		for (const bindingKey of Object.keys(match.bindings)) {
 
-            const bindingParts =
-                bindingKey.split(".");
+			const bindingParts = bindingKey.split(".");
 
-            // Remove schema/root prefix
-            // guild.members -> members
-            const traversalParts =
-                bindingParts.slice(1);
+			// strip root (e.g. guild.members -> members)
+			const traversalParts = bindingParts.slice(1);
 
-            let matches = true;
+			let matches = true;
 
-            for (
-                let i = 0;
-                i < traversalParts.length;
-                i++
-            ) {
+			for (let i = 0; i < traversalParts.length; i++) {
 
-                if (
-                    i >= fieldParts.length ||
-                    fieldParts[i] !== traversalParts[i]
-                ) {
-                    matches = false;
-                    break;
-                }
-            }
+				if (fieldParts[i] !== traversalParts[i]) {
+					matches = false;
+					break;
+				}
+			}
 
-            if (
-                matches &&
-                traversalParts.length > bestDepth
-            ) {
-                bestDepth =
-                    traversalParts.length;
-            }
-        }
+			if (matches) {
+				bestDepth = Math.max(bestDepth, traversalParts.length);
+			}
+		}
 
-        return {
-            nodeIndex: bestDepth,
-            remainingPath:
-                fieldParts.slice(bestDepth)
-        };
-    }
+		return {
+			nodeIndex: bestDepth,
+			remainingPath: fieldParts.slice(bestDepth)
+		};
+	}
 
-    // --------------------------------------------------
-    // GROUPING
-    // Structural traversal using the match path
-    // --------------------------------------------------
+	// --------------------------------------------------
+	// GROUP VALUE (STRUCTURAL WALK)
+	// --------------------------------------------------
 
-    getGroupValue(
-        graph: ResolvedRecordGraph,
-        match: QueryMatch,
-        path: string
-    ): any {
+	getGroupValue(
+		graph: ResolvedRecordGraph,
+		match: QueryMatch,
+		path: string
+	): any {
 
-        const parts = path.split(".");
+		const parts = path.split(".");
 
-        let node =
-            graph.nodes.get(match.rootId);
+		let node =
+			graph.nodes.get(match.rootId);
 
-        if (!node) {
-            return undefined;
-        }
+		if (!node) return undefined;
 
-        let pathIndex = 0;
+		let pathIndex = 0;
 
-        for (let i = 0; i < parts.length; i++) {
+		for (let i = 0; i < parts.length; i++) {
 
-            const part = parts[i];
-            const isLast =
-                i === parts.length - 1;
+			const part = parts[i];
+			const isLast = i === parts.length - 1;
 
-            if (isLast) {
-                return node.data?.[part];
-            }
+			// --------------------------------------------------
+			// FINAL FIELD
+			// --------------------------------------------------
+			if (isLast) {
+				return node.record.data?.[part];
+			}
 
-            const refs =
-                node.refs.get(part);
+			// --------------------------------------------------
+			// TRAVERSE REFERENCES
+			// --------------------------------------------------
+			const refs = node.refs.get(part);
 
-            if (!refs?.length) {
-                return undefined;
-            }
+			if (!refs || refs.length === 0) {
+				return undefined;
+			}
 
-            const nextId =
-                match.pathNodes[pathIndex + 1];
+			const nextId = match.pathNodes[pathIndex + 1];
 
-            node =
-                graph.nodes.get(nextId);
+			if (!nextId) return undefined;
 
-            if (!node) {
-                return undefined;
-            }
+			const next = graph.nodes.get(nextId);
 
-            pathIndex++;
-        }
+			if (!next) return undefined;
 
-        return undefined;
-    }
+			node = next;
+			pathIndex++;
+		}
 
-    // --------------------------------------------------
-    // AGGREGATION
-    // Read value from the match endpoint
-    // --------------------------------------------------
+		return undefined;
+	}
 
-    resolveValues(
-        graph: ResolvedRecordGraph,
-        match: QueryMatch,
-        path: string
-    ): { value: any; sourceId: string }[] {
+	// --------------------------------------------------
+	// AGGREGATION VALUE RESOLUTION
+	// --------------------------------------------------
 
-        const {
-            nodeIndex,
-            remainingPath
-        } = this.resolveFieldTarget(
-            match,
-            path
-        );
+	resolveValues(
+		graph: ResolvedRecordGraph,
+		match: QueryMatch,
+		path: string
+	): { value: any; sourceId: string }[] {
 
-        let currentNodes = [
-            graph.nodes.get(match.pathNodes[nodeIndex])
-        ].filter(Boolean);
+		const { nodeIndex, remainingPath } =
+			this.resolveFieldTarget(match, path);
 
-        if (currentNodes.length === 0) {
-            return [];
-        }
+		let current =
+			graph.nodes.get(match.pathNodes[nodeIndex]);
 
-        // traverse structural part
-        for (let i = 0; i < remainingPath.length - 1; i++) {
+		if (!current) return [];
 
-            const part = remainingPath[i];
-            const nextNodes: typeof currentNodes = [];
+		let currentNodes = [current];
 
-            for (const node of currentNodes) {
+		// --------------------------------------------------
+		// traverse structural part
+		// --------------------------------------------------
+		for (let i = 0; i < remainingPath.length - 1; i++) {
 
-                if (!node) continue;
+			const part = remainingPath[i];
+			const nextNodes: typeof currentNodes = [];
 
-                const refs =
-                    node.refs.get(part) ?? [];
+			for (const node of currentNodes) {
 
-                for (const refId of refs) {
+				const refs = node.refs.get(part);
 
-                    const next =
-                        graph.nodes.get(refId);
+				if (!refs) continue;
 
-                    if (next) {
-                        nextNodes.push(next);
-                    }
-                }
-            }
+				for (const refId of refs) {
 
-            currentNodes = nextNodes;
+					const next = graph.nodes.get(refId);
 
-            if (currentNodes.length === 0) {
-                return [];
-            }
-        }
+					if (next) {
+						nextNodes.push(next);
+					}
+				}
+			}
 
-        const last = remainingPath[remainingPath.length - 1];
+			if (nextNodes.length === 0) {
+				return [];
+			}
 
-        if (!last) return [];
+			currentNodes = nextNodes;
+		}
 
-        const results: {
-            value: any;
-            sourceId: string;
-        }[] = [];
+		const last = remainingPath[remainingPath.length - 1];
 
-        for (const node of currentNodes) {
+		if (!last) return [];
 
-            if (!node) continue;
+		const results: { value: any; sourceId: string }[] = [];
 
-            const value =
-                node.data?.[last];
+		for (const node of currentNodes) {
 
-            if (Array.isArray(value)) {
+			const value = node.record.data?.[last];
 
-                for (const v of value) {
-                    results.push({
-                        value: v,
-                        sourceId: node.id
-                    });
-                }
+			if (Array.isArray(value)) {
 
-            } else if (value !== undefined) {
+				for (const v of value) {
+					results.push({
+						value: v,
+						sourceId: node.id
+					});
+				}
 
-                results.push({
-                    value,
-                    sourceId: node.id
-                });
-            }
-        }
+			} else if (value !== undefined && value !== null) {
 
-        return results;
-    }
-    
+				results.push({
+					value,
+					sourceId: node.id
+				});
+			}
+		}
+
+		return results;
+	}
 }
+
+// import { Notice } from "obsidian";
+// import { QueryMatch, ValueMode } from "../../../types/query/QueryMatchTypes";
+// import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
+
+// export class QueryMatchNavigator {
+
+//     private resolveFieldTarget(
+//         match: QueryMatch,
+//         fieldPath: string
+//     ): {
+//         nodeIndex: number;
+//         remainingPath: string[];
+//     } {
+
+//         const fieldParts =
+//             fieldPath.split(".");
+
+//         let bestDepth = 0;
+
+//         for (const bindingKey of Object.keys(match.bindings)) {
+
+//             const bindingParts =
+//                 bindingKey.split(".");
+
+//             // Remove schema/root prefix
+//             // guild.members -> members
+//             const traversalParts =
+//                 bindingParts.slice(1);
+
+//             let matches = true;
+
+//             for (
+//                 let i = 0;
+//                 i < traversalParts.length;
+//                 i++
+//             ) {
+
+//                 if (
+//                     i >= fieldParts.length ||
+//                     fieldParts[i] !== traversalParts[i]
+//                 ) {
+//                     matches = false;
+//                     break;
+//                 }
+//             }
+
+//             if (
+//                 matches &&
+//                 traversalParts.length > bestDepth
+//             ) {
+//                 bestDepth =
+//                     traversalParts.length;
+//             }
+//         }
+
+//         return {
+//             nodeIndex: bestDepth,
+//             remainingPath:
+//                 fieldParts.slice(bestDepth)
+//         };
+//     }
+
+//     // --------------------------------------------------
+//     // GROUPING
+//     // Structural traversal using the match path
+//     // --------------------------------------------------
+
+//     getGroupValue(
+//         graph: ResolvedRecordGraph,
+//         match: QueryMatch,
+//         path: string
+//     ): any {
+
+//         const parts = path.split(".");
+
+//         let node =
+//             graph.nodes.get(match.rootId);
+
+//         if (!node) {
+//             return undefined;
+//         }
+
+//         let pathIndex = 0;
+
+//         for (let i = 0; i < parts.length; i++) {
+
+//             const part = parts[i];
+//             const isLast =
+//                 i === parts.length - 1;
+
+//             if (isLast) {
+//                 return node.data?.[part];
+//             }
+
+//             const refs =
+//                 node.refs.get(part);
+
+//             if (!refs?.length) {
+//                 return undefined;
+//             }
+
+//             const nextId =
+//                 match.pathNodes[pathIndex + 1];
+
+//             node =
+//                 graph.nodes.get(nextId);
+
+//             if (!node) {
+//                 return undefined;
+//             }
+
+//             pathIndex++;
+//         }
+
+//         return undefined;
+//     }
+
+//     // --------------------------------------------------
+//     // AGGREGATION
+//     // Read value from the match endpoint
+//     // --------------------------------------------------
+
+//     resolveValues(
+//         graph: ResolvedRecordGraph,
+//         match: QueryMatch,
+//         path: string
+//     ): { value: any; sourceId: string }[] {
+
+//         const {
+//             nodeIndex,
+//             remainingPath
+//         } = this.resolveFieldTarget(
+//             match,
+//             path
+//         );
+
+//         let currentNodes = [
+//             graph.nodes.get(match.pathNodes[nodeIndex])
+//         ].filter(Boolean);
+
+//         if (currentNodes.length === 0) {
+//             return [];
+//         }
+
+//         // traverse structural part
+//         for (let i = 0; i < remainingPath.length - 1; i++) {
+
+//             const part = remainingPath[i];
+//             const nextNodes: typeof currentNodes = [];
+
+//             for (const node of currentNodes) {
+
+//                 if (!node) continue;
+
+//                 const refs =
+//                     node.refs.get(part) ?? [];
+
+//                 for (const refId of refs) {
+
+//                     const next =
+//                         graph.nodes.get(refId);
+
+//                     if (next) {
+//                         nextNodes.push(next);
+//                     }
+//                 }
+//             }
+
+//             currentNodes = nextNodes;
+
+//             if (currentNodes.length === 0) {
+//                 return [];
+//             }
+//         }
+
+//         const last = remainingPath[remainingPath.length - 1];
+
+//         if (!last) return [];
+
+//         const results: {
+//             value: any;
+//             sourceId: string;
+//         }[] = [];
+
+//         for (const node of currentNodes) {
+
+//             if (!node) continue;
+
+//             const value =
+//                 node.data?.[last];
+
+//             if (Array.isArray(value)) {
+
+//                 for (const v of value) {
+//                     results.push({
+//                         value: v,
+//                         sourceId: node.id
+//                     });
+//                 }
+
+//             } else if (value !== undefined) {
+
+//                 results.push({
+//                     value,
+//                     sourceId: node.id
+//                 });
+//             }
+//         }
+
+//         return results;
+//     }
+    
+// }

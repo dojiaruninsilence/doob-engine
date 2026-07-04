@@ -14,8 +14,12 @@ import { ResolvedRecordGraphNavigator } from "./managers/query/graph/ResolvedRec
 import { AggregateBootstrap } from "./managers/query/aggregate/AggregateBootstrap";
 import { QueryMatchBuilder } from "./managers/query/match/QueryMatchBuilder";
 import { QueryMatchNavigator } from "./managers/query/match/QueryMatchNavigator";
-import { LoggerFactory } from "./infrastructure/logging/LoggerFactory";
-import { Logger } from "./infrastructure/logging/Logger";
+import { LoggerFactory } from "./managers/logging/LoggerFactory";
+import { Logger } from "./managers/logging/Logger";
+import { MutationExecutor } from "./managers/mutation/MutationExecutor";
+import { MutationOperationResolver } from "./managers/mutation/operations/MutationOperationResolver";
+import { MutationTargetResolver } from "./managers/mutation/MutationTargetResolver";
+import { DataMutationWriter } from "./managers/mutation/writer/DataMutationWriter";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -36,6 +40,7 @@ export default class DoobEngine extends Plugin {
 	public queryExecutor!: QueryExecutor;
 	public queryExecutionPlanRunner!: QueryExecutionPlanRunner;
 	public resolvedRecordGraphBuilder!: ResolvedRecordGraphBuilder;
+	public mutationExecutor!: MutationExecutor;
 	
 	async onload() {
 
@@ -87,6 +92,9 @@ export default class DoobEngine extends Plugin {
 		const queryMatchBuilder = new QueryMatchBuilder();
 		const queryMatchNavigator = new QueryMatchNavigator();
 		const aggregateResolver = AggregateBootstrap.build(queryMatchNavigator);
+		const mutationTargetResolver = new MutationTargetResolver();
+		const mutationOperationResolver = new MutationOperationResolver();
+		// const mutationWriter = new DataMutationWriter(this.dataManager, );
 
 		this.queryPlanner = new QueryPlanner(
 			this.contextFactory
@@ -114,6 +122,25 @@ export default class DoobEngine extends Plugin {
 			this.queryPlanner,
 			this.queryExecutor
 		);
+
+		this.mutationExecutor = new MutationExecutor(
+			this.dataManager,
+			this.dataManager,
+			this.resolvedRecordGraphBuilder,
+			this.queryPlanner,
+			mutationTargetResolver,
+			mutationOperationResolver,
+			this.engineLog,
+			this.contextFactory
+		)
+
+
+		// private reader: IDataReader,
+		// 		private writer: IDataWriter,
+		// 		private graphBuilder: ResolvedRecordGraphBuilder,
+		// 		private queryPlanner: QueryPlanner,
+		// 		private targetResolver: MutationTargetResolver,
+		// 		private operationResolver: MutationOperationResolver
 
 		// --------------------------------------------------
 		// NOW SAFE TO BUILD UI

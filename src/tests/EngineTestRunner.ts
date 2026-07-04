@@ -12,8 +12,8 @@ import { DistinctCountStrategy } from "../managers/query/aggregate/strategies/Di
 import { DistinctValuesStrategy } from "../managers/query/aggregate/strategies/DistinctValuesStrategy";
 import { QueryMatchNavigator } from "../managers/query/match/QueryMatchNavigator";
 import { CountRootsStrategy } from "../managers/query/aggregate/strategies/CountRootsStrategy";
-import { Logger } from "../infrastructure/logging/Logger";
-import { LoggerFactory } from "../infrastructure/logging/LoggerFactory";
+import { Logger } from "../managers/logging/Logger";
+import { LoggerFactory } from "../managers/logging/LoggerFactory";
 
 export class EngineTestRunner {
 
@@ -25,6 +25,7 @@ export class EngineTestRunner {
 	private graphBuilder: any;
 	private logger!: Logger;
 	private loggerFactory!: LoggerFactory;
+	private mutationExecutor: any;
 
 	constructor(
 		schemaManager: any, 
@@ -33,6 +34,7 @@ export class EngineTestRunner {
 		queryManager: any, 
 		queryPlanner: any,
 		graphBuilder: any,
+		mutationExecutor: any,
 		//logger: Logger,
 		loggerFactory: LoggerFactory
 	) {
@@ -58,6 +60,7 @@ export class EngineTestRunner {
         this.queryManager = queryManager;
 		this.queryPlanner = queryPlanner;
 		this.graphBuilder = graphBuilder;
+		this.mutationExecutor = mutationExecutor;
 		//this.logger = logger;
 		this.loggerFactory = loggerFactory;
     }
@@ -71,8 +74,9 @@ export class EngineTestRunner {
         } catch (e) {
             console.error(`❌ ${name} failed`, e);
             // new Notice(`❌ ${name} failed\n${(e as Error).message}`);
-			this.logger?.log({ level: "error", scope: "TEST", message: `❌ FAIL: ${name}`, data: e });
-            throw e;
+			this.logger?.log({ level: "error", scope: "TEST", message: `❌ FAIL: ${name}`, data: (e as Error).message });
+			new Notice(`❌ FAIL: ${name}\n${(e as Error).message}`);
+            //throw e;
         }
     }
 
@@ -247,6 +251,36 @@ export class EngineTestRunner {
 									matches: QueryMatch[];
 								}
 	6. Mutation Support
+		mutation/
+			MutationManager.ts
+			MutationExecutor.ts
+			MutationPlanner.ts
+
+			writer/
+				DataMutationWriter.ts
+				IMutationWriter.ts
+
+			operations/
+				MutationOperationResolver.ts
+
+			debug/
+				MutationTraceLogger.ts (optional)
+
+		types/
+		├── mutation/
+		│   ├── MutationTypes.ts
+		│   ├── MutationOperationTypes.ts
+		│   ├── MutationPlanTypes.ts
+		│   ├── MutationResultTypes.ts
+		│   └── MutationTargetTypes.ts
+
+		What I would do next
+			x Keep MutationExecutor mostly as-is.
+			x Build MutationTargetResolver.
+			x Modify executor to use targets instead of writeBack().
+			add datawriter
+			refactor resolvednode
+			Then write tests.
 
 	After aggregate expansion, I'd move toward:
 
@@ -274,356 +308,374 @@ export class EngineTestRunner {
 
         new Notice("🧪 Engine Tests Starting...");
 
-		await this.safeRun(
-			"Query Manager",
-			() => this.testQueryManager()
-		);
-
-		await this.safeRun("Query Filter", () =>
-			this.testQueryFilter()
-		);
-
-		await this.safeRun("Query Exact Match", () =>
-			this.testQueryExactMatch()
-		);
-
-		await this.safeRun("Reference Query", () =>
-			this.testReferenceQuery()
-		);
-
-		await this.safeRun("Sorting", () =>
-			this.testSorting()
-		);
-
-		await this.safeRun("Pagination", () =>
-			this.testPagination()
-		);
-
-		await this.safeRun("Cache Stability", () =>
-			this.testCacheStability()
-		);
-
-		await this.safeRun("Migration Safety", () =>
-			this.testMigrationSafety()
-		);
-
-		await this.safeRun("Negative Query", () =>
-			this.testNegativeQuery()
-		);
-
-		await this.safeRun(
-			"Single Hop Traversal",
-			() => this.testSingleHopReferenceTraversal()
-		);
-
-		await this.safeRun(
-			"Multi Hop Traversal",
-			() => this.testMultiHopReferenceTraversal()
-		);
-
-		await this.safeRun(
-			"Missing Reference Traversal",
-			() => this.testMissingReferenceTraversal()
-		);
-
-		await this.safeRun(
-			"projection flat fields",
-			() => this.testProjectionFlatFields()
-		);
-
-		await this.safeRun(
-			"Projection nested fields",
-			() => this.testProjectionNestedFields()
-		);
-
-		await this.safeRun(
-			"projection does not break filtering",
-			() => this.testProjectionDoesNotBreakFiltering()
-		);
-
-		await this.safeRun(
-			"count aggregation",
-			() => this.testCountAggregation()
-		);
-
-		await this.safeRun(
-			"Sum Aggregation",
-			() => this.testSumAggregation()
-		);
-
-		await this.safeRun(
-			"Average Aggregation",
-			() => this.testAverageAggregation()
-		);
-
-		await this.safeRun(
-			"Minimum Aggregation",
-			() => this.testMinimumAggregation()
-		);
-
-		await this.safeRun(
-			"Maximum Aggregation",
-			() => this.testMaximumAggregation()
-		);
-
-		await this.safeRun(
-			"Filtered Count Aggregation",
-			() => this.testFilteredCountAggregation()
-		);
-
-		await this.safeRun(
-			"Group by Count",
-			() => this.testGroupByCount()
-		);
-
-		await this.safeRun(
-			"Group by Sum",
-			() => this.testGroupBySum()
-		);
-
-		await this.safeRun(
-			"Group by Deep Traversal",
-			() => this.testGroupByDeepTraversal()
-		);
-
-		await this.safeRun(
-			"Group by Empty",
-			() => this.testGroupByEmpty()
-		);
-
-		await this.safeRun(
-			"Having Count",
-			() => this.testHavingCount()
-		);
-
-		await this.safeRun(
-			"Having Sum",
-			() => this.testHavingSum()
-		);
-
-		await this.safeRun(
-			"Having count property",
-			() => this.testHavingCountProperty()
-		);
-
-		await this.safeRun(
-			"Having Empty",
-			() => this.testHavingEmpty()
-		);
-
-		await this.safeRun(
-			"Group Order By Value desc",
-			() => this.testGroupOrderByValueDesc()
-		);
-
-		await this.safeRun(
-			"Group Order By Value Asc",
-			() => this.testGroupOrderByValueAsc()
-		);
-
-		await this.safeRun(
-			"Group Order By Key Asc",
-			() => this.testGroupOrderByKeyAsc()
-		);
-
-		await this.safeRun(
-			"Group Order by Count",
-			() => this.testGroupOrderByCount()
-		);
-
-		await this.safeRun(
-			"Query Planner Single Hop",
-			() => this.testQueryPlannerSingleHop()
-		);
-
-		await this.safeRun(
-			"Query Planner Multi Hop",
-			() => this.testQueryPlannerMultiHop()
-		);
-
-		await this.safeRun(
-			"Query Planner Combined Fields",
-			() => this.testQueryPlannerCombinedFields()
-		);
-
-		await this.safeRun(
-			"Query Planner No Traversal",
-			() => this.testQueryPlannerNoTraversal()
-		);
-
-		await this.safeRun(
-			"Planner Filter Integration",
-			() => this.testPlannerFilterIntegration()
-		);
-
-		await this.safeRun(
-			"Planner Projection Integration",
-			() => this.testPlannerProjectionIntegration()
-		);
-
-		await this.safeRun(
-			"Planner Group Integration",
-			() => this.testPlannerGroupIntegration()
-		);
-
-		await this.safeRun(
-			"Deduplication Test (select explosion)",
-			() => this.testQueryPlannerDeduplication()
-		);
-
-		await this.safeRun(
-			"Shared SELECT + WHERE Path Test",
-			() => this.testQueryPlannerSelectWhereDeduplication()
-		);
-
-		await this.safeRun(
-			"GroupBy Deduplication Test",
-			() => this.testQueryPlannerGroupByDeduplication()
-		);
-
-		await this.safeRun(
-			"Runner Batch Deduplication",
-			() => this.testRunnerBatchDeduplication()
-		);
-
-		await this.safeRun(
-			"Runner Multi Hop Integrity",
-			() => this.testRunnerMultiHopIntegrity()
-		);
-
-		await this.safeRun(
-			"Runner No Step Fast Path",
-			() => this.testRunnerNoStepFastPath()
-		);
-
-		await this.safeRun(
-			"Deep Reference Traversal",
-			() => this.testDeepReferenceTraversal()
-		);
-
-		await this.safeRun(
-			"Shared Reference Consistency",
-			() => this.testSharedReferenceConsistency()
-		);
-
-		await this.safeRun(
-			"Batch Fan Out Traversal",
-			() => this.testBatchFanOutTraversal()
-		);
-
-		await this.safeRun(
-			"Missing Reference Filter Behavior",
-			() => this.testMissingReferenceFilterBehavior()
-		);
-
-		await this.safeRun(
-			"Graph Basic Build",
-			() => this.testGraphBasicBuild()
-		);
-
-		await this.safeRun(
-			"Graph Edge Integrity",
-			() => this.testGraphEdgeIntegrity()
-		);
-
-		await this.safeRun(
-			"Graph Shared Node Deduplication",
-			() => this.testGraphSharedNodeDeduplication()
-		);
-
-		await this.safeRun(
-			"Graph Multi Hop Integrity",
-			() => this.testGraphMultiHopIntegrity()
-		);
-
-		await this.safeRun(
-			"Navigator Simple Hop",
-			() => this.testNavigatorSimpleHop()
-		);
-
-		await this.safeRun(
-			"Navigator Multi Hop",
-			() => this.testNavigatorMultiHop()
-		);
-
-		await this.safeRun(
-			"Navigator Missing Branch",
-			() => this.testNavigatorMissingBranch()
-		);
-
-		await this.safeRun(
-			"Navigator Deep Traversal",
-			() => this.testNavigatorDeepTraversal()
-		);
-
-		await this.safeRun(
-			"Navigator Invalid Path",
-			() => this.testNavigatorInvalidPath()
-		);
-
-		await this.safeRun(
-			"Graph Diamond Deduplication",
-			() => this.testGraphDiamondDeduplication()
-		);
-
-		await this.safeRun(
-			"Graph Circular Reference",
-			() => this.testGraphCircularReference()
-		);
-
-		await this.safeRun(
-			"Graph Broken References",
-			() => this.testGraphBrokenReference()
-		);
-
-		await this.safeRun(
-			"Navigator Root Property",
-			() => this.testNavigatorRootProperty()
-		);
-
-		await this.safeRun(
-			"Navigator Missing Mid Hop",
-			() => this.testNavigatorMissingMidHop()
-		);
-
-		await this.safeRun(
-			"Graph Multi Root Stability",
-			() => this.testGraphMultiRootStability()
-		);
-
-		await this.safeRun(
-			"Aggregate Count",
-			() => this.testAggregateCount()
-		);
-
-		await this.safeRun(
-			"Aggregate Sum",
-			() => this.testAggregateSum()
-		);
-
-		await this.safeRun(
-			"Aggregate Avg",
-			() => this.testAggregateAvg()
-		);
-
-		await this.safeRun(
-			"Aggregate Min Max",
-			() => this.testAggregateMinMax()
-		);
-
-		await this.safeRun(
-			"Aggregate Tests Manager",
-			() => this.testAggregateManager()
-		);
-
-		await this.safeRun(
-			"Reference Collection Tests Manager",
-			() => this.testReferenceCollectionManager()
-		);
-
-        new Notice("✅ All Engine Tests Completed");
-
-		await this.logger.flush();
+		try {
+			await this.safeRun(
+				"Query Manager",
+				() => this.testQueryManager()
+			);
+
+			await this.safeRun("Query Filter", () =>
+				this.testQueryFilter()
+			);
+
+			await this.safeRun("Query Exact Match", () =>
+				this.testQueryExactMatch()
+			);
+
+			await this.safeRun("Reference Query", () =>
+				this.testReferenceQuery()
+			);
+
+			await this.safeRun("Sorting", () =>
+				this.testSorting()
+			);
+
+			await this.safeRun("Pagination", () =>
+				this.testPagination()
+			);
+
+			await this.safeRun("Cache Stability", () =>
+				this.testCacheStability()
+			);
+
+			await this.safeRun("Migration Safety", () =>
+				this.testMigrationSafety()
+			);
+
+			await this.safeRun("Negative Query", () =>
+				this.testNegativeQuery()
+			);
+
+			await this.safeRun(
+				"Single Hop Traversal",
+				() => this.testSingleHopReferenceTraversal()
+			);
+
+			await this.safeRun(
+				"Multi Hop Traversal",
+				() => this.testMultiHopReferenceTraversal()
+			);
+
+			await this.safeRun(
+				"Missing Reference Traversal",
+				() => this.testMissingReferenceTraversal()
+			);
+
+			await this.safeRun(
+				"projection flat fields",
+				() => this.testProjectionFlatFields()
+			);
+
+			await this.safeRun(
+				"Projection nested fields",
+				() => this.testProjectionNestedFields()
+			);
+
+			await this.safeRun(
+				"projection does not break filtering",
+				() => this.testProjectionDoesNotBreakFiltering()
+			);
+
+			await this.safeRun(
+				"count aggregation",
+				() => this.testCountAggregation()
+			);
+
+			await this.safeRun(
+				"Sum Aggregation",
+				() => this.testSumAggregation()
+			);
+
+			await this.safeRun(
+				"Average Aggregation",
+				() => this.testAverageAggregation()
+			);
+
+			await this.safeRun(
+				"Minimum Aggregation",
+				() => this.testMinimumAggregation()
+			);
+
+			await this.safeRun(
+				"Maximum Aggregation",
+				() => this.testMaximumAggregation()
+			);
+
+			await this.safeRun(
+				"Filtered Count Aggregation",
+				() => this.testFilteredCountAggregation()
+			);
+
+			await this.safeRun(
+				"Group by Count",
+				() => this.testGroupByCount()
+			);
+
+			await this.safeRun(
+				"Group by Sum",
+				() => this.testGroupBySum()
+			);
+
+			await this.safeRun(
+				"Group by Deep Traversal",
+				() => this.testGroupByDeepTraversal()
+			);
+
+			await this.safeRun(
+				"Group by Empty",
+				() => this.testGroupByEmpty()
+			);
+
+			await this.safeRun(
+				"Having Count",
+				() => this.testHavingCount()
+			);
+
+			await this.safeRun(
+				"Having Sum",
+				() => this.testHavingSum()
+			);
+
+			await this.safeRun(
+				"Having count property",
+				() => this.testHavingCountProperty()
+			);
+
+			await this.safeRun(
+				"Having Empty",
+				() => this.testHavingEmpty()
+			);
+
+			await this.safeRun(
+				"Group Order By Value desc",
+				() => this.testGroupOrderByValueDesc()
+			);
+
+			await this.safeRun(
+				"Group Order By Value Asc",
+				() => this.testGroupOrderByValueAsc()
+			);
+
+			await this.safeRun(
+				"Group Order By Key Asc",
+				() => this.testGroupOrderByKeyAsc()
+			);
+
+			await this.safeRun(
+				"Group Order by Count",
+				() => this.testGroupOrderByCount()
+			);
+
+			await this.safeRun(
+				"Query Planner Single Hop",
+				() => this.testQueryPlannerSingleHop()
+			);
+
+			await this.safeRun(
+				"Query Planner Multi Hop",
+				() => this.testQueryPlannerMultiHop()
+			);
+
+			await this.safeRun(
+				"Query Planner Combined Fields",
+				() => this.testQueryPlannerCombinedFields()
+			);
+
+			await this.safeRun(
+				"Query Planner No Traversal",
+				() => this.testQueryPlannerNoTraversal()
+			);
+
+			await this.safeRun(
+				"Planner Filter Integration",
+				() => this.testPlannerFilterIntegration()
+			);
+
+			await this.safeRun(
+				"Planner Projection Integration",
+				() => this.testPlannerProjectionIntegration()
+			);
+
+			await this.safeRun(
+				"Planner Group Integration",
+				() => this.testPlannerGroupIntegration()
+			);
+
+			await this.safeRun(
+				"Deduplication Test (select explosion)",
+				() => this.testQueryPlannerDeduplication()
+			);
+
+			await this.safeRun(
+				"Shared SELECT + WHERE Path Test",
+				() => this.testQueryPlannerSelectWhereDeduplication()
+			);
+
+			await this.safeRun(
+				"GroupBy Deduplication Test",
+				() => this.testQueryPlannerGroupByDeduplication()
+			);
+
+			await this.safeRun(
+				"Runner Batch Deduplication",
+				() => this.testRunnerBatchDeduplication()
+			);
+
+			await this.safeRun(
+				"Runner Multi Hop Integrity",
+				() => this.testRunnerMultiHopIntegrity()
+			);
+
+			await this.safeRun(
+				"Runner No Step Fast Path",
+				() => this.testRunnerNoStepFastPath()
+			);
+
+			await this.safeRun(
+				"Deep Reference Traversal",
+				() => this.testDeepReferenceTraversal()
+			);
+
+			await this.safeRun(
+				"Shared Reference Consistency",
+				() => this.testSharedReferenceConsistency()
+			);
+
+			await this.safeRun(
+				"Batch Fan Out Traversal",
+				() => this.testBatchFanOutTraversal()
+			);
+
+			await this.safeRun(
+				"Missing Reference Filter Behavior",
+				() => this.testMissingReferenceFilterBehavior()
+			);
+
+			await this.safeRun(
+				"Graph Basic Build",
+				() => this.testGraphBasicBuild()
+			);
+
+			await this.safeRun(
+				"Graph Edge Integrity",
+				() => this.testGraphEdgeIntegrity()
+			);
+
+			await this.safeRun(
+				"Graph Shared Node Deduplication",
+				() => this.testGraphSharedNodeDeduplication()
+			);
+
+			await this.safeRun(
+				"Graph Multi Hop Integrity",
+				() => this.testGraphMultiHopIntegrity()
+			);
+
+			await this.safeRun(
+				"Navigator Simple Hop",
+				() => this.testNavigatorSimpleHop()
+			);
+
+			await this.safeRun(
+				"Navigator Multi Hop",
+				() => this.testNavigatorMultiHop()
+			);
+
+			await this.safeRun(
+				"Navigator Missing Branch",
+				() => this.testNavigatorMissingBranch()
+			);
+
+			await this.safeRun(
+				"Navigator Deep Traversal",
+				() => this.testNavigatorDeepTraversal()
+			);
+
+			await this.safeRun(
+				"Navigator Invalid Path",
+				() => this.testNavigatorInvalidPath()
+			);
+
+			await this.safeRun(
+				"Graph Diamond Deduplication",
+				() => this.testGraphDiamondDeduplication()
+			);
+
+			await this.safeRun(
+				"Graph Circular Reference",
+				() => this.testGraphCircularReference()
+			);
+
+			await this.safeRun(
+				"Graph Broken References",
+				() => this.testGraphBrokenReference()
+			);
+
+			await this.safeRun(
+				"Navigator Root Property",
+				() => this.testNavigatorRootProperty()
+			);
+
+			await this.safeRun(
+				"Navigator Missing Mid Hop",
+				() => this.testNavigatorMissingMidHop()
+			);
+
+			await this.safeRun(
+				"Graph Multi Root Stability",
+				() => this.testGraphMultiRootStability()
+			);
+
+			await this.safeRun(
+				"Aggregate Count",
+				() => this.testAggregateCount()
+			);
+
+			await this.safeRun(
+				"Aggregate Sum",
+				() => this.testAggregateSum()
+			);
+
+			await this.safeRun(
+				"Aggregate Avg",
+				() => this.testAggregateAvg()
+			);
+
+			await this.safeRun(
+				"Aggregate Min Max",
+				() => this.testAggregateMinMax()
+			);
+
+			await this.safeRun(
+				"Aggregate Tests Manager",
+				() => this.testAggregateManager()
+			);
+
+			await this.safeRun(
+				"Reference Collection Tests Manager",
+				() => this.testReferenceCollectionManager()
+			);
+
+			await this.safeRun(
+				"Mutation Test Suite",
+				() => this.MutationTestSuite()
+			);
+		}
+		catch (e) {
+			// this only catches unexpected fatal runner errors
+			console.error("Test runner crashed", e);
+			this.logger?.log({ level: "error", scope: "TEST", message: `❌ Test Runner Crashed`, data: e });
+			new Notice(`❌ Test Runner Crashed\n${(e as Error).message}`);
+			//this.logger?.log({ level: "error", scope: "TEST", message: "Reset complete" });
+		}
+		finally {
+			await this.logger.flush();
+			new Notice("✅ All Engine Tests Completed");
+		}
+
+        
+
+		//await this.logger.flush();
     }
 
 	// --------------------------------------------------
@@ -632,7 +684,7 @@ export class EngineTestRunner {
 	
 	private async testQueryBasicReturn() {
 
-		new Notice("Query: Basic Return");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Basic Return" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -644,12 +696,12 @@ export class EngineTestRunner {
 			throw new Error("Query did not return array");
 		}
 
-		new Notice(`Basic return OK: ${results.length}`);
+		this.logger?.log({ level: "info", scope: "TEST", message: `Basic return OK: ${results.length}` });
 	}
 
 	private async testQueryWhereEquals() {
 
-		new Notice("Query: Where Equals");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Where Equals" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -667,12 +719,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice(`Equals OK: ${results.length}`);
+		this.logger?.log({ level: "info", scope: "TEST", message: `Equals OK: ${results.length}` });
 	}
 
 	private async testQueryWhereGreaterThan() {
 
-		new Notice("Query: Greater Than");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Greater Than" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -690,12 +742,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice(`Greater Than OK: ${results.length}`);
+		this.logger?.log({ level: "info", scope: "TEST", message: `Greater Than OK: ${results.length}` });
 	}
 
 	private async testQueryMultiFilterAnd() {
 
-		new Notice("Query: Multi Filter");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Multi Filter" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -714,12 +766,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice(`Multi Filter OK: ${results.length}`);
+		this.logger?.log({ level: "info", scope: "TEST", message: `Multi Filter OK: ${results.length}` });
 	}
 
 	private async testQuerySortAsc() {
 
-		new Notice("Query: Sort ASC");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Sort ASC" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -735,12 +787,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Sort ASC OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Sort ASC OK" });
 	}
 
 	private async testQuerySortDesc() {
 
-		new Notice("Query: Sort DESC");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Sort DESC" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -756,12 +808,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Sort DESC OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Sort DESC OK" });
 	}
 
 	private async testQueryLimit() {
 
-		new Notice("Query: Limit");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Limit" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -775,7 +827,7 @@ export class EngineTestRunner {
 			throw new Error("Limit failed");
 		}
 
-		new Notice(`Limit OK: ${results.length}`);
+		this.logger?.log({ level: "info", scope: "TEST", message: `Limit OK: ${results.length}` });
 	}
 
 	private async testQueryOffset() {
@@ -824,7 +876,7 @@ export class EngineTestRunner {
 
 	private async testQueryLimitOffset() {
 
-		new Notice("Query: Limit + Offset");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Limit + Offset" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -839,12 +891,12 @@ export class EngineTestRunner {
 			throw new Error("Limit+Offset failed");
 		}
 
-		new Notice("Limit+Offset OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Limit+Offset OK" });
 	}
 
 	private async testQueryInOperator() {
 
-		new Notice("Query: IN Operator");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: IN Operator" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -866,12 +918,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("IN OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "IN OK" });
 	}
 
 	private async testQueryContainsOperator() {
 
-		new Notice("Query: Contains");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Contains" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -893,12 +945,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Contains OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Contains OK" });
 	}
 
 	private async testQueryExistsOperator() {
 
-		new Notice("Query: Exists");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Exists" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -919,12 +971,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Exists OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Exists OK" });
 	}
 
 	private async testQueryDeterminism() {
 
-		new Notice("Query: Determinism");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Determinism" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -939,12 +991,12 @@ export class EngineTestRunner {
 			throw new Error("Non-deterministic results detected");
 		}
 
-		new Notice("Determinism OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Determinism OK" });
 	}
 
 	private async testQueryUnknownField() {
 
-		new Notice("Query: Unknown Field");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Unknown Field" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -960,12 +1012,12 @@ export class EngineTestRunner {
 			throw new Error("Unknown field should return 0 results");
 		}
 
-		new Notice("Unknown Field OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Unknown Field OK" });
 	}
 
 	private async testQueryNullAndUndefinedHandling() {
 
-		new Notice("Query: Null Safety");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Null Safety" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -982,12 +1034,12 @@ export class EngineTestRunner {
 			throw new Error("Null safety failed");
 		}
 
-		new Notice("Null Safety OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Null Safety OK" });
 	}
 
 	private async testQueryTypeCoercionSafety() {
 
-		new Notice("Query: Type Safety");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Type Safety" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1006,12 +1058,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Type Safety OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Type Safety OK" });
 	}
 
 	private async testQueryStackedSameFieldFilters() {
 
-		new Notice("Query: Stacked Filters");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Stacked Filters" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1030,12 +1082,12 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Stacked Filters OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Stacked Filters OK" });
 	}
 
 	private async testQueryEmptyDataset() {
 
-		new Notice("Query: Empty Dataset");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Empty Dataset" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1052,12 +1104,12 @@ export class EngineTestRunner {
 			throw new Error("Empty dataset handling failed");
 		}
 
-		new Notice("Empty Dataset OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Empty Dataset OK" });
 	}
 
 	private async testQuerySortStability() {
 
-		new Notice("Query: Sort Stability");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query: Sort Stability" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1078,41 +1130,46 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Sort Stability OK");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Sort Stability OK" });
 	}
 
 	private async testQueryManager() {
 
-		new Notice("Test Query Manager Suite");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test Query Manager Suite" });
 
-		await this.testQueryBasicReturn();
-		await this.testQueryWhereEquals();
-		await this.testQueryWhereGreaterThan();
-		await this.testQueryMultiFilterAnd();
-		await this.testQuerySortAsc();
-		await this.testQuerySortDesc();
-		await this.testQueryLimit();
-		await this.testQueryOffset();
-		await this.testQueryLimitOffset();
-		await this.testQueryInOperator();
-		await this.testQueryContainsOperator();
-		await this.testQueryExistsOperator();
-		await this.testQueryDeterminism();
-		await this.testQueryUnknownField();
-		await this.testQueryNullAndUndefinedHandling();
-		await this.testQueryTypeCoercionSafety();
-		await this.testQueryStackedSameFieldFilters();
-		await this.testQueryEmptyDataset();
-		await this.testQuerySortStability();
+		try {
+			await this.testQueryBasicReturn();
+			await this.testQueryWhereEquals();
+			await this.testQueryWhereGreaterThan();
+			await this.testQueryMultiFilterAnd();
+			await this.testQuerySortAsc();
+			await this.testQuerySortDesc();
+			await this.testQueryLimit();
+			await this.testQueryOffset();
+			await this.testQueryLimitOffset();
+			await this.testQueryInOperator();
+			await this.testQueryContainsOperator();
+			await this.testQueryExistsOperator();
+			await this.testQueryDeterminism();
+			await this.testQueryUnknownField();
+			await this.testQueryNullAndUndefinedHandling();
+			await this.testQueryTypeCoercionSafety();
+			await this.testQueryStackedSameFieldFilters();
+			await this.testQueryEmptyDataset();
+			await this.testQuerySortStability();
+		}
+		catch (e) {
+			this.logger?.log({ level: "error", scope: "TEST", message: "Query Manager Tests Failed", data: (e as Error).message });
+		}
 
-		new Notice("Query Manager Tests Completed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query Manager Tests Completed" });
 	}
 
 	private async testQueryFilter() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Query Filter");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Filter" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1128,14 +1185,14 @@ export class EngineTestRunner {
 			throw new Error("Query did not return array");
 		}
 
-		new Notice(`Filter returned ${results.length} results`);
+		this.logger?.log({ level: "info", scope: "TEST", message: `Filter returned ${results.length} results` });
 	}
 
 	private async testQueryExactMatch() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Query Exact Match");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Exact Match" });
 
 		const context =
 			await this.contextFactory.getSchemaContext(
@@ -1192,14 +1249,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice("Exact match query passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Exact match query passed" });
 	}
 
 	private async testReferenceQuery() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Reference Query");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Reference Query" });
 
 		const charContext =
 			await this.contextFactory.getSchemaContext("CoreTest", "Character");
@@ -1229,14 +1286,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected 1 result, got ${results.length}`);
 		}
 
-		new Notice("Reference query passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Reference query passed" });
 	}
 
 	private async testSorting() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Sorting");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Sorting" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1255,14 +1312,14 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Sorting passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Sorting passed" });
 	}
 
 	private async testPagination() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Pagination");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Pagination" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1277,14 +1334,14 @@ export class EngineTestRunner {
 			throw new Error("Pagination failed");
 		}
 
-		new Notice("Pagination passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Pagination passed" });
 	}
 
 	private async testCacheStability() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Cache Stability");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Cache Stability" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1299,14 +1356,14 @@ export class EngineTestRunner {
 			throw new Error("Cache inconsistency detected");
 		}
 
-		new Notice("Cache stable");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Cache stable" });
 	}
 
 	private async testMigrationSafety() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Migration Safety");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Migration Safety" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1329,14 +1386,14 @@ export class EngineTestRunner {
 			throw new Error("Migration broke data access");
 		}
 
-		new Notice("Migration safe");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Migration safe" });
 	}
 
 	private async testNegativeQuery() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Negative Query");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Negative Query" });
 
 		const context =
 			await this.contextFactory.getSchemaContext("CoreTest", "Item");
@@ -1352,16 +1409,14 @@ export class EngineTestRunner {
 			throw new Error("Negative query returned results unexpectedly");
 		}
 
-		new Notice("Negative query passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Negative query passed" });
 	}
 
 	private async testSingleHopReferenceTraversal() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Single Hop Reference Traversal"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Single Hop Reference Traversal" });
 
 		// --------------------------------------------------
 		// Create required schema
@@ -1457,18 +1512,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Single hop traversal passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Single hop traversal passed" });
 	}
 
 	private async testMultiHopReferenceTraversal() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Multi Hop Reference Traversal"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Multi Hop Reference Traversal" });
 
 		// --------------------------------------------------
 		// Add Guild schema field to Character
@@ -1673,18 +1724,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Multi hop traversal passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Multi hop traversal passed" });
 	}
 
 	private async testMissingReferenceTraversal() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Missing Reference Traversal"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Missing Reference Traversal" });
 
 		// --------------------------------------------------
 		// Add Character.guild reference
@@ -1761,16 +1808,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Missing reference traversal passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Missing reference traversal passed" });
 	}
 
 	private async testProjectionFlatFields() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Projection - Flat Fields");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Projection - Flat Fields" });
 
 		const itemContext =
 			await this.contextFactory.getSchemaContext(
@@ -1821,14 +1866,14 @@ export class EngineTestRunner {
 			throw new Error("Unexpected field: weight");
 		}
 
-		new Notice("Projection flat fields passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Projection flat fields passed" });
 	}
 
 	private async testProjectionNestedFields() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Projection - Nested Fields");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Projection - Nested Fields" });
 
 		// --------------------------------------------------
 		// Build schemas
@@ -1976,16 +2021,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Projection nested fields passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Projection nested fields passed" });
 	}
 
 	private async testProjectionDoesNotBreakFiltering() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Projection + Filtering");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Projection + Filtering" });
 
 		const itemContext =
 			await this.contextFactory.getSchemaContext(
@@ -2034,16 +2077,14 @@ export class EngineTestRunner {
 			throw new Error("Filtering broke with projection");
 		}
 
-		new Notice("Projection filtering safety passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Projection filtering safety passed" });
 	}
 
 	private async testCountAggregation() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Count Aggregation"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Count Aggregation" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -2090,18 +2131,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Count aggregation passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Count aggregation passed" });
 	}
 
 	private async testSumAggregation() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Sum Aggregation"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Sum Aggregation" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -2149,18 +2186,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Sum aggregation passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Sum aggregation passed" });
 	}
 
 	private async testAverageAggregation() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Average Aggregation"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Average Aggregation" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -2208,18 +2241,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Average aggregation passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Average aggregation passed" });
 	}
 
 	private async testMinimumAggregation() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Minimum Aggregation"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Minimum Aggregation" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -2267,18 +2296,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Minimum aggregation passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Minimum aggregation passed" });
 	}
 
 	private async testMaximumAggregation() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Maximum Aggregation"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Maximum Aggregation" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -2326,18 +2351,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Maximum aggregation passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Maximum aggregation passed" });
 	}
 
 	private async testFilteredCountAggregation() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Filtered Count Aggregation"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Filtered Count Aggregation" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -2391,16 +2412,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Filtered count aggregation passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Filtered count aggregation passed" });
 	}
 
 	private async testGroupByCount() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Group By Count");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group By Count" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -2565,14 +2584,14 @@ export class EngineTestRunner {
 			throw new Error("Bandits group failed");
 		}
 
-		new Notice("Group By Count passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Group By Count passed" });
 	}
 
 	private async testGroupBySum() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Group By Sum");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group By Sum" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -2696,14 +2715,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice("Group By Sum passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Group By Sum passed" });
 	}
 
 	private async testGroupByDeepTraversal() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Group By Deep Traversal");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group By Deep Traversal" });
 
 		// --------------------------------------------------
 		// FULL SCHEMA SETUP (CRITICAL FIX)
@@ -2839,14 +2858,14 @@ export class EngineTestRunner {
 			throw new Error("Wrong group count");
 		}
 
-		new Notice("Deep Group By passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Deep Group By passed" });
 	}
 
 	private async testGroupByEmpty() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Group By Empty");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group By Empty" });
 
 		const itemContext =
 			await this.contextFactory.getSchemaContext(
@@ -2866,16 +2885,14 @@ export class EngineTestRunner {
 			throw new Error("Expected empty result set");
 		}
 
-		new Notice("Empty group test passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Empty group test passed" });
 	}
 
 	private async testHavingCount() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: HAVING Count"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: HAVING Count" });
 
 		// --------------------------------------------------
 		// Schema
@@ -3054,18 +3071,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"HAVING Count passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "HAVING Count passed" });
 	}
 
 	private async testHavingSum() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: HAVING Sum"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: HAVING Sum" });
 
 		// schema
 
@@ -3233,18 +3246,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"HAVING Sum passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "HAVING Sum passed" });
 	}
 
 	private async testHavingCountProperty() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: HAVING Count Property"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: HAVING Count Property" });
 
 		// --------------------------------------------------
 		// Schema
@@ -3437,18 +3446,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"HAVING Count Property passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "HAVING Count Property passed" });
 	}
 
 	private async testHavingEmpty() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: HAVING Empty"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: HAVING Empty" });
 
 		const itemContext =
 			await this.contextFactory.getSchemaContext(
@@ -3480,18 +3485,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"HAVING Empty passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "HAVING Empty passed" });
 	}
 
 	private async testGroupOrderByValueDesc() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Group Order By Value Desc"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group Order By Value Desc" });
 
 		// Schema
 
@@ -3658,18 +3659,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Group Order By Value Desc passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Group Order By Value Desc passed" });
 	}
 
 	private async testGroupOrderByValueAsc() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Group Order By Value Asc"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group Order By Value Asc" });
 
 		// Schema
 
@@ -3854,18 +3851,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Group Order By Value asc passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Group Order By Value asc passed" });
 	}
 
 	private async testGroupOrderByKeyAsc() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Group Order By Key Asc"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group Order By Key Asc" });
 
 		// --------------------------------------------------
 		// Schema
@@ -4071,18 +4064,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Group Order By Key Asc passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Group Order By Key Asc passed" });
 	}
 
 	private async testGroupOrderByCount() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Group Order By Count Desc"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group Order By Count Desc" });
 
 		// --------------------------------------------------
 		// Schema
@@ -4281,18 +4270,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Group Order By Count Desc passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Group Order By Count Desc passed" });
 	}
 
 	private async testQueryPlannerSingleHop() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Query Planner Single Hop"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner Single Hop" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -4349,18 +4334,14 @@ export class EngineTestRunner {
 			throw new Error("Wrong target schema");
 		}
 
-		new Notice(
-			"Query Planner Single Hop passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query Planner Single Hop passed" });
 	}
 
 	private async testQueryPlannerMultiHop() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Query Planner Multi Hop"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner Multi Hop" });
 
 		// --------------------------------------------------
 		// Schema
@@ -4488,18 +4469,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Query Planner Multi Hop passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query Planner Multi Hop passed" });
 	}
 
 	private async testQueryPlannerCombinedFields() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Query Planner Combined Fields"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner Combined Fields" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -4557,18 +4534,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Query Planner Combined Fields passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query Planner Combined Fields passed" });
 	}
 
 	private async testQueryPlannerNoTraversal() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Query Planner No Traversal"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner No Traversal" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -4600,18 +4573,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Query Planner No Traversal passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Query Planner No Traversal passed" });
 	}
 
 	private async testPlannerFilterIntegration() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Planner Filter Integration"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Planner Filter Integration" });
 
 		// --------------------------------------------------
 		// Schema
@@ -4773,18 +4742,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Planner Filter Integration passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Planner Filter Integration passed" });
 	}
 
 	private async testPlannerProjectionIntegration() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Planner Projection Integration"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Planner Projection Integration" });
 
 		// --------------------------------------------------
 		// Schema
@@ -4939,18 +4904,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Planner Projection Integration passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Planner Projection Integration passed" });
 	}
 
 	private async testPlannerGroupIntegration() {
 
 		await this.resetCoreTestData();
 
-		new Notice(
-			"Test: Planner Group Integration"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Planner Group Integration" });
 
 		// --------------------------------------------------
 		// Schema
@@ -5142,16 +5103,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Planner Group Integration passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Planner Group Integration passed" });
 	}
 
 	private async testQueryPlannerDeduplication() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Query Planner Deduplication");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner Deduplication" });
 
 		// --------------------------------------------------
 		// Schema
@@ -5236,14 +5195,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice("Deduplication test passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Deduplication test passed" });
 	}
 
 	private async testQueryPlannerSelectWhereDeduplication() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Select + Where Deduplication");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Select + Where Deduplication" });
 
 		// --------------------------------------------------
 		// Schema
@@ -5331,14 +5290,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice("Select/Where dedup passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Select/Where dedup passed" });
 	}
 
 	private async testQueryPlannerGroupByDeduplication() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: GroupBy Deduplication");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: GroupBy Deduplication" });
 
 		// --------------------------------------------------
 		// Schema
@@ -5420,14 +5379,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice("GroupBy dedup passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "GroupBy dedup passed" });
 	}
 
 	private async testRunnerBatchDeduplication() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Runner Batch Deduplication");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Runner Batch Deduplication" });
 
 		await this.ensureField("CoreTest", "Guild", "name", "string", "");
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
@@ -5511,14 +5470,14 @@ export class EngineTestRunner {
 			throw new Error("Second result incorrect");
 		}
 
-		new Notice("Runner Batch Dedup passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Runner Batch Dedup passed" });
 	}
 
 	private async testRunnerMultiHopIntegrity() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Runner Multi Hop Integrity");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Runner Multi Hop Integrity" });
 
 		await this.ensureField("CoreTest", "Guild", "name", "string", "");
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
@@ -5589,14 +5548,14 @@ export class EngineTestRunner {
 			throw new Error("Multi-hop failed");
 		}
 
-		new Notice("Runner Multi Hop passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Runner Multi Hop passed" });
 	}
 
 	private async testRunnerNoStepFastPath() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Runner No Step Fast Path");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Runner No Step Fast Path" });
 
 		await this.ensureField("CoreTest", "Item", "name", "string", "");
 
@@ -5616,14 +5575,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected 2 results, got ${results.length}`);
 		}
 
-		new Notice("Runner No Step Fast Path passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Runner No Step Fast Path passed" });
 	}
 
 	private async testDeepReferenceTraversal() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Deep Reference Traversal");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Deep Reference Traversal" });
 
 		// --------------------------------------------------
 		// Schema
@@ -5729,14 +5688,14 @@ export class EngineTestRunner {
 			throw new Error("Deep traversal returned wrong item");
 		}
 
-		new Notice("Deep Reference Traversal passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Deep Reference Traversal passed" });
 	}
 
 	private async testSharedReferenceConsistency() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Shared Reference Consistency");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Shared Reference Consistency" });
 
 		// --------------------------------------------------
 		// Schema
@@ -5820,14 +5779,14 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Shared Reference Consistency passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Shared Reference Consistency passed" });
 	}
 
 	private async testBatchFanOutTraversal() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Batch Fan-Out Traversal");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Batch Fan-Out Traversal" });
 
 		// --------------------------------------------------
 		// Schema
@@ -5912,14 +5871,14 @@ export class EngineTestRunner {
 			}
 		}
 
-		new Notice("Batch Fan-Out Traversal passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Batch Fan-Out Traversal passed" });
 	}
 
 	private async testMissingReferenceFilterBehavior() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Missing Reference Filter Behavior");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Missing Reference Filter Behavior" });
 
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
 
@@ -5985,14 +5944,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected 1 result, got ${results.length}`);
 		}
 
-		new Notice("Missing Reference Filter Behavior passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Missing Reference Filter Behavior passed" });
 	}
 
 	private async testGraphBasicBuild() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Graph Test: Basic Build");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Basic Build" });
 
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
 		await this.ensureField("CoreTest", "Item", "name", "string", "");
@@ -6046,14 +6005,14 @@ export class EngineTestRunner {
 			throw new Error("Owner node missing");
 		}
 
-		new Notice("Graph Basic Build passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Basic Build passed" });
 	}
 
 	private async testGraphEdgeIntegrity() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Graph Test: Edge Integrity");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Edge Integrity" });
 
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
 		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
@@ -6117,14 +6076,14 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice("Graph Edge Integrity passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Edge Integrity passed" });
 	}
 
 	private async testGraphSharedNodeDeduplication() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Graph Test: Shared Node Dedup");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Shared Node Dedup" });
 
 		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
 			ruleset: "CoreTest",
@@ -6179,14 +6138,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected 1 Bob node, got ${bobCount}`);
 		}
 
-		new Notice("Graph Shared Node Dedup passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Shared Node Dedup passed" });
 	}
 
 	private async testGraphMultiHopIntegrity() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Graph Test: Multi Hop");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Multi Hop" });
 
 		await this.ensureField("CoreTest", "Guild", "name", "string", "");
 		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
@@ -6250,7 +6209,7 @@ export class EngineTestRunner {
 			throw new Error("Guild node missing");
 		}
 
-		new Notice("Graph Multi Hop passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Multi Hop passed" });
 	}
 
 	private async buildGraphForNavigator(missing = false) {
@@ -6329,7 +6288,7 @@ export class EngineTestRunner {
 
 	private async testNavigatorSimpleHop() {
 
-		new Notice("Navigator Test: Simple Hop");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Simple Hop" });
 
 		const setup = await this.buildGraphForNavigator();
 
@@ -6357,12 +6316,12 @@ export class EngineTestRunner {
 			throw new Error(`Expected Bob, got ${value}`);
 		}
 
-		new Notice("Navigator Simple Hop passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Simple Hop passed" });
 	}
 
 	private async testNavigatorMultiHop() {
 
-		new Notice("Navigator Test: Multi Hop");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Multi Hop" });
 
 		const setup = await this.buildGraphForNavigator();
 
@@ -6390,12 +6349,12 @@ export class EngineTestRunner {
 			throw new Error(`Expected Knights, got ${value}`);
 		}
 
-		new Notice("Navigator Multi Hop passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Multi Hop passed" });
 	}
 
 	private async testNavigatorMissingBranch() {
 
-		new Notice("Navigator Test: Missing Branch");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Missing Branch" });
 
 		const setup = await this.buildGraphForNavigator();
 
@@ -6423,12 +6382,12 @@ export class EngineTestRunner {
 			throw new Error(`Expected Leader, got ${value}`);
 		}
 
-		new Notice("Navigator Missing Branch passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Missing Branch passed" });
 	}
 
 	private async testNavigatorDeepTraversal() {
 
-		new Notice("Navigator Test: Missing Branch");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Deep Traversal" });
 
 		const setup = await this.buildGraphForNavigator(true);
 
@@ -6456,12 +6415,12 @@ export class EngineTestRunner {
 			throw new Error(`Expected Leader, got ${value}`);
 		}
 
-		new Notice("Navigator Missing Branch passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Deep Traversal passed" });
 	}
 
 	private async testNavigatorInvalidPath() {
 
-		new Notice("Navigator Test: Invalid Path");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Invalid Path" });
 
 		const setup = await this.buildGraphForNavigator();
 
@@ -6489,14 +6448,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected undefined, got ${value}`);
 		}
 
-		new Notice("Navigator Invalid Path passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Invalid Path passed" });
 	}
 
 	private async testGraphDiamondDeduplication() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Graph Diamond Deduplication");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Diamond Deduplication" });
 
 		await this.ensureField("CoreTest", "Guild", "name", "string", "");
 
@@ -6566,14 +6525,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected 1 Guild node, got ${guildNodes.length}`);
 		}
 
-		new Notice("Graph Diamond Deduplication passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Diamond Deduplication passed" });
 	}
 
 	private async testGraphCircularReference() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Graph Circular Reference");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Circular Reference" });
 
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
 		await this.ensureField("CoreTest", "Character", "friend", "reference", null, undefined, {
@@ -6621,14 +6580,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected A, got ${value}`);
 		}
 
-		new Notice("Graph Circular Reference passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Circular Reference passed" });
 	}
 
 	private async testGraphBrokenReference() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Graph Broken Reference");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Broken Reference" });
 
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
 		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
@@ -6675,14 +6634,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected undefined, got ${value}`);
 		}
 
-		new Notice("Graph Broken Reference passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Broken Reference passed" });
 	}
 
 	private async testNavigatorRootProperty() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Navigator Root Property");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Navigator Root Property" });
 
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
 
@@ -6716,14 +6675,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected Bob, got ${value}`);
 		}
 
-		new Notice("Navigator Root Property passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Root Property passed" });
 	}
 
 	private async testNavigatorMissingMidHop() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Navigator Missing Mid-Hop");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Navigator Missing Mid-Hop" });
 
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
 		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
@@ -6772,14 +6731,14 @@ export class EngineTestRunner {
 			throw new Error(`Expected undefined, got ${value}`);
 		}
 
-		new Notice("Navigator Missing Mid-Hop passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Missing Mid-Hop passed" });
 	}
 
 	private async testGraphMultiRootStability() {
 
 		await this.resetCoreTestData();
 
-		new Notice("Test: Graph Multi Root Stability");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Multi Root Stability" });
 
 		await this.ensureField("CoreTest", "Character", "name", "string", "");
 
@@ -6806,7 +6765,7 @@ export class EngineTestRunner {
 			throw new Error(`Expected 3 roots, got ${graph.roots.length}`);
 		}
 
-		new Notice("Graph Multi Root Stability passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Multi Root Stability passed" });
 	}
 
 	private async buildAggregateTestFixture(swdVal = 10, shdVal = 10, missing = false, emptyGroup = false) {
@@ -6952,7 +6911,7 @@ export class EngineTestRunner {
 
 	private async testAggregateCount() {
 
-		new Notice("Aggregate Resolver: Count");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Count" });
 
 		const fx = await this.buildAggregateTestFixture();
 
@@ -6971,12 +6930,12 @@ export class EngineTestRunner {
 			throw new Error(`Expected 2, got ${value}`);
 		}
 
-		new Notice("Aggregate Count passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Count passed" });
 	}
 
 	private async testAggregateSum() {
 
-		new Notice("Aggregate Resolver: Sum");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Sum" });
 
 		const fx = await this.buildAggregateTestFixture();
 
@@ -6995,12 +6954,12 @@ export class EngineTestRunner {
 			throw new Error(`Expected 20, got ${value}`);
 		}
 
-		new Notice("Aggregate Sum passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Sum passed" });
 	}
 
 	private async testAggregateAvg() {
 
-		new Notice("Aggregate Resolver: Avg");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Avg" });
 
 		const fx = await this.buildAggregateTestFixture(10, 20);
 
@@ -7019,12 +6978,12 @@ export class EngineTestRunner {
 			throw new Error(`Expected 15, got ${value}`);
 		}
 
-		new Notice("Aggregate Avg passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Avg passed" });
 	}
 
 	private async testAggregateMinMax() {
 
-		new Notice("Aggregate Resolver: Min/Max");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Min/Max" });
 
 		const fx = await this.buildAggregateTestFixture(5, 15);
 
@@ -7040,11 +6999,11 @@ export class EngineTestRunner {
 		if (min !== 5) throw new Error(`Expected min 5, got ${min}`);
 		if (max !== 15) throw new Error(`Expected max 15, got ${max}`);
 
-		new Notice("Aggregate Min/Max passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Min/Max passed" });
 	}
 
 	private async testAggregateDistinctOne() {
-		new Notice("Aggregate Resolver: Distinct One");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Distinct One" });
 
 		const fx = await this.buildAggregateTestFixture();
 
@@ -7053,11 +7012,11 @@ export class EngineTestRunner {
 		
 		const distinct = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "distinct-count", field: "power" });
 		if (distinct !== 1) throw new Error(`Expected distinct 1, got ${distinct}`);
-		new Notice("Aggregate Distinct One Passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Distinct One Passed" });
 	}
 
 	private async testAggregateDistinctTwo() {
-		new Notice("Aggregate Resolver: Distinct Two");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Distinct Two" });
 
 		const fx = await this.buildAggregateTestFixture(10, 20);
 
@@ -7066,11 +7025,11 @@ export class EngineTestRunner {
 		
 		const distinct = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "distinct-count", field: "power" });
 		if (distinct !== 2) throw new Error(`Expected distinct 2, got ${distinct}`);
-		new Notice("Aggregate Distinct Two Passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Distinct Two Passed" });
 	}
 
 	private async testAggregateSumMissingNum() {
-		new Notice("Aggregate Resolver: Sum Missing Number");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Sum Missing Number" });
 
 		const fx = await this.buildAggregateTestFixture(10, 10, true);
 
@@ -7079,11 +7038,11 @@ export class EngineTestRunner {
 		
 		const sum = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "sum", field: "power" });
 		if (sum !== 10) throw new Error(`Expected sum 2, got ${sum}`);
-		new Notice("Aggregate Sum Missing Number Passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Sum Missing Number Passed" });
 	}
 
 	private async testAggregateAvgMissingNum() {
-		new Notice("Aggregate Resolver: Avg Missing Number");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Avg Missing Number" });
 
 		const fx = await this.buildAggregateTestFixture(10, 10, true);
 
@@ -7092,11 +7051,11 @@ export class EngineTestRunner {
 		
 		const avg = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "avg", field: "power" });
 		if (avg !== 10) throw new Error(`Expected Avg 2, got ${avg}`);
-		new Notice("Aggregate Avg Missing Number Passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Avg Missing Number Passed" });
 	}
 
 	private async testAggregateCountEmpty() {
-		new Notice("Aggregate Resolver: Count Empty");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Count Empty" });
 
 		const fx = await this.buildAggregateTestFixture(10, 10, false, true);
 
@@ -7105,11 +7064,11 @@ export class EngineTestRunner {
 		
 		const count = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "count-matches" });
 		if (count !== 0) throw new Error(`Expected count 0, got ${count}`);
-		new Notice("Aggregate Count Empty Passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Count Empty Passed" });
 	}
 
 	private async testAggregateAvgEmpty() {
-		new Notice("Aggregate Resolver: Avg Empty");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: Avg Empty" });
 
 		const fx = await this.buildAggregateTestFixture(10, 10, false, true);
 
@@ -7118,11 +7077,11 @@ export class EngineTestRunner {
 		
 		const avg = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "avg", field: "power" });
 		if (avg !== 0) throw new Error(`Expected Avg 0, got ${avg}`);
-		new Notice("Aggregate Avg Empty Passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Avg Empty Passed" });
 	}
 
 	private async testAggregateMinEmpty() {
-		new Notice("Aggregate Resolver: min Empty");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: min Empty" });
 
 		const fx = await this.buildAggregateTestFixture(10, 10, false, true);
 
@@ -7131,11 +7090,11 @@ export class EngineTestRunner {
 		
 		const min = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "min", field: "power" });
 		if (min !== null) throw new Error(`Expected Avg 0, got ${min}`);
-		new Notice("Aggregate min Empty Passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate min Empty Passed" });
 	}
 
 	private async testAggregateMaxEmpty() {
-		new Notice("Aggregate Resolver: max Empty");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Resolver: max Empty" });
 
 		const fx = await this.buildAggregateTestFixture(10, 10, false, true);
 
@@ -7144,32 +7103,36 @@ export class EngineTestRunner {
 		
 		const max = await resolver.evaluate(fx.graph, fx.group, fx.sword.id, { op: "max", field: "power" });
 		if (max !== null) throw new Error(`Expected Avg 0, got ${max}`);
-		new Notice("Aggregate max Empty Passed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate max Empty Passed" });
 	}
 
 	private async testAggregateManager() {
 
-		new Notice("Test Aggregate Manager Suite");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test Aggregate Manager Suite" });
 
-		await this.testAggregateCount();
-		await this.testAggregateMinMax();
-		await this.testAggregateAvg();
-		await this.testAggregateSum();
-		await this.testAggregateDistinctOne();
-		await this.testAggregateDistinctTwo();
-		await this.testAggregateSumMissingNum();
-		await this.testAggregateAvgMissingNum();
-		await this.testAggregateCountEmpty();
-		await this.testAggregateAvgEmpty();
-		await this.testAggregateMinEmpty();
-		await this.testAggregateMaxEmpty();
+		try {
+			await this.testAggregateCount();
+			await this.testAggregateMinMax();
+			await this.testAggregateAvg();
+			await this.testAggregateSum();
+			await this.testAggregateDistinctOne();
+			await this.testAggregateDistinctTwo();
+			await this.testAggregateSumMissingNum();
+			await this.testAggregateAvgMissingNum();
+			await this.testAggregateCountEmpty();
+			await this.testAggregateAvgEmpty();
+			await this.testAggregateMinEmpty();
+			await this.testAggregateMaxEmpty();
+		}
+		catch (e) {
+			this.logger?.log({ level: "error", scope: "TEST", message: "Aggregate Manager Tests Failed", data: (e as Error).message });
+		}
 
-
-		new Notice("Aggregate Manager Tests Completed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregate Manager Tests Completed" });
 	}
 
 	private async testReferenceCollectionSchemaRecordValidate() {
-		new Notice("Test Schema Record Creation");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test Schema Record Creation" });
 		await this.ensureField(
 			"CoreTest",
 			"Guild",
@@ -7207,7 +7170,7 @@ export class EngineTestRunner {
 				members: [bob.id, rick.id]
 			}
 		);
-		new Notice("Test Schema Record Created");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test Schema Record Created" });
 	}
 
 	private async testReferenceCollectionSchemaValidation() {
@@ -7683,9 +7646,7 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Graph ReferenceCollection Empty passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph ReferenceCollection Empty passed" });
 	}
 
 	private async testGraphReferenceCollectionLoadsTargets() {
@@ -7709,9 +7670,7 @@ export class EngineTestRunner {
 		// 	throw new Error("Character 3 missing");
 		// }
 
-		new Notice(
-			"Graph ReferenceCollection Loads Targets passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph ReferenceCollection Loads Targets passed" });
 	}
 
 	private async testGraphReferenceCollectionMultiHop() {
@@ -7756,9 +7715,7 @@ export class EngineTestRunner {
 			);
 		}
 
-		new Notice(
-			"Graph ReferenceCollection MultiHop passed"
-		);
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph ReferenceCollection MultiHop passed" });
 	}
 
 	private async testNavigatorDirectField() {
@@ -9088,7 +9045,7 @@ export class EngineTestRunner {
 
 		const values = group.value;
 
-		new Notice(`Distinct values: ${values}`);
+		// new Notice(`Distinct values: ${values}`);
 
 		if (!Array.isArray(values)) {
 			throw new Error("Expected array from distinct");
@@ -9383,8 +9340,8 @@ export class EngineTestRunner {
 				x => x.key === "Armor"
 			);
 
-		new Notice(weapon.value);
-		new Notice(armor.value);
+		// new Notice(weapon.value);
+		// new Notice(armor.value);
 
 		if (!weapon || weapon.value !== 2) {
 			throw new Error(
@@ -10096,70 +10053,251 @@ export class EngineTestRunner {
 	}
 
 	private async testReferenceCollectionManager() {
-		new Notice("Test Reference Collection Manager Suite");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Test Reference Collection Manager Suite" });
 
-		await this.testReferenceCollectionSchemaRecordValidate();
-		await this.testReferenceCollectionSchemaValidation();
-		await this.testReferenceCollectionInvalidDefault();
-		await this.testReferenceCollectionRecordValidation();
-		await this.testGraphReferenceCollectionSingle();
-		await this.testGraphReferenceCollectionMultiple();
-		await this.testGraphReferenceCollectionEmpty();
-		await this.testGraphReferenceCollectionLoadsTargets();
-		await this.testGraphReferenceCollectionMultiHop();
-		await this.testNavigatorDirectField();
-		await this.testNavigatorCollectionNames();
-		await this.testNavigatorCollectionNumbers();
-		await this.testNavigatorCollectionMultiHop();
-		await this.testFilterCollectionEquals();
-		await this.testFilterCollectionEqualsNoMatch();
-		await this.testFilterCollectionNotEquals();
-		await this.testFilterCollectionGreaterThan();
-		await this.testFilterCollectionGreaterThanHigh();
-		await this.testFilterCollectionContains();
-		await this.testFilterCollectionIn();
-		await this.testFilterCollectionExists();
-		await this.testFilterCollectionEmptyExcluded();
-		await this.testFilterCollectionMultiHop();
-		await this.testProjectionCollectionNames();
-		await this.testProjectionCollectionNumbers();
-		await this.testProjectionCollectionMultipleFields();
-		await this.testProjectionCollectionMultiHop();
-		await this.testProjectionEmptyCollection();
-		await this.testProjectionMixedFields();
-		await this.testGroupByCollectionName();
-		await this.testGroupByCollectionNumber();
-		await this.testGroupByEmptyCollection();
-		await this.testGroupByCollectionMultiHop();
-		await this.testGroupByCollectionDuplicateValues();
-		await this.testAggregateSumReferenceCollection();
-		await this.testAggregateSumMultiHopReferenceCollection();
-		await this.testAggregateAvgReferenceCollection();
-		await this.testAggregateMinMaxReferenceCollection();
-		await this.testAggregateDistinctReferenceCollection();
-		await this.testAggregateSumDeepCollection();
-		await this.testCountDeepCollectionMatches();
-		await this.testGroupByDeepCollectionType();
-		await this.testDistinctValuesDeepCollection();
-		await this.testAggregateAvgDeepCollection();
-		await this.testAggregateMinDeepCollection();
-		await this.testAggregateMaxDeepCollection();
-		await this.testAggregateDistinctCountDeepCollection();
-		await this.testGroupByDeepCollectionTypeNew();
-		await this.testGroupByCharacterNameDeepCollection();
-		await this.testAggregateCountRootsDeepCollection();
-		await this.testSharedItemCountMatches();
-		await this.testGroupByDeepSharedItemName();
-		await this.testSharedItemSumDedupes();
-		await this.testSharedItemDistinctValues();
-		await this.testSharedItemCountRoots();
-		await this.testWhereDeepCollectionTypePositive();
-		await this.testWhereDeepCollectionTypeNegative();
-		await this.testHavingDeepCollectionSumPositive();
-		await this.testHavingDeepCollectionSumNegative();
-		await this.testWhereSharedReferenceItem();
-		await this.testGroupBySharedReferenceName();
+		try {
+			await this.testReferenceCollectionSchemaRecordValidate();
+			await this.testReferenceCollectionSchemaValidation();
+			await this.testReferenceCollectionInvalidDefault();
+			await this.testReferenceCollectionRecordValidation();
+			await this.testGraphReferenceCollectionSingle();
+			await this.testGraphReferenceCollectionMultiple();
+			await this.testGraphReferenceCollectionEmpty();
+			await this.testGraphReferenceCollectionLoadsTargets();
+			await this.testGraphReferenceCollectionMultiHop();
+			await this.testNavigatorDirectField();
+			await this.testNavigatorCollectionNames();
+			await this.testNavigatorCollectionNumbers();
+			await this.testNavigatorCollectionMultiHop();
+			await this.testFilterCollectionEquals();
+			await this.testFilterCollectionEqualsNoMatch();
+			await this.testFilterCollectionNotEquals();
+			await this.testFilterCollectionGreaterThan();
+			await this.testFilterCollectionGreaterThanHigh();
+			await this.testFilterCollectionContains();
+			await this.testFilterCollectionIn();
+			await this.testFilterCollectionExists();
+			await this.testFilterCollectionEmptyExcluded();
+			await this.testFilterCollectionMultiHop();
+			await this.testProjectionCollectionNames();
+			await this.testProjectionCollectionNumbers();
+			await this.testProjectionCollectionMultipleFields();
+			await this.testProjectionCollectionMultiHop();
+			await this.testProjectionEmptyCollection();
+			await this.testProjectionMixedFields();
+			await this.testGroupByCollectionName();
+			await this.testGroupByCollectionNumber();
+			await this.testGroupByEmptyCollection();
+			await this.testGroupByCollectionMultiHop();
+			await this.testGroupByCollectionDuplicateValues();
+			await this.testAggregateSumReferenceCollection();
+			await this.testAggregateSumMultiHopReferenceCollection();
+			await this.testAggregateAvgReferenceCollection();
+			await this.testAggregateMinMaxReferenceCollection();
+			await this.testAggregateDistinctReferenceCollection();
+			await this.testAggregateSumDeepCollection();
+			await this.testCountDeepCollectionMatches();
+			await this.testGroupByDeepCollectionType();
+			await this.testDistinctValuesDeepCollection();
+			await this.testAggregateAvgDeepCollection();
+			await this.testAggregateMinDeepCollection();
+			await this.testAggregateMaxDeepCollection();
+			await this.testAggregateDistinctCountDeepCollection();
+			await this.testGroupByDeepCollectionTypeNew();
+			await this.testGroupByCharacterNameDeepCollection();
+			await this.testAggregateCountRootsDeepCollection();
+			await this.testSharedItemCountMatches();
+			await this.testGroupByDeepSharedItemName();
+			await this.testSharedItemSumDedupes();
+			await this.testSharedItemDistinctValues();
+			await this.testSharedItemCountRoots();
+			await this.testWhereDeepCollectionTypePositive();
+			await this.testWhereDeepCollectionTypeNegative();
+			await this.testHavingDeepCollectionSumPositive();
+			await this.testHavingDeepCollectionSumNegative();
+			await this.testWhereSharedReferenceItem();
+			await this.testGroupBySharedReferenceName();
+		}
+		catch (e) {
+			this.logger?.log({ level: "error", scope: "TEST", message: "Reference Collection Tests Failed", data: (e as Error).message });
+		}
 
-		new Notice("Reference Collection Manager Tests Completed");
+		this.logger?.log({ level: "info", scope: "TEST", message: "Reference Collection Manager Tests Completed" });
+	}
+
+	private async testMutationDeepCollectionSet() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "set",
+						value: 5
+					}
+				}
+			);
+
+		if (result.errors.length > 0) {
+			throw new Error(
+				`Mutation errors: ${JSON.stringify(result.errors, null, 2)}`
+			);
+		}
+
+		if (result.updated !== 3) {
+			throw new Error(
+				`Expected 3 item updates, got ${result.updated}`
+			);
+		}
+
+		const itemContext = await this.contextFactory.getSchemaContext("CoreTest", "Item");
+		const items = await this.dataManager.getAll(itemContext);
+
+		// this.logger?.log({ level: "info", scope: "TEST", message: "Deep Collection Set",  data: { items, itemContext, result } });
+
+		// reload data
+		const guild =
+			await this.dataManager.getById(guildContext, result.rootId ?? "");
+
+		// we cannot rely on rootId → verify via aggregate
+
+		const check =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (check[0].value !== 15) {
+			throw new Error(
+				`Expected mutated sum 15, got ${check[0].value}`
+			);
+		}
+	}
+
+	private async testMutationDeepCollectionAdd() {
+
+		const { guildContext } =
+			await this.buildDeepCollectionFixture();
+
+		await this.mutationExecutor.execute(
+			guildContext,
+			{
+				select: "members.items.power",
+				operation: {
+					type: "math",
+					op: "add",
+					value: 2
+				}
+			}
+		);
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (results[0].value !== 66) {
+			throw new Error(
+				`Expected 66 after +2 mutation, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testMutationNoDuplicates() {
+
+		const { guildContext } =
+			await this.buildDeepCollectionFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "set",
+						value: 1
+					}
+				}
+			);
+
+		// There are 3 items total:
+		// sword, shield, wand
+
+		if (result.updated !== 3) {
+			throw new Error(
+				`Expected 3 unique item mutations, got ${result.updated}`
+			);
+		}
+	}
+
+	private async testMutationMissingPath() {
+
+		const { guildContext } =
+			await this.buildDeepCollectionFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.nonexistent.value",
+					operation: {
+						type: "set",
+						value: 123
+					}
+				}
+			);
+
+		if (result.errors.length === 0) {
+			throw new Error("Expected mutation errors for invalid path");
+		}
+	}
+
+	private async MutationTestSuite() {
+		this.logger?.log({ level: "info", scope: "TEST", message: "Mutation Test Suite" });
+
+		try {
+			await this.safeRun(
+				"Mutation Deep Collection Set",
+				() => this.testMutationDeepCollectionSet()
+			);
+
+			await this.safeRun(
+				"Mutation Deep Collection Add",
+				() => this.testMutationDeepCollectionAdd()
+			);
+
+			await this.safeRun(
+				"Mutation No Duplicates",
+				() => this.testMutationNoDuplicates()
+			);
+
+			await this.safeRun(
+				"Mutation Missing Path",
+				() => this.testMutationMissingPath()
+			);
+		}
+		catch (e) {
+			this.logger?.log({ level: "error", scope: "TEST", message: "Mutation Tests Failed", data: (e as Error).message });
+		}
+
+		this.logger?.log({ level: "info", scope: "TEST", message: "Mutation Test Suite Completed" });
 	}
 }

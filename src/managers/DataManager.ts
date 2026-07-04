@@ -5,8 +5,9 @@ import { SchemaContext } from "../types/ContextTypes";
 import { RulesetManager } from "./RulesetManager";
 import { CacheManager } from "./CacheManager";
 import { IDataReader } from "../interfaces/IDataReader";
+import { IDataWriter } from "../interfaces/IDataWriter";
 
-export class DataManager implements IDataReader {
+export class DataManager implements IDataReader, IDataWriter {
 
 	private app: App;
 	private schemaManager: SchemaManager;
@@ -163,6 +164,60 @@ export class DataManager implements IDataReader {
             data
         );
 	}
+
+    async saveRecord(
+        context: SchemaContext,
+        record: DataRecord
+    ): Promise<void> {
+
+        const data =
+            await this.load(context);
+
+        const index =
+            data.records.findIndex(
+                r => r.id === record.id
+            );
+
+        if (index < 0) {
+            throw new Error(
+                `Record not found: ${record.id}`
+            );
+        }
+
+        data.records[index] =
+            structuredClone(record);
+
+        await this.save(context, data);
+    }
+
+    async saveRecords(
+        context: SchemaContext,
+        records: DataRecord[]
+    ): Promise<void> {
+
+        const data =
+            await this.load(context);
+
+        const recordMap =
+            new Map(
+                records.map(r => [r.id, r])
+            );
+
+        for (let i = 0; i < data.records.length; i++) {
+
+            const updated =
+                recordMap.get(
+                    data.records[i].id
+                );
+
+            if (updated) {
+                data.records[i] =
+                    structuredClone(updated);
+            }
+        }
+
+        await this.save(context, data);
+    }
 
 	async add(
         context: SchemaContext,
