@@ -150,7 +150,8 @@ export class EngineTestRunner {
 		referenceTarget?: {
 			ruleset: string;
 			schema: string;
-		}
+		},
+		capability?: "mutable" | "readOnly" | "derived" | "computed"
 	) {
 
 		const context =
@@ -170,111 +171,145 @@ export class EngineTestRunner {
 			type,
 			defaultValue,
 			enumValues,
-			referenceTarget
+			referenceTarget,
+			capability
 		);
 	}
 
 	// Notes:
 	/*
+
+	file structure:
+	src
+    │   main.ts
+    │   
+    ├───adapters
+    ├───core
+    │       constants.ts
+    │       
+    ├───infrastructure
+    ├───interfaces
+    │       IDataReader.ts
+    │       IDataWriter.ts
+    │       
+    ├───managers
+    │   │   CacheManager.ts
+    │   │   ContextFactory.ts
+    │   │   DataManager.ts
+    │   │   RulesetManager.ts
+    │   │   SchemaManager.ts
+    │   │   
+    │   ├───logging
+    │   │       Logger.ts
+    │   │       LoggerFactory.ts
+    │   │       ScopedLogger.ts
+    │   │       
+    │   ├───mutation
+    │   │   │   MutationExecutor.ts
+    │   │   │   MutationManager.ts
+    │   │   │   MutationPlanner.ts
+    │   │   │   MutationTargetResolver.ts
+    │   │   │   
+    │   │   ├───debug
+    │   │   │       MutationTraceLogger.ts
+    │   │   │       
+    │   │   ├───operations
+    │   │   │       MutationOperationResolver.ts
+    │   │   │       
+    │   │   ├───validation
+    │   │   │       MutationValidationLayer.ts
+    │   │   │       
+    │   │   └───writer
+    │   │           DataMutationWriter.ts
+    │   │           IMutationWriter.ts
+    │   │           
+    │   ├───query
+    │   │   │   QueryExecutionPlanRunner.ts
+    │   │   │   QueryExecutor.ts
+    │   │   │   QueryManager.ts
+    │   │   │   QueryPlanner.ts
+    │   │   │   
+    │   │   ├───aggregate
+    │   │   │   │   AggregateBootstrap.ts
+    │   │   │   │   AggregateResolver.ts
+    │   │   │   │   AggregateStrategyRegistry.ts
+    │   │   │   │   IAggregateStrategy.ts
+    │   │   │   │   
+    │   │   │   └───strategies
+    │   │   │           AvgStrategy.ts
+    │   │   │           CountMatchesStrategy.ts
+    │   │   │           CountRootsStrategy.ts
+    │   │   │           DistinctCountStrategy.ts
+    │   │   │           DistinctValuesStrategy.ts
+    │   │   │           MaxStrategy.ts
+    │   │   │           MinStrategy.ts
+    │   │   │           SumStrategy.ts
+    │   │   │           
+    │   │   ├───graph
+    │   │   │       ResolvedRecordGraphBuilder.ts
+    │   │   │       ResolvedRecordGraphNavigator.ts
+    │   │   │       
+    │   │   └───match
+    │   │           QueryMatchBuilder.ts
+    │   │           QueryMatchNavigator.ts
+    │   │           
+    │   └───reference
+    ├───tests
+    │       EngineTestRunner.ts
+    │       
+    ├───types
+    │   │   ContextTypes.ts
+    │   │   DataTypes.ts
+    │   │   FieldTypes.ts
+    │   │   LoggerTypes.ts
+    │   │   SchemaTypes.ts
+    │   │   ValidationTypes.ts
+    │   │   
+    │   ├───core
+    │   │       DataValue.ts
+    │   │       ResolvedReference.ts
+    │   │       
+    │   ├───mutation
+    │   │       MutationOperationTypes.ts
+    │   │       MutationPatchTypes.ts
+    │   │       MutationPlanTypes.ts
+    │   │       MutationResultTypes.ts
+    │   │       MutationTargetTypes.ts
+    │   │       MutationTypes.ts
+    │   │       MutationValidationTypes.ts
+    │   │       MutationWriteTargetTypes.ts
+    │   │       
+    │   └───query
+    │           AggregateTypes.ts
+    │           QueryExecutionTypes.ts
+    │           QueryExecutorTypes.ts
+    │           QueryMatchTypes.ts
+    │           QueryPlannerTypes.ts
+    │           QueryTypes.ts
+    │           ResolvedRecordGraph.ts
+    │           
+    ├───ui
+    │       ToolPanelManager.ts
+    │       ToolPanelView.ts
+    │       
+    └───views
+            DoobToolPanel.ts
+
 	x1. Graph Integrity Tests
 	x2. Navigator Tests
 	x3. Query Tests
-	x4. Aggregate Expansion
-
-			🧠 What you need to design next
-
-			You need 3 layers:
-
-					x1. Aggregate Resolver (core new component)
-
-					This is the key missing piece.
-
-					It answers:
-
-					“Given a group + graph, how do I compute sum(owner.guild.rank)?”
-
-					It should:
-
-					use ResolvedRecordGraphNavigator
-					support field paths
-					return a computed scalar
-					x2. Aggregate Executor (group level)
-
-					For each group:
-
-					for group in groups:
-						value = aggregateResolver.evaluate(group, graph)
-					x3. Aggregate Strategy Registry (optional but recommended)
+	4. Aggregate Expansion
 
 					So later you can add:
-
-					count
-					sum
-					avg
-					min
-					max
-					distinct count
 					weighted aggregates
 
 	5. Collection References
-			What I would physically touch first
-				x types/
-					SchemaTypes.ts
-
-				x schema/
-					SchemaValidator.ts
-
-				x query/
-					QueryPlanner.ts
-
-				x query/graph/
-					ResolvedRecordGraphBuilder.ts
-
-				x query/graph/
-					ResolvedRecordGraphNavigator.ts
-
-				x Then add a new test helper similar to your navigator helper:
-
-				x buildCollectionGraphFixture()
-
-				x and write collection graph + navigator tests before touching anything aggregate-related.
-
-					x Graph Builder collection edge test
-					x Navigator collection traversal test
-					x Query filter test
-					x Projection test
-					x Group-by collection test
-					x Aggregate collection test
-					x Deep collection traversal test
 
 								QueryExecutionContext {
 									graph: ResolvedRecordGraph;
 									matches: QueryMatch[];
 								}
 	6. Mutation Support
-		mutation/
-			MutationManager.ts
-			MutationExecutor.ts
-			MutationPlanner.ts
-
-			writer/
-				DataMutationWriter.ts
-				IMutationWriter.ts
-
-			operations/
-				MutationOperationResolver.ts
-
-			debug/
-				MutationTraceLogger.ts (optional)
-
-		types/
-		├── mutation/
-		│   ├── MutationTypes.ts
-		│   ├── MutationOperationTypes.ts
-		│   ├── MutationPlanTypes.ts
-		│   ├── MutationResultTypes.ts
-		│   └── MutationTargetTypes.ts
-
 			x What I would do next
 				x Keep MutationExecutor mostly as-is.
 				x Build MutationTargetResolver.
@@ -286,7 +321,7 @@ export class EngineTestRunner {
 		x 👉 MutationPlanner next
 		x 👉 Mutation validation layer (lightweight schema guard)
 
-		👉 Optimistic mutation batching / diff-based writes
+		x 👉 Optimistic mutation batching / diff-based writes
 
 		B. Field capability system
 
@@ -296,9 +331,9 @@ export class EngineTestRunner {
 			derived
 			computed
 
-		C. Optimized mutation batching
+		x C. Optimized mutation batching
 
-			collapse writes per record (you’re close already)
+			x collapse writes per record (you’re close already)
 
 		Good base. Next high-value additions:
 
@@ -10713,6 +10748,160 @@ export class EngineTestRunner {
 		}
 	}
 
+	private async testMutationReadOnlyField() {
+
+		this.engineLogger?.log({ level: "debug", scope: "Engine.Test", message: "Mutation Read Only Start" });
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		await this.schemaManager.updateField(
+			"CoreTest",
+			"Item",
+			"power",
+			{ capability: "readOnly" }
+		);
+
+		const newGuildContext = await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+		const newItemContext = await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		this.engineLogger?.log({ level: "debug", scope: "Engine.Test", message: "Mutation Read Only Context Refresh", data: { guildContext, newGuildContext, newItemContext } });
+
+		const result =
+			await this.mutationExecutor.execute(
+				newGuildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "set",
+						value: 999
+					}
+				}
+			);
+
+		this.engineLogger?.log({ level: "debug", scope: "Engine.Test", message: "Mutation Read Only Finish", data: result });
+
+		if (result.updated !== 0) {
+			throw new Error(
+				`Expected 0 updates, got ${result.updated}`
+			);
+		}
+
+		if (result.errors.length === 0) {
+			throw new Error(
+				"Expected validation error"
+			);
+		}
+	}
+
+	private async testMutationDerivedField() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		await this.schemaManager.updateField(
+			"CoreTest",
+			"Item",
+			"power",
+			{ capability: "derived" }
+		);
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "set",
+						value: 999
+					}
+				}
+			);
+
+		if (result.updated !== 0) {
+			throw new Error(
+				`Expected 0 updates, got ${result.updated}`
+			);
+		}
+
+		if (result.errors.length === 0) {
+			throw new Error(
+				"Expected validation error"
+			);
+		}
+	}
+
+	private async testMutationComputedField() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		await this.schemaManager.updateField(
+			"CoreTest",
+			"Item",
+			"power",
+			{ capability: "computed" }
+		);
+		
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "set",
+						value: 999
+					}
+				}
+			);
+
+		if (result.updated !== 0) {
+			throw new Error(
+				`Expected 0 updates, got ${result.updated}`
+			);
+		}
+
+		if (result.errors.length === 0) {
+			throw new Error(
+				"Expected validation error"
+			);
+		}
+	}
+
+	private async testMutationMutableField() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "set",
+						value: 999
+					}
+				}
+			);
+
+		if (result.updated !== 3) {
+			throw new Error(
+				`Expected 3 updates, got ${result.updated}`
+			);
+		}
+
+		if (result.errors.length !== 0) {
+			throw new Error(
+				"Did not expect validation errors"
+			);
+		}
+	}
+
 	private async MutationTestSuite() {
 		this.logger?.log({ level: "info", scope: "TEST", message: "Mutation Test Suite" });
 
@@ -10770,6 +10959,26 @@ export class EngineTestRunner {
 			await this.safeRun(
 				"Mutation Deterministic Single Pass",
 				() => this.testMutationDeterministicSinglePass()
+			);
+
+			await this.safeRun(
+				"Mutation Read Only Field",
+				() => this.testMutationReadOnlyField()
+			);
+
+			await this.safeRun(
+				"Mutation Derived Field",
+				() => this.testMutationDerivedField()
+			);
+
+			await this.safeRun(
+				"Mutation Computed Field",
+				() => this.testMutationComputedField()
+			);
+
+			await this.safeRun(
+				"Mutation Mutable Field",
+				() => this.testMutationMutableField()
 			);
 		}
 		catch (e) {

@@ -1,11 +1,13 @@
 import { SchemaContext } from "../../../types/ContextTypes";
 import { MutationValidationResult } from "../../../types/mutation/MutationValidationTypes";
 import { ContextFactory } from "../../ContextFactory";
+import { MutationTraceLogger } from "../debug/MutationTraceLogger";
 
 export class MutationValidationLayer {
 
     constructor(
-        private contextFactory: ContextFactory
+        private contextFactory: ContextFactory,
+        private trace: MutationTraceLogger
     ) {}
 
     async validate(
@@ -23,6 +25,8 @@ export class MutationValidationLayer {
             const part = parts[i];
             const field = schema.fields?.[part];
 
+            this.trace.debug("MutationValidation", "part, field: ", { part, field })
+
             // ---------------------------------
             // FIELD MUST EXIST
             // ---------------------------------
@@ -36,44 +40,59 @@ export class MutationValidationLayer {
 
             const isLast = i === parts.length - 1;
 
+            if (isLast) {
+
+                const capability =
+                    field.capability ?? "mutable";
+
+                if (capability !== "mutable") {
+
+                    errors.push({
+                        path: select,
+                        message:
+                            `Field is not mutable: ${part} (${capability})`
+                    });
+                }
+
+                continue;
+            }
+
             // ---------------------------------
             // TRAVERSAL STEP
             // ---------------------------------
-            if (!isLast) {
 
-                const isReference =
-                    field.type === "reference" ||
-                    field.type === "referenceCollection";
+            const isReference =
+                field.type === "reference" ||
+                field.type === "referenceCollection";
 
-                if (!isReference) {
-                    errors.push({
-                        path: parts.slice(0, i + 1).join("."),
-                        message: `Cannot traverse non-reference field: ${part}`
-                    });
-                    break;
-                }
-
-                // ---------------------------------
-                // 🔥 REAL FIX: use referenceTarget
-                // ---------------------------------
-                const target = field.referenceTarget;
-
-                if (!target?.schema) {
-                    errors.push({
-                        path: parts.slice(0, i + 1).join("."),
-                        message: `Missing referenceTarget schema on: ${part}`
-                    });
-                    break;
-                }
-
-                const nextContext =
-                    await this.contextFactory.getSchemaContext(
-                        target.ruleset,
-                        target.schema
-                    );
-
-                schema = nextContext.schema;
+            if (!isReference) {
+                errors.push({
+                    path: parts.slice(0, i + 1).join("."),
+                    message: `Cannot traverse non-reference field: ${part}`
+                });
+                break;
             }
+
+            // ---------------------------------
+            // 🔥 REAL FIX: use referenceTarget
+            // ---------------------------------
+            const target = field.referenceTarget;
+
+            if (!target?.schema) {
+                errors.push({
+                    path: parts.slice(0, i + 1).join("."),
+                    message: `Missing referenceTarget schema on: ${part}`
+                });
+                break;
+            }
+
+            const nextContext =
+                await this.contextFactory.getSchemaContext(
+                    target.ruleset,
+                    target.schema
+                );
+
+            schema = nextContext.schema;
         }
 
         return {

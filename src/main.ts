@@ -96,7 +96,7 @@ export default class DoobEngine extends Plugin {
 		const mutationTargetResolver = new MutationTargetResolver();
 		const mutationOperationResolver = new MutationOperationResolver();
 		const mutationTraceLogger = new MutationTraceLogger(this.engineLog);
-		const mutationValidationLayer = new MutationValidationLayer(this.contextFactory);
+		const mutationValidationLayer = new MutationValidationLayer(this.contextFactory, mutationTraceLogger);
 
 		this.queryPlanner = new QueryPlanner(
 			this.contextFactory

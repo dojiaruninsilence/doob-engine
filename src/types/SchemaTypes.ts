@@ -12,6 +12,12 @@ export interface SchemaField {
 		schema: string;
 		field?: string;
 	};
+
+	capability?:
+	  | "mutable"
+	  | "readOnly"
+	  | "derived"
+	  | "computed"
 }
 
 export interface Schema {
