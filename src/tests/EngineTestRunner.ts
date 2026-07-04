@@ -278,9 +278,9 @@ export class EngineTestRunner {
 			x Keep MutationExecutor mostly as-is.
 			x Build MutationTargetResolver.
 			x Modify executor to use targets instead of writeBack().
-			add datawriter
-			refactor resolvednode
-			Then write tests.
+			x add datawriter
+			x refactor resolvednode
+			x Then write tests.
 
 	After aggregate expansion, I'd move toward:
 

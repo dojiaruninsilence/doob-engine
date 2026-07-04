@@ -16,7 +16,7 @@ import { MutationWriteTarget } from "../../types/mutation/MutationWriteTargetTyp
 
 import { ContextFactory } from "../ContextFactory";
 
-import { Logger } from "../logging/Logger";
+import { MutationTraceLogger } from "./debug/MutationTraceLogger";
 
 export class MutationExecutor {
 
@@ -27,7 +27,7 @@ export class MutationExecutor {
         private queryPlanner: QueryPlanner,
         private targetResolver: MutationTargetResolver,
         private operationResolver: MutationOperationResolver,
-        private engineLog: Logger,
+        private trace: MutationTraceLogger,
         private contextFactory: ContextFactory
     ) {}
 
@@ -74,6 +74,7 @@ export class MutationExecutor {
                 new Map<string, MutationWriteTarget>();
 
             for (const target of targets) {
+                this.trace.debug("MutationExecutor", "Processing target", { target });
 
                 try {
 
@@ -108,22 +109,17 @@ export class MutationExecutor {
                         continue;
                     }
 
-                    // this.engineLog.log({
-                    //     level: "debug",
-                    //     scope: "mutation.executor",
-                    //     message: `Applying mutation to node ${target.nodeId} at path ${target.fieldPath}`,
-                    //     data: {
-                    //         node,
-                    //         target,
-                    //         request
-                    //     }
-                    // });
-
                     const currentValue =
                         this.readField(
                             node.record.data,
                             target.fieldPath
                         );
+
+                    this.trace.debug("MutationExecutor", "Reading field value", {
+                        nodeId: node.id,
+                        fieldPath: target.fieldPath,
+                        value: currentValue
+                    });
 
                     const result =
                         this.operationResolver.apply(
@@ -135,6 +131,14 @@ export class MutationExecutor {
                                 currentValue
                             }
                         );
+                    
+                    this.trace.debug("MutationExecutor", "Computed new value", {
+                        nodeId: node.id,
+                        fieldPath: target.fieldPath,
+                        before: currentValue,
+                        after: result,
+                        operation: request.operation
+                    });
 
                     if (result === undefined) {
                         skipped++;
@@ -147,16 +151,6 @@ export class MutationExecutor {
                         result
                     );
 
-                    // this.engineLog.log({
-                    //     level: "debug",
-                    //     scope: "mutation.executor",
-                    //     message: `Mutation applied to node ${target.nodeId} at path ${target.fieldPath}`,
-                    //     data: {
-                    //         id: node.record.id,
-                    //         data: node.record.data
-                    //     }
-                    // });
-
                     writes.set(
                         node.record.id,
                         {
@@ -164,6 +158,12 @@ export class MutationExecutor {
                             record: node.record
                         }
                     );
+
+                    this.trace.debug("MutationExecutor", "Value written", {
+                        nodeId: node.id,
+                        fieldPath: target.fieldPath,
+                        value: result
+                    });
 
                     updated++;
 
@@ -175,6 +175,12 @@ export class MutationExecutor {
                         message:
                             e?.message ??
                             String(e)
+                    });
+
+                    this.trace.error("MutationExecutor", "Error occurred while processing target", {
+                        rootId: target.rootId,
+                        fieldPath: target.fieldPath,
+                        message: e.message
                     });
                 }
             }
