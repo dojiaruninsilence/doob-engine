@@ -10,6 +10,7 @@ import { ResolvedRecordGraphBuilder } from "../query/graph/ResolvedRecordGraphBu
 
 import { MutationOperationResolver } from "./operations/MutationOperationResolver";
 import { MutationTargetResolver } from "./MutationTargetResolver";
+import { MutationValidationLayer } from "./validation/MutationValidationLayer";
 
 import { DataMutationWriter } from "./writer/DataMutationWriter";
 import { MutationWriteTarget } from "../../types/mutation/MutationWriteTargetTypes";
@@ -28,13 +29,35 @@ export class MutationExecutor {
         private targetResolver: MutationTargetResolver,
         private operationResolver: MutationOperationResolver,
         private trace: MutationTraceLogger,
-        private contextFactory: ContextFactory
+        private contextFactory: ContextFactory,
+        private validator: MutationValidationLayer
     ) {}
 
     async execute(
         context: SchemaContext,
         request: MutationRequest
     ): Promise<MutationResult> {
+
+        const validation =
+            await this.validator.validate(context, request.select);
+
+        if (!validation.valid) {
+
+            this.trace.error("MutationExecutor", "Validation failed", {
+                select: request.select,
+                errors: validation.errors
+            });
+
+            return {
+                updated: 0,
+                skipped: 0,
+                errors: validation.errors.map(e => ({
+                    rootId: "global",
+                    path: e.path,
+                    message: e.message
+                }))
+            };
+        }
 
         let updated = 0;
         let skipped = 0;
@@ -207,6 +230,11 @@ export class MutationExecutor {
                 message:
                     e?.message ??
                     String(e)
+            });
+
+            this.trace.error("MutationExecutor", "Error occurred during mutation execution", {
+                select: request.select,
+                message: e.message
             });
         }
 

@@ -19,8 +19,8 @@ import { Logger } from "./managers/logging/Logger";
 import { MutationExecutor } from "./managers/mutation/MutationExecutor";
 import { MutationOperationResolver } from "./managers/mutation/operations/MutationOperationResolver";
 import { MutationTargetResolver } from "./managers/mutation/MutationTargetResolver";
-import { DataMutationWriter } from "./managers/mutation/writer/DataMutationWriter";
 import { MutationTraceLogger } from "./managers/mutation/debug/MutationTraceLogger";
+import { MutationValidationLayer } from "./managers/mutation/validation/MutationValidationLayer";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -96,6 +96,7 @@ export default class DoobEngine extends Plugin {
 		const mutationTargetResolver = new MutationTargetResolver();
 		const mutationOperationResolver = new MutationOperationResolver();
 		const mutationTraceLogger = new MutationTraceLogger(this.engineLog);
+		const mutationValidationLayer = new MutationValidationLayer(this.contextFactory);
 
 		this.queryPlanner = new QueryPlanner(
 			this.contextFactory
@@ -132,7 +133,8 @@ export default class DoobEngine extends Plugin {
 			mutationTargetResolver,
 			mutationOperationResolver,
 			mutationTraceLogger,
-			this.contextFactory
+			this.contextFactory,
+			mutationValidationLayer
 		)
 
 

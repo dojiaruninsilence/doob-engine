@@ -274,13 +274,55 @@ export class EngineTestRunner {
 		│   ├── MutationResultTypes.ts
 		│   └── MutationTargetTypes.ts
 
-		What I would do next
-			x Keep MutationExecutor mostly as-is.
-			x Build MutationTargetResolver.
-			x Modify executor to use targets instead of writeBack().
-			x add datawriter
-			x refactor resolvednode
-			x Then write tests.
+			x What I would do next
+				x Keep MutationExecutor mostly as-is.
+				x Build MutationTargetResolver.
+				x Modify executor to use targets instead of writeBack().
+				x add datawriter
+				x refactor resolvednode
+				x Then write tests.
+		
+		x 👉 MutationPlanner next
+		👉 Mutation validation layer (lightweight schema guard)
+
+		Then optionally:
+
+		👉 Optimistic mutation batching / diff-based writes
+
+		B. Field capability system
+
+			define per schema:
+			mutable
+			read-only
+			derived
+			computed
+
+		C. Optimized mutation batching
+
+			collapse writes per record (you’re close already)
+
+		Good base. Next high-value additions:
+
+			nested object mutation (not just leaf fields)
+			array replace vs append behavior (if applicable)
+			multi-field mutation in one request (if you ever support it)
+			mutation + reference fan-out stability (you’re already close)
+		2. Add trace logger coverage
+
+			Now that your trace logger exists:
+
+			validate it logs one entry per applied mutation
+			validate skipped reasons are recorded
+			validate invalid path is captured correctly
+
+			This will save you later debugging pain.
+
+		3. Stability pass (most important)
+
+			Run:
+
+			full test suite repeatedly (you already do this 👍)
+			add a “mutation stress test” (repeat 100–1000 ops on same dataset)
 
 	After aggregate expansion, I'd move toward:
 

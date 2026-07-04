@@ -1,20 +1,14 @@
-export interface MutationPlanStep {
-	from: string;
-	field: string;
-	to: string;
-
-	path: string;
-
-	cardinality:
-		| "one"
-		| "many";
-
-	refType:
-		| "reference"
-		| "referenceCollection";
+export interface MutationPlan {
+    steps: MutationPlanStep[];
 }
 
-export interface MutationPlan {
-	rootSchema: string;
-	steps: MutationPlanStep[];
+export interface MutationPlanStep {
+    select: string;
+
+    traversal: string[];
+    field: string;
+
+    operationType: string;
+
+    safe: boolean;
 }
