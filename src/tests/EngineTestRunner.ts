@@ -24,6 +24,7 @@ export class EngineTestRunner {
 	private queryPlanner: any;
 	private graphBuilder: any;
 	private logger!: Logger;
+	private engineLogger!: Logger;
 	private loggerFactory!: LoggerFactory;
 	private mutationExecutor: any;
 
@@ -35,7 +36,7 @@ export class EngineTestRunner {
 		queryPlanner: any,
 		graphBuilder: any,
 		mutationExecutor: any,
-		//logger: Logger,
+		engineLogger: Logger,
 		loggerFactory: LoggerFactory
 	) {
 
@@ -61,7 +62,7 @@ export class EngineTestRunner {
 		this.queryPlanner = queryPlanner;
 		this.graphBuilder = graphBuilder;
 		this.mutationExecutor = mutationExecutor;
-		//this.logger = logger;
+		this.engineLogger = engineLogger;
 		this.loggerFactory = loggerFactory;
     }
 
@@ -283,9 +284,7 @@ export class EngineTestRunner {
 				x Then write tests.
 		
 		x 👉 MutationPlanner next
-		👉 Mutation validation layer (lightweight schema guard)
-
-		Then optionally:
+		x 👉 Mutation validation layer (lightweight schema guard)
 
 		👉 Optimistic mutation batching / diff-based writes
 
@@ -316,6 +315,14 @@ export class EngineTestRunner {
 			validate invalid path is captured correctly
 
 			This will save you later debugging pain.
+
+			Mutation diff inspector (VERY powerful for debugging)
+
+			Shows:
+
+			before / after per field
+			grouped by record
+			execution trace overlay
 
 		3. Stability pass (most important)
 
@@ -10312,6 +10319,400 @@ export class EngineTestRunner {
 		}
 	}
 
+	private async testMutationFanOutCorrectness() {
+
+		const { guildContext } =
+			await this.buildDeepCollectionFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "set",
+						value: 1
+					}
+				}
+			);
+
+		// 3 items total (Sword, Shield, Wand)
+		if (result.updated !== 3) {
+			throw new Error(
+				`Expected 3 mutations, got ${result.updated}`
+			);
+		}
+
+		const check =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (check[0].value !== 3) {
+			throw new Error(
+				`Expected sum 3, got ${check[0].value}`
+			);
+		}
+	}
+
+	private async testMutationDeepAddPropagation() {
+
+		const { guildContext } =
+			await this.buildDeepCollectionFixture();
+
+		await this.mutationExecutor.execute(
+			guildContext,
+			{
+				select: "members.items.power",
+				operation: {
+					type: "math",
+					op: "add",
+					value: 2
+				}
+			}
+		);
+
+		const results =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		// 10+20+30 = 60 → +2 each item = +6 → 66
+		if (results[0].value !== 66) {
+			throw new Error(
+				`Expected 66, got ${results[0].value}`
+			);
+		}
+	}
+
+	private async testMutationIdempotencyBehavior() {
+
+		const { guildContext } =
+			await this.buildDeepCollectionFixture();
+
+		await this.mutationExecutor.execute(
+			guildContext,
+			{
+				select: "members.items.power",
+				operation: {
+					type: "set",
+					value: 5
+				}
+			}
+		);
+
+		await this.mutationExecutor.execute(
+			guildContext,
+			{
+				select: "members.items.power",
+				operation: {
+					type: "set",
+					value: 5
+				}
+			}
+		);
+
+		const result =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		// still 15
+		if (result[0].value !== 15) {
+			throw new Error(
+				`Expected idempotent result 15, got ${result[0].value}`
+			);
+		}
+	}
+
+	private async testMutationPartialTraversalFailure() {
+
+		const { guildContext, bob } =
+			await this.buildDeepCollectionFixture();
+
+		// break one character's items
+		await this.dataManager.update(
+			await this.contextFactory.getSchemaContext("CoreTest", "Character"),
+			bob.id,
+			{ items: [] }
+		);
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "set",
+						value: 9
+					}
+				}
+			);
+
+		// should still succeed partially (Alice + Wand only = 1 update)
+		if (result.updated !== 1) {
+			throw new Error(
+				`Expected 1 valid mutation, got ${result.updated}`
+			);
+		}
+	}
+
+	private async testMutationCrossRecordIsolation() {
+
+		const {
+			guildContext,
+			characterContext,
+			itemContext,
+			guild,
+			bob,
+			alice,
+			sword,
+			shield,
+			wand
+		} = await this.buildDeepCollectionFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "set",
+						value: 99
+					}
+				}
+			);
+
+		if (result.updated !== 3) {
+			throw new Error(
+				`Expected 3 updates, got ${result.updated}`
+			);
+		}
+
+		// Characters should remain unchanged
+
+		const bobCheck =
+			await this.dataManager.getById(
+				characterContext,
+				bob.id
+			);
+
+		const aliceCheck =
+			await this.dataManager.getById(
+				characterContext,
+				alice.id
+			);
+
+		if (bobCheck.data.items.length !== 2) {
+			throw new Error(
+				"Bob item references were modified"
+			);
+		}
+
+		if (aliceCheck.data.items.length !== 1) {
+			throw new Error(
+				"Alice item references were modified"
+			);
+		}
+
+		// Guild should remain unchanged
+
+		const guildCheck =
+			await this.dataManager.getById(
+				guildContext,
+				result.rootId ?? guild.id
+			);
+
+		if (guildCheck.data.members.length !== 2) {
+			throw new Error(
+				"Guild member references were modified"
+			);
+		}
+
+		// Items should actually be changed
+
+		const swordCheck =
+			await this.dataManager.getById(
+				itemContext,
+				sword.id
+			);
+
+		const shieldCheck =
+			await this.dataManager.getById(
+				itemContext,
+				shield.id
+			);
+
+		const wandCheck =
+			await this.dataManager.getById(
+				itemContext,
+				wand.id
+			);
+
+		if (
+			swordCheck.data.power !== 99 ||
+			shieldCheck.data.power !== 99 ||
+			wandCheck.data.power !== 99
+		) {
+			throw new Error(
+				"Item mutations were not applied"
+			);
+		}
+	}
+
+	private async testMutationPartialPathFailure() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.nonexistent.value",
+					operation: {
+						type: "set",
+						value: 123
+					}
+				}
+			);
+
+		if (result.updated !== 0) {
+			throw new Error(
+				`Expected 0 updates on invalid path, got ${result.updated}`
+			);
+		}
+
+		if (result.errors.length === 0) {
+			throw new Error(
+				"Expected validation or execution errors"
+			);
+		}
+
+		// verify original values unchanged via aggregate
+		const check =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (check[0].value !== 60) {
+			throw new Error(
+				`Expected unchanged sum 60, got ${check[0].value}`
+			);
+		}
+	}
+
+	private async testMutationDeterministicSinglePass() {
+
+		const {
+			guildContext
+		} = await this.buildDeepCollectionFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "math",
+						op: "add",
+						value: 1
+					}
+				}
+			);
+
+		const final =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (final[0].value !== 63) {
+			throw new Error(
+				`Expected deterministic +1 twice => 63, got ${final[0].value}`
+			);
+		}
+
+		// run same mutation again
+		const result2 =
+			await this.mutationExecutor.execute(
+				guildContext,
+				{
+					select: "members.items.power",
+					operation: {
+						type: "math",
+						op: "add",
+						value: 1
+					}
+				}
+			);
+
+		if (result.updated !== 3) {
+			throw new Error(
+				`First run expected 3 updates, got ${result.updated}`
+			);
+		}
+
+		if (result2.updated !== 3) {
+			throw new Error(
+				`Second run expected 3 updates, got ${result2.updated}`
+			);
+		}
+
+		const final2 =
+			await this.queryManager.queryGroup(
+				guildContext,
+				{
+					groupBy: "name",
+					aggregate: {
+						op: "sum",
+						field: "members.items.power"
+					}
+				}
+			);
+
+		if (final2[0].value !== 66) {
+			throw new Error(
+				`Expected deterministic +1 twice => 66, got ${final2[0].value}`
+			);
+		}
+	}
+
 	private async MutationTestSuite() {
 		this.logger?.log({ level: "info", scope: "TEST", message: "Mutation Test Suite" });
 
@@ -10334,6 +10735,41 @@ export class EngineTestRunner {
 			await this.safeRun(
 				"Mutation Missing Path",
 				() => this.testMutationMissingPath()
+			);
+
+			await this.safeRun(
+				"Mutation Fan Out Correctness",
+				() => this.testMutationFanOutCorrectness()
+			);
+
+			await this.safeRun(
+				"Mutation Deep Add Propagation",
+				() => this.testMutationDeepAddPropagation()
+			);
+
+			await this.safeRun(
+				"Mutation Idempotency Behavior",
+				() => this.testMutationIdempotencyBehavior()
+			);
+
+			await this.safeRun(
+				"Mutation Partial Traversal Failure",
+				() => this.testMutationPartialTraversalFailure()
+			);
+
+			await this.safeRun(
+				"Mutation Cross-Record Isolation",
+				() => this.testMutationCrossRecordIsolation()
+			);
+
+			await this.safeRun(
+				"Mutation Partial Path Failure",
+				() => this.testMutationPartialPathFailure()
+			);
+
+			await this.safeRun(
+				"Mutation Deterministic Single Pass",
+				() => this.testMutationDeterministicSinglePass()
 			);
 		}
 		catch (e) {
