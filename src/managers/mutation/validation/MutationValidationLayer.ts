@@ -25,8 +25,6 @@ export class MutationValidationLayer {
             const part = parts[i];
             const field = schema.fields?.[part];
 
-            this.trace.debug("MutationValidation", "part, field: ", { part, field })
-
             // ---------------------------------
             // FIELD MUST EXIST
             // ---------------------------------

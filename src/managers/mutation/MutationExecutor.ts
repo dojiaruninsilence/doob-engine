@@ -102,15 +102,10 @@ export class MutationExecutor {
 
             for (const target of targets) {
 
-                this.trace.debug(
-                    "MutationExecutor",
-                    "Processing target",
-                    { target }
-                );
-
                 try {
 
                     if (!target.valid) {
+                        this.trace.info("MutationExecutor", "Invalid Mutation Path", { rootId: target.rootId, path: request.select });
                         errors.push({
                             rootId: target.rootId,
                             path: request.select,
@@ -123,6 +118,7 @@ export class MutationExecutor {
                         `${target.nodeId}:${target.fieldPath}`;
 
                     if (seen.has(key)) {
+                        this.trace.info("MutationExecutor", "Duplicate", { rootId: target.rootId, nodeId: target.nodeId, fieldPath: target.fieldPath });
                         skipped++;
                         continue;
                     }
@@ -133,6 +129,7 @@ export class MutationExecutor {
                         graph.nodes.get(target.nodeId);
 
                     if (!node) {
+                        this.trace.info("MutationExecutor", "Missing Node", { rootId: target.rootId, nodeId: target.nodeId, fieldPath: target.fieldPath });
                         skipped++;
                         continue;
                     }
@@ -177,6 +174,7 @@ export class MutationExecutor {
                     );
 
                     if (result === undefined) {
+                        this.trace.info("MutationExecutor", "result undefined", { rootId: target.rootId, nodeId: target.nodeId, fieldPath: target.fieldPath });
                         skipped++;
                         continue;
                     }

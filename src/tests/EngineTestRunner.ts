@@ -253,7 +253,13 @@ export class EngineTestRunner {
     │   │           QueryMatchBuilder.ts
     │   │           QueryMatchNavigator.ts
     │   │           
-    │   └───reference
+    │   ├───reference
+    │   └───traversal
+    │           ObjectResolver.ts
+    │           ReferenceResolver.ts
+    │           TraversalExecutor.ts
+    │           TraversalManager.ts
+    │           
     ├───tests
     │       EngineTestRunner.ts
     │       
@@ -263,6 +269,7 @@ export class EngineTestRunner {
     │   │   FieldTypes.ts
     │   │   LoggerTypes.ts
     │   │   SchemaTypes.ts
+    │   │   TraversalTypes.ts
     │   │   ValidationTypes.ts
     │   │   
     │   ├───core
@@ -323,7 +330,7 @@ export class EngineTestRunner {
 
 		x 👉 Optimistic mutation batching / diff-based writes
 
-		B. Field capability system
+		x B. Field capability system
 
 			define per schema:
 			mutable
@@ -341,7 +348,7 @@ export class EngineTestRunner {
 			array replace vs append behavior (if applicable)
 			multi-field mutation in one request (if you ever support it)
 			mutation + reference fan-out stability (you’re already close)
-		2. Add trace logger coverage
+		x 2. Add trace logger coverage
 
 			Now that your trace logger exists:
 
@@ -351,7 +358,7 @@ export class EngineTestRunner {
 
 			This will save you later debugging pain.
 
-			Mutation diff inspector (VERY powerful for debugging)
+		Mutation diff inspector (VERY powerful for debugging)
 
 			Shows:
 
@@ -367,6 +374,28 @@ export class EngineTestRunner {
 			add a “mutation stress test” (repeat 100–1000 ops on same dataset)
 
 	After aggregate expansion, I'd move toward:
+
+		/core/traversal/
+			TraversalEngine.ts
+			TraversalTypes.ts
+			TraversalExecutor.ts
+			ReferenceResolver.ts
+			ObjectResolver.ts
+
+		Phase 1 — TraversalEngine
+			supports:
+			reference steps
+			object steps
+			terminal value resolution
+		Phase 2 — Query migration
+			QueryExecutor uses TraversalEngine
+			remove old navigator logic
+		Phase 3 — Grouping/Aggregation migration
+			grouping keys use traversal results
+		Phase 4 — GraphBuilder migration
+			becomes traversal-driven expansion
+		Phase 5 — Mutation migration
+			ow trivial because traversal is already proven
 
 		Query Optimizations
 		Plan deduplication
@@ -10750,7 +10779,7 @@ export class EngineTestRunner {
 
 	private async testMutationReadOnlyField() {
 
-		this.engineLogger?.log({ level: "debug", scope: "Engine.Test", message: "Mutation Read Only Start" });
+		//this.engineLogger?.log({ level: "debug", scope: "Engine.Test", message: "Mutation Read Only Start" });
 
 		const {
 			guildContext
@@ -10766,7 +10795,7 @@ export class EngineTestRunner {
 		const newGuildContext = await this.contextFactory.getSchemaContext("CoreTest", "Guild");
 		const newItemContext = await this.contextFactory.getSchemaContext("CoreTest", "Item");
 
-		this.engineLogger?.log({ level: "debug", scope: "Engine.Test", message: "Mutation Read Only Context Refresh", data: { guildContext, newGuildContext, newItemContext } });
+		//this.engineLogger?.log({ level: "debug", scope: "Engine.Test", message: "Mutation Read Only Context Refresh", data: { guildContext, newGuildContext, newItemContext } });
 
 		const result =
 			await this.mutationExecutor.execute(
@@ -10780,7 +10809,7 @@ export class EngineTestRunner {
 				}
 			);
 
-		this.engineLogger?.log({ level: "debug", scope: "Engine.Test", message: "Mutation Read Only Finish", data: result });
+		//this.engineLogger?.log({ level: "debug", scope: "Engine.Test", message: "Mutation Read Only Finish", data: result });
 
 		if (result.updated !== 0) {
 			throw new Error(
@@ -10845,7 +10874,7 @@ export class EngineTestRunner {
 			"power",
 			{ capability: "computed" }
 		);
-		
+
 		const result =
 			await this.mutationExecutor.execute(
 				guildContext,
@@ -10899,6 +10928,184 @@ export class EngineTestRunner {
 			throw new Error(
 				"Did not expect validation errors"
 			);
+		}
+	}
+
+	private async buildDeepObjectFixture() {
+
+		await this.resetCoreTestData();
+
+		// ---------------------------------
+		// CHARACTER CORE
+		// ---------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		// ---------------------------------
+		// DEEP OBJECT STRUCTURE
+		// ---------------------------------
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"stats",
+			"object",
+			{}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"stats.attributes",
+			"object",
+			{}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"stats.attributes.strength",
+			"object",
+			{}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"stats.attributes.strength.value",
+			"number",
+			10
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"stats.attributes.agility",
+			"object",
+			{}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"stats.attributes.agility.value",
+			"number",
+			5
+		);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		this.engineLogger.log({ level: "info", scope: "TEST", message: "Deep Deep Test Fixture: Context", data: { characterContext }});
+
+		const character =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Hero",
+					stats: {
+						attributes: {
+							strength: {
+								value: 10
+							},
+							agility: {
+								value: 5
+							}
+						}
+					}
+				}
+			);
+
+		this.engineLogger.log({ level: "info", scope: "TEST", message: "Deep Deep Test Fixture: Character", data: { character }});
+
+		return {
+			characterContext,
+			character
+		};
+	}
+
+	private async testDeepObjectMutation() {
+
+		this.engineLogger.log({ level: "debug", scope: "TEST", message: "Deep Object Mutation Start"});
+
+		const { characterContext, character } =
+			await this.buildDeepObjectFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				characterContext,
+				{
+					select: "stats.attributes.strength.value",
+					operation: {
+						type: "set",
+						value: 999
+					}
+				}
+			);
+
+		if (result.errors.length > 0) {
+			throw new Error(JSON.stringify(result.errors));
+		}
+
+		this.engineLogger.log({ level: "debug", scope: "TEST", message: "Deep Object Mutation result:", data: { result } });
+
+		const updated =
+			await this.dataManager.getById(characterContext, character.id);
+
+		this.engineLogger.log({ level: "debug", scope: "TEST", message: "Deep Object Mutation end", data: { updated } });
+
+		if (updated.data.stats.attributes.strength.value !== 999) {
+			throw new Error("Strength not updated correctly");
+		}
+
+		if (updated.data.stats.attributes.agility.value !== 5) {
+			throw new Error("Sibling field corrupted");
+		}
+	}
+
+	private async testMissingIntermediateObject() {
+
+		const { characterContext, character } =
+			await this.buildDeepObjectFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				characterContext,
+				{
+					select: "stats.attributes.intelligence.value",
+					operation: {
+						type: "set",
+						value: 123
+					}
+				}
+			);
+
+		// must not crash
+		if (!result) {
+			throw new Error("Mutation returned undefined");
+		}
+
+		// enforce deterministic behavior
+		if (result.errors.length === 0) {
+
+			const updated =
+				await this.dataManager.getById(characterContext, character.id);
+
+			const value =
+				updated.data.stats?.attributes?.intelligence?.value;
+
+			if (value !== 123) {
+				throw new Error("Expected auto-create behavior failed");
+			}
 		}
 	}
 
@@ -10980,6 +11187,16 @@ export class EngineTestRunner {
 				"Mutation Mutable Field",
 				() => this.testMutationMutableField()
 			);
+
+			// await this.safeRun(
+			// 	"Mutation Deep Object Mutation",
+			// 	() => this.testDeepObjectMutation()
+			// );
+
+			// await this.safeRun(
+			// 	"Mutation Missing Intermediate Object",
+			// 	() => this.testMissingIntermediateObject()
+			// );
 		}
 		catch (e) {
 			this.logger?.log({ level: "error", scope: "TEST", message: "Mutation Tests Failed", data: (e as Error).message });
