@@ -3,48 +3,65 @@ import { AggregateRequest } from "../../../../types/query/AggregateTypes";
 import { ResolvedRecordGraph } from "../../../../types/query/ResolvedRecordGraph";
 import { QueryGroupResult } from "../../../../types/query/QueryTypes";
 import { QueryMatchNavigator } from "../../match/QueryMatchNavigator";
+import { TraversalContext, TraversalPlan } from "../../../../types/traversal";
+import { TraversalExecutor } from "../../../traversal/TraversalExecutor";
+import { TraceLogger } from "../../../logging/TraceLogger";
 
 export class MaxStrategy implements IAggregateStrategy {
 
     constructor(
-        private matchNavigator: QueryMatchNavigator
+        private travExecutor: TraversalExecutor,
+        private trace: TraceLogger
+        // private matchNavigator: QueryMatchNavigator
     ) {}
 
+    // async evaluate(
+    //     graph: ResolvedRecordGraph,
+    //     group: QueryGroupResult,
+    //     rootId: string,
+    //     request: AggregateRequest
+    // ): Promise<any> {
     async evaluate(
-        graph: ResolvedRecordGraph,
+        context: TraversalContext,
+        plan: TraversalPlan,
         group: QueryGroupResult,
-        rootId: string,
         request: AggregateRequest
     ): Promise<any> {
 
-        const seen = new Set<string>();
+        // const seen = new Set<string>();
 
         let max: number | null = null;
 
         for (const match of group.matches) {
 
-            const values =
-                this.matchNavigator.resolveValues(
-                    graph,
-                    match,
-                    request.field!
-                );
+            const results = this.travExecutor.execute(context, match.rootId, plan);
+                // this.matchNavigator.resolveValues(
+                //     graph,
+                //     match,
+                //     request.field!
+                // );
+
+            const values = 
+                results.values ??
+                (results.value !== undefined
+                    ? [results.value]
+                    : []);
 
             for (const v of values) {
 
-                const key =
-                    `${match.rootId}:${v.sourceId}:${request.field}`;
+                // const key =
+                //     `${match.rootId}:${v.sourceId}:${request.field}`;
 
-                if (seen.has(key)) continue;
+                // if (seen.has(key)) continue;
 
-                seen.add(key);
+                // seen.add(key);
 
-                if (typeof v.value === "number") {
+                if (typeof v === "number") {
 
                     max =
                         max === null
-                            ? v.value
-                            : Math.max(max, v.value);
+                            ? v
+                            : Math.max(max, v);
                 }
             }
         }

@@ -15,6 +15,8 @@ export class TraversalExecutor {
 		plan: TraversalPlan
 	): TraversalResult {
 
+		this.trace.debug("TraversalExecutor", "Start", { context, rootId, plan })
+
 		if (!context.graph) {
 
 			this.trace.error(
@@ -287,9 +289,16 @@ export class TraversalExecutor {
 		}
 
 		return {
-			value: finalValues.length === 1
-				? finalValues[0]
-				: finalValues,
+			value:
+				finalValues.length === 1
+					? finalValues[0]
+					: undefined,
+
+			values:
+				finalValues.length > 1
+					? finalValues
+					: undefined,
+
 			nodes: currentNodeIds
 		};
 	}

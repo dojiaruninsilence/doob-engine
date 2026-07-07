@@ -102,7 +102,6 @@ export default class DoobEngine extends Plugin {
 		const resolvedRecordGraphNavigator = new ResolvedRecordGraphNavigator();
 		const queryMatchBuilder = new QueryMatchBuilder();
 		const queryMatchNavigator = new QueryMatchNavigator();
-		const aggregateResolver = AggregateBootstrap.build(queryMatchNavigator);
 		const mutationTargetResolver = new MutationTargetResolver();
 		const mutationOperationResolver = new MutationOperationResolver();
 		const traceLogger = new TraceLogger(this.engineLog);
@@ -110,11 +109,13 @@ export default class DoobEngine extends Plugin {
 		const traversalAdapter = new LegacyTraversalAdapter(this.contextFactory);
 		const valueResolver = new ValueResolver();
 		//const traversalPlanBuilder = new TraversalPlanBuilder()
-
+		
 		this.traversalPlanner = new TraversalPlanner(traceLogger);
 		this.traversalExecutor = new TraversalExecutor(traceLogger, valueResolver);
 		this.traversalPlanBuilder = new TraversalPlanBuilder(this.traversalPlanner);
 		this.traversalRequestBuilder = new TraversalRequestBuilder(traversalAdapter);
+		
+		const aggregateResolver = AggregateBootstrap.build(this.traversalExecutor, traceLogger);
 
 		this.queryPlanner = new QueryPlanner(
 			this.contextFactory

@@ -2,6 +2,7 @@ import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
 import { QueryGroupResult } from "../../../types/query/QueryTypes";
 import { AggregateRequest } from "../../../types/query/AggregateTypes";
 import { AggregateStrategyRegistry } from "./AggregateStrategyRegistry";
+import { TraversalContext, TraversalPlan } from "../../../types/traversal";
 
 export class AggregateResolver {
 
@@ -9,10 +10,16 @@ export class AggregateResolver {
         private registry: AggregateStrategyRegistry
     ) {}
 
+    // async evaluate(
+    //     graph: ResolvedRecordGraph,
+    //     group: QueryGroupResult,
+    //     rootId: string,
+    //     request: AggregateRequest
+    // ): Promise<any> {
     async evaluate(
-        graph: ResolvedRecordGraph,
+        context: TraversalContext,
+        plan: TraversalPlan,
         group: QueryGroupResult,
-        rootId: string,
         request: AggregateRequest
     ): Promise<any> {
 
@@ -22,9 +29,9 @@ export class AggregateResolver {
             );
 
         return await strategy.evaluate(
-            graph,
+            context,
+            plan,
             group,
-            rootId,
             request
         );
     }

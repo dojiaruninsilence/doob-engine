@@ -3,18 +3,29 @@ import { AggregateRequest } from "../../../../types/query/AggregateTypes";
 import { ResolvedRecordGraph } from "../../../../types/query/ResolvedRecordGraph";
 import { QueryGroupResult } from "../../../../types/query/QueryTypes";
 import { QueryMatchNavigator } from "../../match/QueryMatchNavigator";
+import { TraversalContext, TraversalPlan } from "../../../../types/traversal";
+import { TraversalExecutor } from "../../../traversal/TraversalExecutor";
+import { TraceLogger } from "../../../logging/TraceLogger";
 
 export class DistinctCountStrategy
     implements IAggregateStrategy {
 
     constructor(
-        private matchNavigator: QueryMatchNavigator
+        private travExecutor: TraversalExecutor,
+        private trace: TraceLogger
+        //private matchNavigator: QueryMatchNavigator
     ) {}
 
+    // async evaluate(
+    //     graph: ResolvedRecordGraph,
+    //     group: QueryGroupResult,
+    //     rootId: string,
+    //     request: AggregateRequest
+    // ): Promise<any> {
     async evaluate(
-        graph: ResolvedRecordGraph,
+        context: TraversalContext,
+        plan: TraversalPlan,
         group: QueryGroupResult,
-        rootId: string,
         request: AggregateRequest
     ): Promise<any> {
 
@@ -22,15 +33,21 @@ export class DistinctCountStrategy
 
         for (const match of group.matches) {
 
-            const resolved =
-                this.matchNavigator.resolveValues(
-                    graph,
-                    match,
-                    request.field!
-                );
+            const results = this.travExecutor.execute(context, match.rootId, plan);
+                // this.matchNavigator.resolveValues(
+                //     graph,
+                //     match,
+                //     request.field!
+                // );
+
+            const resolved = 
+                results.values ??
+                (results.value !== undefined
+                    ? [results.value]
+                    : []);
 
             for (const v of resolved) {
-                values.add(v.value);
+                values.add(v);
             }
         }
 

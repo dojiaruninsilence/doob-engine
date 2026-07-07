@@ -153,7 +153,38 @@ export class QueryExecutor {
         }
     }
 
+    // private async evaluateAggregate(
+    //     graph: ResolvedRecordGraph,
+    //     records: DataRecord[],
+    //     request: AggregateRequest
+    // ): Promise<any> {
+
+    //     const matches =
+    //         records.map(record => ({
+    //             rootId: record.id,
+    //             currentId: record.id,
+    //             pathIndexes: [],
+    //             pathNodes: [record.id],
+    //             bindings: {}
+    //         }));
+
+    //     const group: QueryGroupResult = {
+    //         key: "__all__",
+    //         records,
+    //         matches,
+    //         value: 0
+    //     };
+
+    //     return this.aggregateResolver.evaluate(
+    //         graph,
+    //         group,
+    //         records[0]?.id,
+    //         request
+    //     );
+    // }
+
     private async evaluateAggregate(
+        context: SchemaContext,
         graph: ResolvedRecordGraph,
         records: DataRecord[],
         request: AggregateRequest
@@ -175,10 +206,44 @@ export class QueryExecutor {
             value: 0
         };
 
+        const travContext: TraversalContext = {
+            schema: context.schema,
+            graph
+        };
+
+        // ----------------------------------
+        // Aggregates that do not need a field
+        // ----------------------------------
+
+        if (!request.field) {
+
+            return this.aggregateResolver.evaluate(
+                travContext,
+                undefined,
+                group,
+                request
+            );
+        }
+
+        // ----------------------------------
+        // Build traversal for field aggregates
+        // ----------------------------------
+
+        const travRequest =
+            await this.traversalAdapter.buildRequest(
+                context,
+                request.field
+            );
+
+        const travPlan =
+            this.traversalPlanner.build(
+                travRequest
+            );
+
         return this.aggregateResolver.evaluate(
-            graph,
+            travContext,
+            travPlan,
             group,
-            records[0]?.id,
             request
         );
     }
@@ -508,11 +573,300 @@ export class QueryExecutor {
 		}
 
 		return await this.evaluateAggregate(
+            context,
             graph,
             records,
             request.aggregate
         );
     }
+
+    // async executeGroup(
+    //     context: SchemaContext,
+    //     request: QueryRequest,
+    //     plan: QueryPlan
+    // ): Promise<QueryGroupResult[]> {
+
+    //     // ----------------------------------
+    //     // 1. Load records + graph
+    //     // ----------------------------------
+
+    //     let records =
+    //         await this.reader.getAll(context);
+
+    //     const graph =
+    //         await this.runner.run(
+    //             context,
+    //             records,
+    //             plan
+    //         );
+
+    //     if (request.where?.length) {
+
+    //         records =
+    //             await this.applyFilters(
+    //                 records,
+    //                 request.where,
+    //                 graph
+    //             );
+    //     }
+
+    //     const validRoots =
+    //         new Set(
+    //             records.map(r => r.id)
+    //         );
+
+    //     const recordMap =
+    //         new Map(
+    //             records.map(
+    //                 r => [r.id, r]
+    //             )
+    //         );
+
+
+    //     // ----------------------------------
+    //     // 2. Build matches
+    //     // ----------------------------------
+
+    //     const matches =
+    //         this.matchBuilder
+    //             .build(graph, plan)
+    //             .filter(
+    //                 m =>
+    //                     validRoots.has(
+    //                         m.rootId
+    //                     )
+    //             );
+
+
+    //     // ----------------------------------
+    //     // 3. Build traversal plans
+    //     // ----------------------------------
+
+    //     const travContext: TraversalContext = {
+    //         schema: context.schema,
+    //         graph
+    //     };
+
+
+    //     const groupRequest =
+    //         await this.traversalAdapter.buildRequest(
+    //             context,
+    //             request.groupBy
+    //         );
+
+
+    //     const groupPlan =
+    //         this.traversalPlanner.build(
+    //             groupRequest
+    //         );
+
+
+    //     const aggregateRequest =
+    //         request.aggregate
+    //             ? await this.traversalAdapter.buildRequest(
+    //                 context,
+    //                 request.aggregate.field
+    //             )
+    //             : undefined;
+
+
+    //     const aggregatePlan =
+    //         aggregateRequest
+    //             ? this.traversalPlanner.build(
+    //                 aggregateRequest
+    //             )
+    //             : undefined;
+
+
+    //     this.trace.debug(
+    //         "QueryExecutor",
+    //         "Traversal Plans Built",
+    //         {
+    //             groupPlan,
+    //             aggregatePlan
+    //         }
+    //     );
+
+
+    //     // ----------------------------------
+    //     // 4. Grouping
+    //     // ----------------------------------
+
+    //     const groups =
+    //         new Map<any, QueryGroupResult>();
+
+
+    //     const mode =
+    //         request.groupByMode ??
+    //         "fanout";
+
+
+    //     for (const match of matches) {
+
+
+    //         const traversal =
+    //             this.traversalExecutor.execute(
+    //                 travContext,
+    //                 match.rootId,
+    //                 groupPlan
+    //             );
+
+
+    //         const keys =
+    //             this.normalizeValue(
+    //                 traversal.value
+    //             )
+    //             .filter(
+    //                 k =>
+    //                     k !== undefined &&
+    //                     k !== null
+    //             );
+
+
+    //         let finalKeys: any[];
+
+
+    //         switch (mode) {
+
+    //             case "collapse":
+
+    //                 finalKeys =
+    //                     keys.length
+    //                         ? [keys.join("|")]
+    //                         : [];
+
+    //                 break;
+
+
+    //             case "first":
+
+    //                 finalKeys =
+    //                     keys.length
+    //                         ? [keys[0]]
+    //                         : [];
+
+    //                 break;
+
+
+    //             case "distinct":
+
+    //                 finalKeys =
+    //                     [
+    //                         ...new Set(keys)
+    //                     ];
+
+    //                 break;
+
+
+    //             case "fanout":
+    //             default:
+
+    //                 finalKeys =
+    //                     keys;
+
+    //                 break;
+    //         }
+
+
+    //         for (const key of finalKeys) {
+
+
+    //             let group =
+    //                 groups.get(key);
+
+
+    //             if (!group) {
+
+    //                 group = {
+    //                     key,
+    //                     records: [],
+    //                     matches: [],
+    //                     value: 0
+    //                 };
+
+
+    //                 groups.set(
+    //                     key,
+    //                     group
+    //                 );
+    //             }
+
+
+    //             group.matches.push(
+    //                 match
+    //             );
+
+
+    //             const rootRecord =
+    //                 recordMap.get(
+    //                     match.rootId
+    //                 );
+
+
+    //             if (
+    //                 rootRecord &&
+    //                 !group.records.some(
+    //                     r =>
+    //                         r.id === rootRecord.id
+    //                 )
+    //             ) {
+
+    //                 group.records.push(
+    //                     rootRecord
+    //                 );
+    //             }
+    //         }
+    //     }
+
+
+    //     // ----------------------------------
+    //     // 5. Aggregate
+    //     // ----------------------------------
+
+    //     const results:
+    //         QueryGroupResult[] = [];
+
+
+    //     for (const group of groups.values()) {
+
+
+    //         group.value =
+    //             await this.aggregateResolver.evaluate(
+    //                 graph,
+    //                 group,
+    //                 group.matches[0]?.rootId,
+    //                 request.aggregate
+    //             );
+
+
+    //         results.push(
+    //             group
+    //         );
+    //     }
+
+
+    //     // ----------------------------------
+    //     // 6. Having
+    //     // ----------------------------------
+
+    //     const filtered =
+    //         await this.applyHaving(
+    //             results,
+    //             context,
+    //             graph,
+    //             request.having
+    //         );
+
+
+    //     // ----------------------------------
+    //     // 7. Sort
+    //     // ----------------------------------
+
+    //     return this.applyGroupSort(
+    //         filtered,
+    //         request.sort
+    //     );
+    // }
 
     async executeGroup(
         context: SchemaContext,
@@ -572,23 +926,26 @@ export class QueryExecutor {
             graph
         };
 
-        const travReq =
-            await this.traversalAdapter.buildRequest(
-                context,
-                request.groupBy
-            );
+        const travReqSet = await this.traversalRequestBuilder.build(context, request);
+        const travPlanSet = this.traversalPlanBuilder.build(travReqSet);
 
-        const travPlan =
-            this.traversalPlanner.build(
-                travReq
-            );
+        // const travReq =
+        //     await this.traversalAdapter.buildRequest(
+        //         context,
+        //         request.groupBy
+        //     );
+
+        // const travPlan =
+        //     this.traversalPlanner.build(
+        //         travReq
+        //     );
 
         this.trace.debug(
             "QueryExecutor",
             "Group Traversal Built",
             {
-                travReq,
-                travPlan
+                travReqSet,
+                travPlanSet
             }
         );
 
@@ -609,7 +966,7 @@ export class QueryExecutor {
                 this.traversalExecutor.execute(
                     travContext,
                     match.rootId,
-                    travPlan
+                    travPlanSet.groupBy
                 );
 
             const keys =
@@ -713,11 +1070,19 @@ export class QueryExecutor {
 
         for (const group of groups.values()) {
 
+            // group.value =
+            //     await this.aggregateResolver.evaluate(
+            //         graph,
+            //         group,
+            //         group.matches[0]?.rootId,
+            //         request.aggregate
+            //     );
+
             group.value =
                 await this.aggregateResolver.evaluate(
-                    graph,
+                    travContext,
+                    travPlanSet.aggregate,
                     group,
-                    group.matches[0]?.rootId,
                     request.aggregate
                 );
 
