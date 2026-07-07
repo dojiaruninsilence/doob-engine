@@ -18,3 +18,7 @@ export interface CollectionStep {
     field: string;
     mode: "first" | "all" | "expand";
 }
+
+export type ResolvedStepResult =
+    | { type: "value"; value: any }
+    | { type: "nodes"; value: string[] }

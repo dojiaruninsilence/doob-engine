@@ -3,3 +3,7 @@ export interface TraversalResult {
     values?: any[];
     nodes?: any[];
 }
+
+export type ResolvedValue =
+    | { type: "value"; value: any }
+    | { type: "nodes"; nodes: string[] };

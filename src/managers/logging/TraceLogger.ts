@@ -1,6 +1,6 @@
-import { Logger } from "../../logging/Logger";
+import { Logger } from "./Logger";
 
-export class MutationTraceLogger {
+export class TraceLogger {
 
     constructor(private logger: Logger) {}
 

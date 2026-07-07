@@ -16,7 +16,7 @@ import { DataMutationWriter } from "./writer/DataMutationWriter";
 import { MutationWriteTarget } from "../../types/mutation/MutationWriteTargetTypes";
 
 import { ContextFactory } from "../ContextFactory";
-import { MutationTraceLogger } from "./debug/MutationTraceLogger";
+import { TraceLogger } from "../logging/TraceLogger";
 
 export class MutationExecutor {
 
@@ -27,7 +27,7 @@ export class MutationExecutor {
         private queryPlanner: QueryPlanner,
         private targetResolver: MutationTargetResolver,
         private operationResolver: MutationOperationResolver,
-        private trace: MutationTraceLogger,
+        private trace: TraceLogger,
         private contextFactory: ContextFactory,
         private validator: MutationValidationLayer
     ) {}

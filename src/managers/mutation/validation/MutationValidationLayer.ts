@@ -1,13 +1,13 @@
 import { SchemaContext } from "../../../types/ContextTypes";
 import { MutationValidationResult } from "../../../types/mutation/MutationValidationTypes";
 import { ContextFactory } from "../../ContextFactory";
-import { MutationTraceLogger } from "../debug/MutationTraceLogger";
+import { TraceLogger } from "../../logging/TraceLogger";
 
 export class MutationValidationLayer {
 
     constructor(
         private contextFactory: ContextFactory,
-        private trace: MutationTraceLogger
+        private trace: TraceLogger
     ) {}
 
     async validate(

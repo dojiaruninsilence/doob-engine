@@ -1,81 +1,296 @@
-import { TraversalPlan, TraversalStep, TraversalResult, TraversalContext } from "../../types/traversal/index";
+import { TraversalPlan, TraversalResult, TraversalContext, ResolvedValue } from "../../types/traversal";
+import { TraceLogger } from "../logging/TraceLogger";
+import { ValueResolver } from "./resolver/ValueResolver";
 
 export class TraversalExecutor {
 
-    execute(
-        context: TraversalContext,
-        root: any,
-        plan: TraversalPlan
-    ): TraversalResult {
+	constructor(
+		private trace: TraceLogger,
+		private resolver: ValueResolver
+	) {}
 
-        let current: any = root;
-        let parent: any = null;
+	execute(
+		context: TraversalContext,
+		rootId: string,
+		plan: TraversalPlan
+	): TraversalResult {
 
-        for (const step of plan.steps) {
+		if (!context.graph) {
 
-            parent = current;
+			this.trace.error(
+				"TraversalExecutor",
+				"No graph supplied to traversal context"
+			);
 
-            switch (step.kind) {
+			return {
+				value: undefined,
+				nodes: []
+			};
+		}
 
-                // ---------------------------------
-                // OBJECT TRAVERSAL
-                // ---------------------------------
-                case "object": {
-                    if (current == null) {
-                        return { value: undefined };
-                    }
+        const root =
+            context.graph.nodes.get(rootId);
 
-                    current = current?.[step.field];
-
-                    break;
-                }
-
-                // ---------------------------------
-                // REFERENCE TRAVERSAL (STUB)
-                // ---------------------------------
-                case "reference": {
-                    // For now we assume references are already resolved
-                    // later: hook into graph or DataManager
-
-                    if (current == null) {
-                        return { value: undefined };
-                    }
-
-                    current = current?.[step.field];
-
-                    break;
-                }
-
-                // ---------------------------------
-                // COLLECTION TRAVERSAL (STUB)
-                // ---------------------------------
-                case "collection": {
-                    // NOT IMPLEMENTED YET
-                    // we intentionally fail soft so systems can evolve
-
-                    if (!Array.isArray(current?.[step.field])) {
-                        return { value: undefined };
-                    }
-
-                    const arr = current[step.field];
-
-                    if (step.mode === "first") {
-                        current = arr[0];
-                    } else {
-                        current = arr;
-                    }
-
-                    break;
-                }
-
-                default:
-                    return { value: undefined };
+        this.trace.debug(
+            "TraversalExecutor",
+            "Root Node",
+            {
+                id: root?.id,
+                schema: root?.schema,
+                refs: root
+                    ? [...root.refs.entries()]
+                    : []
             }
-        }
+        );
 
-        return {
-            value: current,
-            nodes: parent ? [parent] : undefined
-        };
-    }
+		let currentNodeIds: string[] = [rootId];
+		let finalValues: any[] = [];
+
+		for (const step of plan.steps) {
+
+			const nextNodeIds: string[] = [];
+			const nextValues: any[] = [];
+
+			// -----------------------------------
+			// STEP PROCESSING (STRICT RESOLVER CONTRACT)
+			// -----------------------------------
+
+			switch (step.kind) {
+
+				// ===================================
+				// OBJECT
+				// ===================================
+				case "object": {
+
+					for (const nodeId of currentNodeIds) {
+
+						const node =
+							context.graph.nodes.get(nodeId);
+
+						if (!node) continue;
+
+						let result;
+
+						try {
+							this.trace.debug("TraversalExecutor", "Entered Try");
+
+							result =
+							this.resolver.resolve(node, step, context.graph);
+
+							this.trace.debug(
+								"TraversalExecutor",
+								"Collection Resolve",
+								{
+									nodeId,
+									field: step.field,
+									result
+								}
+							);
+						}
+
+						catch (error) {
+
+							this.trace.error(
+								"TraversalExecutor",
+								"Resolver Failed",
+								{
+									step,
+									nodeId,
+									message:
+										error instanceof Error
+											? error.message
+											: String(error),
+
+									stack:
+										error instanceof Error
+											? error.stack
+											: undefined
+								}
+							);
+
+							throw error;
+						}
+
+						if (!result || result.type !== "value") {
+							continue;
+						}
+
+						nextValues.push(result.value);
+					}
+
+					finalValues = nextValues;
+					break;
+				}
+
+				// ===================================
+				// REFERENCE
+				// ===================================
+				case "reference": {
+
+					for (const nodeId of currentNodeIds) {
+
+						const node =
+							context.graph.nodes.get(nodeId);
+
+						if (!node) continue;
+
+						let result;
+
+						try {
+							this.trace.debug("TraversalExecutor", "Entered Try");
+
+							result =
+							this.resolver.resolve(node, step, context.graph);
+
+							this.trace.debug(
+								"TraversalExecutor",
+								"Collection Resolve",
+								{
+									nodeId,
+									field: step.field,
+									result
+								}
+							);
+						}
+
+						catch (error) {
+
+							this.trace.error(
+								"TraversalExecutor",
+								"Resolver Failed",
+								{
+									step,
+									nodeId,
+									message:
+										error instanceof Error
+											? error.message
+											: String(error),
+
+									stack:
+										error instanceof Error
+											? error.stack
+											: undefined
+								}
+							);
+
+							throw error;
+						}
+
+						if (!result || result.type !== "nodes") {
+							continue;
+						}
+
+						nextNodeIds.push(...result.nodes);
+					}
+
+					currentNodeIds = nextNodeIds;
+					break;
+				}
+
+				// ===================================
+				// COLLECTION
+				// ===================================
+				case "collection": {
+
+					for (const nodeId of currentNodeIds) {
+
+						const node =
+							context.graph.nodes.get(nodeId);
+
+						if (!node) continue;
+
+						let result;
+
+						try {
+							this.trace.debug("TraversalExecutor", "Entered Try");
+
+							result =
+							this.resolver.resolve(node, step, context.graph);
+
+							this.trace.debug(
+								"TraversalExecutor",
+								"Collection Resolve",
+								{
+									nodeId,
+									field: step.field,
+									result
+								}
+							);
+						}
+
+						catch (error) {
+
+							this.trace.error(
+								"TraversalExecutor",
+								"Resolver Failed",
+								{
+									step,
+									nodeId,
+									message:
+										error instanceof Error
+											? error.message
+											: String(error),
+
+									stack:
+										error instanceof Error
+											? error.stack
+											: undefined
+								}
+							);
+
+							throw error;
+						}
+
+						if (!result || result.type !== "nodes") {
+							continue;
+						}
+
+						switch (step.mode) {
+
+							case "first":
+								if (result.nodes.length > 0) {
+									nextNodeIds.push(result.nodes[0]);
+								}
+								break;
+
+							case "all":
+							case "expand":
+								nextNodeIds.push(...result.nodes);
+								break;
+						}
+					}
+
+					currentNodeIds = nextNodeIds;
+					break;
+				}
+
+				default: {
+
+					return {
+						value: undefined,
+						nodes: []
+					};
+				}
+			}
+
+			this.trace.debug(
+				"TraversalExecutor",
+				"Step complete",
+				{
+					step,
+					nodeCount: currentNodeIds.length,
+					valueCount: finalValues.length,
+					currentNodeIds,
+					finalValues
+				}
+			);
+		}
+
+		return {
+			value: finalValues.length === 1
+				? finalValues[0]
+				: finalValues,
+			nodes: currentNodeIds
+		};
+	}
 }

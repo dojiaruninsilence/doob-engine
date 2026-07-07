@@ -397,6 +397,15 @@ export class EngineTestRunner {
 		Phase 5 — Mutation migration
 			ow trivial because traversal is already proven
 
+		work on logger. 
+			- build trace like loggers for debug, info, error, ect.
+			- function that passes in the system name as a string, append the individual components rather than entire name (QueryExecutor to Query(constant) + Executor -> Engine.Query.Executor)
+				- only pass in a message and data. 
+			- will output to different files for system, splits into different files for debug,info,ect
+			- compiled in bundle that passes all loggers for single system in one object
+			- also add all logs to master log, then maybe we compile all of the logs to master engine log
+			- class to create a logger bundle
+
 		Query Optimizations
 		Plan deduplication
 		Graph reuse
@@ -2979,6 +2988,17 @@ export class EngineTestRunner {
 		await this.resetCoreTestData();
 
 		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group By Empty" });
+
+		await this.ensureField(
+			"CoreTest",
+			"Guild",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, { ruleset: "CoreTest", schema: "Character" });
+		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, { ruleset: "CoreTest", schema: "Guild" });
 
 		const itemContext =
 			await this.contextFactory.getSchemaContext(
