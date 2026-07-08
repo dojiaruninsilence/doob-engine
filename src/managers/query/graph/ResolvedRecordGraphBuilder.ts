@@ -4,12 +4,14 @@ import { QueryPlan } from "../../../types/query/QueryPlannerTypes";
 import { ContextFactory } from "../../ContextFactory";
 import { IDataReader } from "../../../interfaces/IDataReader";
 import { ResolvedRecordGraph, ResolvedNode } from "../../../types/query/ResolvedRecordGraph";
+import { TraceLogger } from "../../logging/TraceLogger";
 
 export class ResolvedRecordGraphBuilder {
 
 	constructor(
 		private reader: IDataReader,
-		private contextFactory: ContextFactory
+		private contextFactory: ContextFactory,
+		private trace: TraceLogger
 	) {}
 
 	private normalizeRefs(value: any): string[] {
@@ -47,6 +49,12 @@ export class ResolvedRecordGraphBuilder {
 		rootRecords: DataRecord[],
 		plan: QueryPlan
 	): Promise<ResolvedRecordGraph> {
+
+		this.trace.debug(
+			"Runner",
+			"Run Called",
+			{ plan }
+		);
 
 		const nodes = new Map<string, ResolvedNode>();
 		const roots: string[] = [];
@@ -129,6 +137,17 @@ export class ResolvedRecordGraphBuilder {
 				if (resolved.length > 0) {
 					node.refs.set(step.field, resolved);
 				}
+
+				this.trace.debug(
+					"GraphBuilder",
+					"Node Created",
+					{
+						id: node.id,
+						schema: node.schema,
+						refs: [...node.refs.entries()],
+						data: records
+					}
+				);
 			}
 
 			frontier = nextFrontier;

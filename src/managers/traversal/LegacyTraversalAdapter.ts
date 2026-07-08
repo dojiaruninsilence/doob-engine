@@ -24,7 +24,12 @@ export class LegacyTraversalAdapter {
 
 		let currentSchema = context.schema;
 
-		for (const part of parts) {
+		for (let i = 0; i < parts.length; i++) {
+
+			const part = parts[i];
+
+			const isFinal =
+				i === parts.length - 1;
 
 			const field =
 				currentSchema.fields?.[part];
@@ -35,9 +40,24 @@ export class LegacyTraversalAdapter {
 				);
 			}
 
-			// -----------------------------
+
+			// --------------------------------------------------
+			// Final segment is ALWAYS an object/value read
+			// --------------------------------------------------
+			if (isFinal) {
+
+				steps.push({
+					kind: "object",
+					field: part
+				});
+
+				break;
+			}
+
+
+			// --------------------------------------------------
 			// Reference Collection
-			// -----------------------------
+			// --------------------------------------------------
 
 			if (field.type === "referenceCollection") {
 
@@ -62,9 +82,10 @@ export class LegacyTraversalAdapter {
 				continue;
 			}
 
-			// -----------------------------
+
+			// --------------------------------------------------
 			// Reference
-			// -----------------------------
+			// --------------------------------------------------
 
 			if (field.type === "reference") {
 
@@ -88,9 +109,10 @@ export class LegacyTraversalAdapter {
 				continue;
 			}
 
-			// -----------------------------
-			// Everything else
-			// -----------------------------
+
+			// --------------------------------------------------
+			// Intermediate object
+			// --------------------------------------------------
 
 			steps.push({
 				kind: "object",

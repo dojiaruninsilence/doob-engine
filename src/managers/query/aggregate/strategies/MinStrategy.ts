@@ -32,9 +32,13 @@ export class MinStrategy implements IAggregateStrategy {
 
         let min: number | null = null;
 
-        for (const match of group.matches) {
+        // for (const match of group.records) {
 
-            const results = this.travExecutor.execute(context, match.rootId, plan);
+        //     const results = this.travExecutor.execute(context, match.rootId, plan);
+
+        for (const record of group.records) {
+
+            const results = this.travExecutor.execute(context, record.id, plan);
                 // this.matchNavigator.resolveValues(
                 //     graph,
                 //     match,

@@ -22,6 +22,7 @@ export class CountMatchesStrategy implements IAggregateStrategy {
         request: AggregateRequest
     ): Promise<any> {
 
-        return group.matches.length;
+        // return group.matches.length;
+        return group.records.length;
     }
 }

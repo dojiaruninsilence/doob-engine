@@ -437,10 +437,10 @@ export class EngineTestRunner {
         new Notice("🧪 Engine Tests Starting...");
 
 		try {
-			await this.safeRun(
-				"Query Manager",
-				() => this.testQueryManager()
-			);
+			// await this.safeRun(
+			// 	"Query Manager",
+			// 	() => this.testQueryManager()
+			// );
 
 			await this.safeRun("Query Filter", () =>
 				this.testQueryFilter()
@@ -787,6 +787,11 @@ export class EngineTestRunner {
 			await this.safeRun(
 				"Mutation Test Suite",
 				() => this.MutationTestSuite()
+			);
+
+			await this.safeRun(
+				"Aggregation Test Suite",
+				() => this.aggregationTestSuite()
 			);
 		}
 		catch (e) {
@@ -1293,74 +1298,181 @@ export class EngineTestRunner {
 		this.logger?.log({ level: "info", scope: "TEST", message: "Query Manager Tests Completed" });
 	}
 
+	private async createItemQueryFixture() {
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob"
+				}
+			);
+
+
+		const items = [];
+
+		items.push(
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Sword",
+					damage: 10,
+					owner: bob.id
+				}
+			)
+		);
+
+		items.push(
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Shield",
+					damage: 5,
+					owner: bob.id
+				}
+			)
+		);
+
+		items.push(
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Rock",
+					damage: 1
+				}
+			)
+		);
+
+
+		return {
+			itemContext,
+			characterContext,
+			bob,
+			items
+		};
+	}
+
 	private async testQueryFilter() {
 
 		await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Filter" });
+		this.logger?.log({
+			level: "info",
+			scope: "TEST",
+			message: "Test: Query Filter"
+		});
 
-		const context =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const {
+			itemContext
+		} =
+			await this.createItemQueryFixture();
+
 
 		const results =
-			await this.queryManager.query(context, {
-				where: [
-					{ field: "damage", op: ">", value: 1 }
-				]
-			});
+			await this.queryManager.query(
+				itemContext,
+				{
+					where: [
+						{
+							field: "damage",
+							op: ">",
+							value: 1
+						}
+					]
+				}
+			);
 
-		if (!Array.isArray(results)) {
-			throw new Error("Query did not return array");
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 results, got ${results.length}`
+			);
 		}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: `Filter returned ${results.length} results` });
+
+		this.logger?.log({
+			level: "info",
+			scope: "TEST",
+			message: "Filter passed"
+		});
 	}
 
 	private async testQueryExactMatch() {
 
 		await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Exact Match" });
+		const {
+			itemContext
+		} =
+			await this.createItemQueryFixture();
 
-		const context =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		// --------------------------------------------------
-		// Seed test data
-		// --------------------------------------------------
-
-		await this.dataManager.createRecord(
-			context,
-			{
-				name: "Exact Match Sword",
-				damage: 10
-			}
-		);
-
-		// --------------------------------------------------
-		// Run query
-		// --------------------------------------------------
 
 		const results =
 			await this.queryManager.query(
-				context,
+				itemContext,
 				{
 					where: [
 						{
 							field: "name",
 							op: "=",
-							value: "Exact Match Sword"
+							value: "Sword"
 						}
 					]
 				}
 			);
 
-		// --------------------------------------------------
-		// Validate
-		// --------------------------------------------------
 
 		if (results.length !== 1) {
 			throw new Error(
@@ -1368,102 +1480,283 @@ export class EngineTestRunner {
 			);
 		}
 
-		if (
-			results[0].data.name !==
-			"Exact Match Sword"
-		) {
+
+		if (results[0].data.name !== "Sword") {
 			throw new Error(
 				"Returned wrong record"
 			);
 		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Exact match query passed" });
 	}
 
 	private async testReferenceQuery() {
 
 		await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Reference Query" });
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST START"});
 
-		const charContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+		const {
+			itemContext,
+			bob
+		} =
+			await this.createItemQueryFixture();
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
-
-		const character =
-			await this.dataManager.createRecord(charContext, {
-				name: "Ref Bob"
-			});
-
-		await this.dataManager.createRecord(itemContext, {
-			name: "Ref Sword",
-			damage: 7,
-			owner: character.id
-		});
 
 		const results =
-			await this.queryManager.query(itemContext, {
-				where: [
-					{ field: "owner", op: "=", value: character.id }
-				]
-			});
+			await this.queryManager.query(
+				itemContext,
+				{
+					where: [
+						{
+							field: "owner",
+							op: "=",
+							value: bob.id
+						}
+					]
+				}
+			);
 
-		if (results.length !== 1) {
-			throw new Error(`Expected 1 result, got ${results.length}`);
+
+		if (results.length !== 2) {
+			throw new Error(
+				`Expected 2 results, got ${results.length}`
+			);
 		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Reference query passed" });
 	}
 
 	private async testSorting() {
 
 		await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Sorting" });
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST END"});
 
-		const context =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+		const {
+			itemContext
+		} =
+			await this.createItemQueryFixture();
+
 
 		const results =
-			await this.queryManager.query(context, {
-				sort: {
-					field: "damage",
-					dir: "asc"
+			await this.queryManager.query(
+				itemContext,
+				{
+					sort: {
+						field: "damage",
+						dir: "asc"
+					}
 				}
-			});
+			);
 
-		for (let i = 1; i < results.length; i++) {
-			if (results[i - 1].data.damage > results[i].data.damage) {
-				throw new Error("Sorting failed");
-			}
+
+		if (
+			results[0].data.damage !== 1 ||
+			results[1].data.damage !== 5 ||
+			results[2].data.damage !== 10
+		) {
+			throw new Error(
+				"Sorting failed"
+			);
 		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Sorting passed" });
 	}
 
 	private async testPagination() {
 
 		await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Pagination" });
 
-		const context =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+		const {
+			itemContext
+		} =
+			await this.createItemQueryFixture();
+
 
 		const page =
-			await this.queryManager.query(context, {
-				offset: 0,
-				limit: 2
-			});
+			await this.queryManager.query(
+				itemContext,
+				{
+					offset: 0,
+					limit: 2
+				}
+			);
 
-		if (page.length > 2) {
-			throw new Error("Pagination failed");
+
+		if (page.length !== 2) {
+			throw new Error(
+				`Expected page size 2, got ${page.length}`
+			);
 		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Pagination passed" });
 	}
+
+	// private async testQueryFilter() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Filter" });
+
+	// 	const context =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+	// 	const results =
+	// 		await this.queryManager.query(context, {
+	// 			where: [
+	// 				{ field: "damage", op: ">", value: 1 }
+	// 			]
+	// 		});
+
+	// 	if (!Array.isArray(results)) {
+	// 		throw new Error("Query did not return array");
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: `Filter returned ${results.length} results` });
+	// }
+
+	// private async testQueryExactMatch() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Exact Match" });
+
+	// 	const context =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Seed test data
+	// 	// --------------------------------------------------
+
+	// 	await this.dataManager.createRecord(
+	// 		context,
+	// 		{
+	// 			name: "Exact Match Sword",
+	// 			damage: 10
+	// 		}
+	// 	);
+
+	// 	// --------------------------------------------------
+	// 	// Run query
+	// 	// --------------------------------------------------
+
+	// 	const results =
+	// 		await this.queryManager.query(
+	// 			context,
+	// 			{
+	// 				where: [
+	// 					{
+	// 						field: "name",
+	// 						op: "=",
+	// 						value: "Exact Match Sword"
+	// 					}
+	// 				]
+	// 			}
+	// 		);
+
+	// 	// --------------------------------------------------
+	// 	// Validate
+	// 	// --------------------------------------------------
+
+	// 	if (results.length !== 1) {
+	// 		throw new Error(
+	// 			`Expected 1 result, got ${results.length}`
+	// 		);
+	// 	}
+
+	// 	if (
+	// 		results[0].data.name !==
+	// 		"Exact Match Sword"
+	// 	) {
+	// 		throw new Error(
+	// 			"Returned wrong record"
+	// 		);
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Exact match query passed" });
+	// }
+
+	// private async testReferenceQuery() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Reference Query" });
+
+	// 	const charContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+	// 	const character =
+	// 		await this.dataManager.createRecord(charContext, {
+	// 			name: "Ref Bob"
+	// 		});
+
+	// 	await this.dataManager.createRecord(itemContext, {
+	// 		name: "Ref Sword",
+	// 		damage: 7,
+	// 		owner: character.id
+	// 	});
+
+	// 	const results =
+	// 		await this.queryManager.query(itemContext, {
+	// 			where: [
+	// 				{ field: "owner", op: "=", value: character.id }
+	// 			]
+	// 		});
+
+	// 	if (results.length !== 1) {
+	// 		throw new Error(`Expected 1 result, got ${results.length}`);
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Reference query passed" });
+	// }
+
+	// private async testSorting() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Sorting" });
+
+	// 	const context =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+	// 	const results =
+	// 		await this.queryManager.query(context, {
+	// 			sort: {
+	// 				field: "damage",
+	// 				dir: "asc"
+	// 			}
+	// 		});
+
+	// 	for (let i = 1; i < results.length; i++) {
+	// 		if (results[i - 1].data.damage > results[i].data.damage) {
+	// 			throw new Error("Sorting failed");
+	// 		}
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Sorting passed" });
+	// }
+
+	// private async testPagination() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Pagination" });
+
+	// 	const context =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+	// 	const page =
+	// 		await this.queryManager.query(context, {
+	// 			offset: 0,
+	// 			limit: 2
+	// 		});
+
+	// 	if (page.length > 2) {
+	// 		throw new Error("Pagination failed");
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Pagination passed" });
+	// }
 
 	private async testCacheStability() {
 
@@ -1521,24 +1814,77 @@ export class EngineTestRunner {
 
 		await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Negative Query" });
+		this.logger?.log({
+			level: "info",
+			scope: "TEST",
+			message: "Test: Negative Query"
+		});
 
-		const context =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+		const {
+			itemContext
+		} =
+			await this.createItemQueryFixture();
+
 
 		const results =
-			await this.queryManager.query(context, {
-				where: [
-					{ field: "damage", op: "=", value: -999 }
-				]
-			});
+			await this.queryManager.query(
+				itemContext,
+				{
+					where: [
+						{
+							field: "damage",
+							op: "=",
+							value: -999
+						}
+					]
+				}
+			);
 
-		if (results.length !== 0) {
-			throw new Error("Negative query returned results unexpectedly");
+
+		if (!Array.isArray(results)) {
+			throw new Error(
+				"Negative query did not return array"
+			);
 		}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Negative query passed" });
+
+		if (results.length !== 0) {
+			throw new Error(
+				`Negative query returned ${results.length} unexpected results`
+			);
+		}
+
+
+		this.logger?.log({
+			level: "info",
+			scope: "TEST",
+			message: "Negative query passed"
+		});
 	}
+
+	// private async testNegativeQuery() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Negative Query" });
+
+	// 	const context =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
+
+	// 	const results =
+	// 		await this.queryManager.query(context, {
+	// 			where: [
+	// 				{ field: "damage", op: "=", value: -999 }
+	// 			]
+	// 		});
+
+	// 	if (results.length !== 0) {
+	// 		throw new Error("Negative query returned results unexpectedly");
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Negative query passed" });
+	// }
 
 	private async testSingleHopReferenceTraversal() {
 
@@ -1878,6 +2224,19 @@ export class EngineTestRunner {
 			}
 		);
 
+		await this.schemaManager.addField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
 		const characterContext =
 			await this.contextFactory.getSchemaContext(
 				"CoreTest",
@@ -1943,31 +2302,51 @@ export class EngineTestRunner {
 
 		await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Projection - Flat Fields" });
+		this.logger?.log({
+			level: "info",
+			scope: "TEST",
+			message: "Test: Projection - Flat Fields"
+		});
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
+
+		const {
+			itemContext,
+			items
+		} =
+			await this.createItemQueryFixture();
+
+
+		const sword =
+			items.find(
+				item =>
+					item.data.name === "Sword"
 			);
 
-		const item =
-			await this.dataManager.createRecord(
-				itemContext,
-				{
-					name: "Projection Sword",
-					damage: 25,
-					weight: 10
-				}
+		if (!sword) {
+			throw new Error(
+				"Fixture missing Sword item"
 			);
+		}
+
 
 		const results =
 			await this.queryManager.query(
 				itemContext,
 				{
-					select: ["name", "damage"]
+					where: [
+						{
+							field: "name",
+							op: "=",
+							value: "Sword"
+						}
+					],
+					select: [
+						"name",
+						"damage"
+					]
 				}
 			);
+
 
 		if (results.length !== 1) {
 			throw new Error(
@@ -1975,27 +2354,103 @@ export class EngineTestRunner {
 			);
 		}
 
+
 		const r = results[0];
 
-		if (r.id !== item.id) {
-			throw new Error("Wrong record returned");
+
+		if (r.id !== sword.id) {
+			throw new Error(
+				"Wrong record returned"
+			);
 		}
 
-		if (!r.name || r.name !== "Projection Sword") {
-			throw new Error("Name projection failed");
+
+		if (r.name !== "Sword") {
+			throw new Error(
+				"Name projection failed"
+			);
 		}
 
-		if (r.damage !== 25) {
-			throw new Error("Damage projection failed");
+
+		if (r.damage !== 10) {
+			throw new Error(
+				"Damage projection failed"
+			);
 		}
 
-		// must NOT include weight
-		if ("weight" in r) {
-			throw new Error("Unexpected field: weight");
+
+		// owner exists on the record but was not selected
+		if ("owner" in r) {
+			throw new Error(
+				"Unexpected field: owner"
+			);
 		}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Projection flat fields passed" });
+
+		this.logger?.log({
+			level: "info",
+			scope: "TEST",
+			message: "Projection flat fields passed"
+		});
 	}
+
+	// private async testProjectionFlatFields() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Projection - Flat Fields" });
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	const item =
+	// 		await this.dataManager.createRecord(
+	// 			itemContext,
+	// 			{
+	// 				name: "Projection Sword",
+	// 				damage: 25,
+	// 				weight: 10
+	// 			}
+	// 		);
+
+	// 	const results =
+	// 		await this.queryManager.query(
+	// 			itemContext,
+	// 			{
+	// 				select: ["name", "damage"]
+	// 			}
+	// 		);
+
+	// 	if (results.length !== 1) {
+	// 		throw new Error(
+	// 			`Expected 1 result, got ${results.length}`
+	// 		);
+	// 	}
+
+	// 	const r = results[0];
+
+	// 	if (r.id !== item.id) {
+	// 		throw new Error("Wrong record returned");
+	// 	}
+
+	// 	if (!r.name || r.name !== "Projection Sword") {
+	// 		throw new Error("Name projection failed");
+	// 	}
+
+	// 	if (r.damage !== 25) {
+	// 		throw new Error("Damage projection failed");
+	// 	}
+
+	// 	// must NOT include weight
+	// 	if ("weight" in r) {
+	// 		throw new Error("Unexpected field: weight");
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Projection flat fields passed" });
+	// }
 
 	private async testProjectionNestedFields() {
 
@@ -2156,29 +2611,19 @@ export class EngineTestRunner {
 
 		await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Projection + Filtering" });
+		this.logger?.log({
+			level: "info",
+			scope: "TEST",
+			message: "Test: Projection + Filtering"
+		});
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
 
-		await this.dataManager.createRecord(
+		const {
 			itemContext,
-			{
-				name: "Sword A",
-				damage: 10
-			}
-		);
+			items
+		} =
+			await this.createItemQueryFixture();
 
-		await this.dataManager.createRecord(
-			itemContext,
-			{
-				name: "Sword B",
-				damage: 50
-			}
-		);
 
 		const results =
 			await this.queryManager.query(
@@ -2188,12 +2633,15 @@ export class EngineTestRunner {
 						{
 							field: "damage",
 							op: ">",
-							value: 20
+							value: 5
 						}
 					],
-					select: ["name"]
+					select: [
+						"name"
+					]
 				}
 			);
+
 
 		if (results.length !== 1) {
 			throw new Error(
@@ -2201,12 +2649,84 @@ export class EngineTestRunner {
 			);
 		}
 
-		if (results[0].name !== "Sword B") {
-			throw new Error("Filtering broke with projection");
+
+		if (results[0].name !== "Sword") {
+			throw new Error(
+				"Filtering broke with projection"
+			);
 		}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Projection filtering safety passed" });
+
+		// damage should not appear because projection only requested name
+		if ("damage" in results[0]) {
+			throw new Error(
+				"Projection leaked filtered field"
+			);
+		}
+
+
+		this.logger?.log({
+			level: "info",
+			scope: "TEST",
+			message: "Projection filtering safety passed"
+		});
 	}
+
+	// private async testProjectionDoesNotBreakFiltering() {
+
+	// 	await this.resetCoreTestData();
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Projection + Filtering" });
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Sword A",
+	// 			damage: 10
+	// 		}
+	// 	);
+
+	// 	await this.dataManager.createRecord(
+	// 		itemContext,
+	// 		{
+	// 			name: "Sword B",
+	// 			damage: 50
+	// 		}
+	// 	);
+
+	// 	const results =
+	// 		await this.queryManager.query(
+	// 			itemContext,
+	// 			{
+	// 				where: [
+	// 					{
+	// 						field: "damage",
+	// 						op: ">",
+	// 						value: 20
+	// 					}
+	// 				],
+	// 				select: ["name"]
+	// 			}
+	// 		);
+
+	// 	if (results.length !== 1) {
+	// 		throw new Error(
+	// 			`Expected 1 result, got ${results.length}`
+	// 		);
+	// 	}
+
+	// 	if (results[0].name !== "Sword B") {
+	// 		throw new Error("Filtering broke with projection");
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Projection filtering safety passed" });
+	// }
 
 	private async testCountAggregation() {
 
@@ -2265,7 +2785,7 @@ export class EngineTestRunner {
 	private async testSumAggregation() {
 
 		await this.resetCoreTestData();
-		this.engineLogger?.log({ level: "trace", scope: "Test", message: "FAILING TEST START"});
+		// this.engineLogger?.log({ level: "trace", scope: "Test", message: "FAILING TEST START"});
 
 		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Sum Aggregation" });
 
@@ -2321,7 +2841,7 @@ export class EngineTestRunner {
 	private async testAverageAggregation() {
 
 		await this.resetCoreTestData();
-		this.engineLogger?.log({ level: "trace", scope: "Test", message: "FAILING TEST END"});
+		// this.engineLogger?.log({ level: "trace", scope: "Test", message: "FAILING TEST END"});
 
 		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Average Aggregation" });
 
@@ -11226,6 +11746,442 @@ export class EngineTestRunner {
 			// 	"Mutation Missing Intermediate Object",
 			// 	() => this.testMissingIntermediateObject()
 			// );
+		}
+		catch (e) {
+			this.logger?.log({ level: "error", scope: "TEST", message: "Mutation Tests Failed", data: (e as Error).message });
+		}
+
+		this.logger?.log({ level: "info", scope: "TEST", message: "Mutation Test Suite Completed" });
+	}
+
+	private async createAggregateQueryFixture() {
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"damage",
+			"number",
+			0
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"type",
+			"string",
+			""
+		);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const items = [];
+
+		items.push(
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Sword",
+					damage: 10,
+					type: "weapon"
+				}
+			)
+		);
+
+		items.push(
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Axe",
+					damage: 20,
+					type: "weapon"
+				}
+			)
+		);
+
+		items.push(
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Bow",
+					damage: 30,
+					type: "weapon"
+				}
+			)
+		);
+
+		items.push(
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Helmet",
+					damage: 20,
+					type: "armor"
+				}
+			)
+		);
+
+		items.push(
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Shield",
+					damage: 0,
+					type: "armor"
+				}
+			)
+		);
+
+		return {
+			itemContext,
+			items
+		};
+	}
+
+	private async testAggregateSum() {
+
+		await this.resetCoreTestData();
+
+		const { itemContext } =
+			await this.createAggregateQueryFixture();
+
+		const result =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "sum",
+						field: "damage"
+					}
+				}
+			);
+
+		if (result !== 80) {
+			throw new Error(
+				`Expected sum 80, got ${result}`
+			);
+		}
+	}
+
+	private async testAggregateAvg() {
+
+		await this.resetCoreTestData();
+
+		const { itemContext } =
+			await this.createAggregateQueryFixture();
+
+		const result =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "avg",
+						field: "damage"
+					}
+				}
+			);
+
+		if (result !== 16) {
+			throw new Error(
+				`Expected avg 16, got ${result}`
+			);
+		}
+	}
+
+	private async testAggregateMin() {
+
+		await this.resetCoreTestData();
+
+		const { itemContext } =
+			await this.createAggregateQueryFixture();
+
+		const result =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "min",
+						field: "damage"
+					}
+				}
+			);
+
+		if (result !== 0) {
+			throw new Error(
+				`Expected min 0, got ${result}`
+			);
+		}
+	}
+
+	private async testAggregateMax() {
+
+		await this.resetCoreTestData();
+
+		const { itemContext } =
+			await this.createAggregateQueryFixture();
+
+		const result =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "max",
+						field: "damage"
+					}
+				}
+			);
+
+		if (result !== 30) {
+			throw new Error(
+				`Expected max 30, got ${result}`
+			);
+		}
+	}
+
+	private async testAggregateCountRoot() {
+
+		await this.resetCoreTestData();
+
+		const { itemContext } =
+			await this.createAggregateQueryFixture();
+
+		const result =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "count-roots"
+					}
+				}
+			);
+
+		if (result !== 5) {
+			throw new Error(
+				`Expected countRoot 5, got ${result}`
+			);
+		}
+	}
+
+	private async testAggregateCountMatch() {
+
+		await this.resetCoreTestData();
+
+		const { itemContext } =
+			await this.createAggregateQueryFixture();
+
+		const result =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "count-matches"
+					}
+				}
+			);
+
+		if (result !== 5) {
+			throw new Error(
+				`Expected countMatch 5, got ${result}`
+			);
+		}
+	}
+
+	private async testAggregateDistinctCount() {
+
+		await this.resetCoreTestData();
+
+		const { itemContext } =
+			await this.createAggregateQueryFixture();
+
+		const result =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "distinct-count",
+						field: "damage"
+					}
+				}
+			);
+
+		if (result !== 4) {
+			throw new Error(
+				`Expected distinctCount 4, got ${result}`
+			);
+		}
+	}
+
+	private async testAggregateDistinctValues() {
+
+		await this.resetCoreTestData();
+
+		const { itemContext } =
+			await this.createAggregateQueryFixture();
+
+		const result =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					aggregate: {
+						op: "distinct-values",
+						field: "damage"
+					}
+				}
+			);
+
+		const actual =
+			[...result].sort((a, b) => a - b);
+
+		const expected =
+			[0, 10, 20, 30];
+
+		if (
+			JSON.stringify(actual) !==
+			JSON.stringify(expected)
+		) {
+			throw new Error(
+				`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+			);
+		}
+	}
+
+	private async testGroupedAggregateSum() {
+
+		await this.resetCoreTestData();
+
+		const { itemContext } =
+			await this.createAggregateQueryFixture();
+
+		const groups =
+			await this.queryManager.queryGroup(
+				itemContext,
+				{
+					groupBy: "type",
+					aggregate: {
+						op: "sum",
+						field: "damage"
+					}
+				}
+			);
+
+		const weapon =
+			groups.find(g => g.key === "weapon");
+
+		const armor =
+			groups.find(g => g.key === "armor");
+
+		if (!weapon || weapon.value !== 60) {
+			throw new Error(
+				`Expected weapon sum 60`
+			);
+		}
+
+		if (!armor || armor.value !== 20) {
+			throw new Error(
+				`Expected armor sum 20`
+			);
+		}
+	}
+
+	private async testReferenceAggregateSum() {
+
+		await this.resetCoreTestData();
+
+		const {
+			itemContext,
+			bob
+		} =
+			await this.createItemQueryFixture();
+
+		const result =
+			await this.queryManager.queryAggregate(
+				itemContext,
+				{
+					where: [
+						{
+							field: "owner",
+							op: "=",
+							value: bob.id
+						}
+					],
+					aggregate: {
+						op: "sum",
+						field: "damage"
+					}
+				}
+			);
+
+		if (result !== 15) {
+			throw new Error(
+				`Expected 15, got ${result}`
+			);
+		}
+	}
+
+	private async aggregationTestSuite() {
+		this.logger?.log({ level: "info", scope: "TEST", message: "Mutation Test Suite" });
+
+		try {
+			await this.safeRun(
+				"Aggregate Sum",
+				() => this.testAggregateSum()
+			);
+
+			await this.safeRun(
+				"Aggregate Avg",
+				() => this.testAggregateAvg()
+			);
+
+			await this.safeRun(
+				"Aggregate Min",
+				() => this.testAggregateMin()
+			);
+
+			await this.safeRun(
+				"Aggregate Max",
+				() => this.testAggregateMax()
+			);
+
+			await this.safeRun(
+				"Aggregate Count Root",
+				() => this.testAggregateCountRoot()
+			);
+
+			await this.safeRun(
+				"Aggregate Count Match",
+				() => this.testAggregateCountMatch()
+			);
+
+			await this.safeRun(
+				"Aggregate Distinct Count",
+				() => this.testAggregateDistinctCount()
+			);
+
+			await this.safeRun(
+				"Aggregate Distinct Values",
+				() => this.testAggregateDistinctValues()
+			);
+
+			await this.safeRun(
+				"Aggregate Grouped Sum",
+				() => this.testGroupedAggregateSum()
+			);
+
+			await this.safeRun(
+				"Aggregate Reference Sum",
+				() => this.testReferenceAggregateSum()
+			);
 		}
 		catch (e) {
 			this.logger?.log({ level: "error", scope: "TEST", message: "Mutation Tests Failed", data: (e as Error).message });

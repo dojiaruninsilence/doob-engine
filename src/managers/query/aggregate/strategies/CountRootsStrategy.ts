@@ -22,10 +22,11 @@ export class CountRootsStrategy implements IAggregateStrategy {
         request: AggregateRequest
     ): Promise<any> {
 
-        return new Set(
-            group.matches.map(
-                m => m.rootId
-            )
-        ).size;
+        // return new Set(
+        //     group.matches.map(
+        //         m => m.rootId
+        //     )
+        // ).size;
+        return group.records.length;
     }
 }

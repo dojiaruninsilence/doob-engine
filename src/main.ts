@@ -123,7 +123,8 @@ export default class DoobEngine extends Plugin {
 
 		this.resolvedRecordGraphBuilder = new ResolvedRecordGraphBuilder(
 			this.dataManager,
-			this.contextFactory
+			this.contextFactory,
+			traceLogger
 		);
 
 		this.queryExecutionPlanRunner = new QueryExecutionPlanRunner(

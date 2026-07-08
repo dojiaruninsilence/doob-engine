@@ -47,6 +47,6 @@ export interface QueryRequest {
 export interface QueryGroupResult {
 	key: any;
 	records: DataRecord[];
-	matches: QueryMatch[];
+	// matches: QueryMatch[];
 	value: number; // aggregation result
 }
