@@ -4,13 +4,6 @@ import { AggregateRequest } from "../../../types/query/AggregateTypes";
 import { TraversalContext, TraversalPlan } from "../../../types/traversal";
 
 export interface IAggregateStrategy {
-
-    // evaluate(
-    //     graph: ResolvedRecordGraph,
-    //     group: QueryGroupResult,
-    //     rootId: string,
-    //     request: AggregateRequest
-    // ): Promise<any>;
     evaluate(
         context: TraversalContext,
         plan: TraversalPlan,

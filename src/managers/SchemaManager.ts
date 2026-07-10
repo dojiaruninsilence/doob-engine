@@ -517,69 +517,6 @@ export class SchemaManager {
 		await this.saveSchema(ruleset, schema);
 	}
 
-	// async addField(
-	// 	ruleset: string,
-	// 	schemaName: string,
-	// 	fieldName: string,
-	// 	type: FieldType,
-	// 	defaultValue?: any,
-	// 	enumValues?: string[],
-	// 	referenceTarget?: {
-	// 		ruleset: string;
-	// 		schema: string;
-	// 	}
-	// ) {
-
-	// 	const schema =
-	// 		await this.loadSchema(
-	// 			ruleset,
-	// 			schemaName
-	// 		);
-
-	// 	if (!this.isValidFieldType(type)) {
-	// 		throw new Error(`Invalid field type: ${type}`);
-	// 	}
-
-	// 	if (schema.fields[fieldName]) {
-	// 		throw new Error(`Field already exists: ${fieldName}`);
-	// 	}
-
-	// 	if (type === "enum" && (!enumValues || enumValues.length === 0)) {
-	// 		throw new Error("Enum fields require enumValues");
-	// 	}
-
-	// 	const finalDefault =
-	// 		defaultValue ??
-	// 		this.getDefaultForType(type);
-
-	// 	schema.fields[fieldName] = {
-	// 		type,
-	// 		default: structuredClone(finalDefault),
-	// 		enumValues: type === "enum" ? enumValues : undefined,
-	// 		referenceTarget: type === "reference" || type === "referenceCollection"
-	// 			? referenceTarget
-	// 			: undefined
-	// 	};
-
-	// 	if (
-	// 		!this.validateFieldValue(
-	// 			finalDefault,
-	// 			type
-	// 		)
-	// 	) {
-	// 		throw new Error(
-	// 			`Default value does not match field type`
-	// 		);
-	// 	}
-		
-	// 	this.bumpSchemaVersion(schema);
-
-	// 	await this.saveSchema(
-	// 		ruleset,
-	// 		schema
-	// 	);
-	// }
-
 	async hasField(
 		ruleset: string,
 		schemaName: string,
@@ -708,58 +645,6 @@ export class SchemaManager {
 
 		await this.saveSchema(ruleset, schema);
 	}
-
-	// async updateField(
-	// 	ruleset: string,
-	// 	schemaName: string,
-	// 	fieldName: string,
-	// 	changes: Partial<{
-	// 		type: FieldType;
-	// 		default: any;
-	// 	}>
-	// ): Promise<void> {
-
-	// 	const schema =
-	// 		await this.loadSchema(
-	// 			ruleset,
-	// 			schemaName
-	// 		);
-
-	// 	const field =
-	// 		schema.fields[fieldName];
-
-	// 	if (!field) {
-	// 		throw new Error(
-	// 			`Field does not exist: ${fieldName}`
-	// 		);
-	// 	}
-
-	// 	const updatedField = {
-	// 		...field,
-	// 		...changes
-	// 	};
-
-	// 	if (
-	// 		!this.validateFieldValue(
-	// 			updatedField.default,
-	// 			updatedField.type
-	// 		)
-	// 	) {
-	// 		throw new Error(
-	// 			`Default value does not match field type`
-	// 		);
-	// 	}
-
-	// 	schema.fields[fieldName] =
-	// 		updatedField;
-
-	// 	this.bumpSchemaVersion(schema);
-
-	// 	await this.saveSchema(
-	// 		ruleset,
-	// 		schema
-	// 	);
-	// }
 
 	// --------------------------------------------------
 	// Apply Defaults

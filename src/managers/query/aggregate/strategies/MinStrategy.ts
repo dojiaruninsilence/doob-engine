@@ -12,15 +12,8 @@ export class MinStrategy implements IAggregateStrategy {
     constructor(
         private travExecutor: TraversalExecutor,
         private trace: TraceLogger
-        // private matchNavigator: QueryMatchNavigator
     ) {}
 
-    // async evaluate(
-    //     graph: ResolvedRecordGraph,
-    //     group: QueryGroupResult,
-    //     rootId: string,
-    //     request: AggregateRequest
-    // ): Promise<any> {
     async evaluate(
         context: TraversalContext,
         plan: TraversalPlan,
@@ -28,13 +21,7 @@ export class MinStrategy implements IAggregateStrategy {
         request: AggregateRequest
     ): Promise<any> {
 
-        // const seen = new Set<string>();
-
         let min: number | null = null;
-
-        // for (const match of group.records) {
-
-        //     const results = this.travExecutor.execute(context, match.rootId, plan);
 
         for (const match of group.aggregateMatches) {
 
@@ -47,37 +34,6 @@ export class MinStrategy implements IAggregateStrategy {
                         ? v
                         : Math.min(min, v);
             }
-
-            // const results = this.travExecutor.execute(context, record.id, plan);
-            //     // this.matchNavigator.resolveValues(
-            //     //     graph,
-            //     //     match,
-            //     //     request.field!
-            //     // );
-
-            // const values = 
-            //     results.values ??
-            //     (results.value !== undefined
-            //         ? [results.value]
-            //         : []);
-
-            // for (const v of values) {
-
-            //     // const key =
-            //     //     `${match.rootId}:${v.sourceId}:${request.field}`;
-
-            //     // if (seen.has(key)) continue;
-
-            //     // seen.add(key);
-
-                // if (typeof v === "number") {
-
-                //     min =
-                //         min === null
-                //             ? v
-                //             : Math.min(min, v);
-                // }
-            // }
         }
 
         return min;

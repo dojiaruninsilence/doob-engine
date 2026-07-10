@@ -13,15 +13,8 @@ export class DistinctCountStrategy
     constructor(
         private travExecutor: TraversalExecutor,
         private trace: TraceLogger
-        //private matchNavigator: QueryMatchNavigator
     ) {}
 
-    // async evaluate(
-    //     graph: ResolvedRecordGraph,
-    //     group: QueryGroupResult,
-    //     rootId: string,
-    //     request: AggregateRequest
-    // ): Promise<any> {
     async evaluate(
         context: TraversalContext,
         plan: TraversalPlan,
@@ -31,31 +24,10 @@ export class DistinctCountStrategy
 
         const values = new Set<any>();
 
-        // for (const match of group.records) {
-
-        //     const results = this.travExecutor.execute(context, match.rootId, plan);
-
         for (const match of group.aggregateMatches) {
 
             const v = match.value;
             values.add(v);
-
-            // const results = this.travExecutor.execute(context, record.id, plan);
-            //     // this.matchNavigator.resolveValues(
-            //     //     graph,
-            //     //     match,
-            //     //     request.field!
-            //     // );
-
-            // const resolved = 
-            //     results.values ??
-            //     (results.value !== undefined
-            //         ? [results.value]
-            //         : []);
-
-            // for (const v of resolved) {
-            //     values.add(v);
-            // }
         }
 
         return values.size;

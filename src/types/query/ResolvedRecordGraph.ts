@@ -12,7 +12,6 @@ export type ResolvedNode = {
     id: string;
     schema: string;
 
-    // data: any;
     record: DataRecord;
 
     refs: Map<string, string[]>; 

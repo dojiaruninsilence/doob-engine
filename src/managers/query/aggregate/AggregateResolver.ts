@@ -10,12 +10,6 @@ export class AggregateResolver {
         private registry: AggregateStrategyRegistry
     ) {}
 
-    // async evaluate(
-    //     graph: ResolvedRecordGraph,
-    //     group: QueryGroupResult,
-    //     rootId: string,
-    //     request: AggregateRequest
-    // ): Promise<any> {
     async evaluate(
         context: TraversalContext,
         plan: TraversalPlan,

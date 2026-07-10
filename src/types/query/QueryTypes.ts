@@ -48,10 +48,8 @@ export interface QueryRequest {
 export interface QueryGroupResult {
 	key: any;
 	records: DataRecord[];
-	// matches: TraversalMatch[];
 	groupMatches?: TraversalMatch[];
 	whereMatches?: TraversalMatch[];
 	aggregateMatches?: TraversalMatch[];
-	// matches: QueryMatch[];
 	value: any; // aggregation result
 }

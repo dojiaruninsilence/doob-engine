@@ -112,7 +112,6 @@ export default class DoobEngine extends Plugin {
 		const mutationValidationLayer = new MutationValidationLayer(this.contextFactory, this.traceLogger);
 		const traversalAdapter = new LegacyTraversalAdapter(this.contextFactory);
 		const valueResolver = new ValueResolver();
-		//const traversalPlanBuilder = new TraversalPlanBuilder()
 		const traversalExecutionPlanBuilder = new TraversalExecutionPlanBuilder();
 		
 		this.traversalPlanner = new TraversalPlanner(this.traceLogger);
@@ -171,14 +170,6 @@ export default class DoobEngine extends Plugin {
 			mutationValidationLayer,
 			this.traversalExecutor
 		)
-
-
-		// private reader: IDataReader,
-		// 		private writer: IDataWriter,
-		// 		private graphBuilder: ResolvedRecordGraphBuilder,
-		// 		private queryPlanner: QueryPlanner,
-		// 		private targetResolver: MutationTargetResolver,
-		// 		private operationResolver: MutationOperationResolver
 
 		// --------------------------------------------------
 		// NOW SAFE TO BUILD UI

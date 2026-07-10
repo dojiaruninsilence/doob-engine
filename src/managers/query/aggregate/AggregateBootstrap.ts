@@ -17,7 +17,6 @@ export class AggregateBootstrap {
     static build(
         travExecutor: TraversalExecutor,
         trace: TraceLogger
-        // matchNavigator: QueryMatchNavigator
     ): AggregateResolver {
 
         const registry =

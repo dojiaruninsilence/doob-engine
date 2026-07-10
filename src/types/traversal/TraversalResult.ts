@@ -1,11 +1,6 @@
 import { TraversalMatch } from "./TraversalMatch";
 
 export interface TraversalResult {
-    // value?: any;
-    // values?: any[];
-    // //nodes?: any[];
-    // nodeIds?: string[];
-    // sourceIds?: string[];
     matches: TraversalMatch[];
 }
 

@@ -9,12 +9,6 @@ export class CountMatchesStrategy implements IAggregateStrategy {
 
     constructor(private trace: TraceLogger) {}
 
-    // async evaluate(
-    //     graph: ResolvedRecordGraph,
-    //     group: QueryGroupResult,
-    //     rootId: string,
-    //     request: AggregateRequest
-    // ): Promise<any> {
     async evaluate(
         context: TraversalContext,
         plan: TraversalPlan,
@@ -41,7 +35,5 @@ export class CountMatchesStrategy implements IAggregateStrategy {
         }
 
         return group.records.length;
-            // return group.matches.length;
-            // return group.records.length;
     }
 }
