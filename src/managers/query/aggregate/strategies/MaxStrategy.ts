@@ -36,38 +36,48 @@ export class MaxStrategy implements IAggregateStrategy {
 
         //     const results = this.travExecutor.execute(context, match.rootId, plan);
 
-        for (const record of group.records) {
+        for (const match of group.aggregateMatches) {
 
-            const results = this.travExecutor.execute(context, record.id, plan);
-                // this.matchNavigator.resolveValues(
-                //     graph,
-                //     match,
-                //     request.field!
-                // );
+            const v = match.value;
 
-            const values = 
-                results.values ??
-                (results.value !== undefined
-                    ? [results.value]
-                    : []);
+            if (typeof v === "number") {
 
-            for (const v of values) {
-
-                // const key =
-                //     `${match.rootId}:${v.sourceId}:${request.field}`;
-
-                // if (seen.has(key)) continue;
-
-                // seen.add(key);
-
-                if (typeof v === "number") {
-
-                    max =
-                        max === null
-                            ? v
-                            : Math.max(max, v);
-                }
+                max =
+                    max === null
+                        ? v
+                        : Math.max(max, v);
             }
+
+            // const results = this.travExecutor.execute(context, record.id, plan);
+            //     // this.matchNavigator.resolveValues(
+            //     //     graph,
+            //     //     match,
+            //     //     request.field!
+            //     // );
+
+            // const values = 
+            //     results.values ??
+            //     (results.value !== undefined
+            //         ? [results.value]
+            //         : []);
+
+            // for (const v of values) {
+
+            //     // const key =
+            //     //     `${match.rootId}:${v.sourceId}:${request.field}`;
+
+            //     // if (seen.has(key)) continue;
+
+            //     // seen.add(key);
+
+                // if (typeof v === "number") {
+
+                //     max =
+                //         max === null
+                //             ? v
+                //             : Math.max(max, v);
+                // }
+            // }
         }
 
         return max;

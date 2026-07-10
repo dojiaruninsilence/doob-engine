@@ -18,23 +18,33 @@ export class DataMutationWriter {
         const grouped =
             new Map<
                 string,
-                MutationWriteTarget[]
+                Map<string, MutationWriteTarget>
             >();
 
         for (const target of targets) {
 
-            const list =
+            let schemaTargets =
                 grouped.get(
                     target.schemaName
-                ) ?? [];
+                );
 
-            list.push(target);
+            if (!schemaTargets) {
 
-            grouped.set(
-                target.schemaName,
-                list
+                schemaTargets =
+                    new Map();
+
+                grouped.set(
+                    target.schemaName,
+                    schemaTargets
+                );
+            }
+
+            schemaTargets.set(
+                target.record.id,
+                target
             );
         }
+
 
         for (
             const [
@@ -49,12 +59,63 @@ export class DataMutationWriter {
                     schemaName
                 );
 
+
             await this.writer.saveRecords(
                 context,
-                schemaTargets.map(
+                [
+                    ...schemaTargets.values()
+                ]
+                .map(
                     x => x.record
                 )
             );
         }
     }
+
+    // async save(
+    //     targets: MutationWriteTarget[]
+    // ): Promise<void> {
+
+    //     const grouped =
+    //         new Map<
+    //             string,
+    //             MutationWriteTarget[]
+    //         >();
+
+    //     for (const target of targets) {
+
+    //         const list =
+    //             grouped.get(
+    //                 target.schemaName
+    //             ) ?? [];
+
+    //         list.push(target);
+
+    //         grouped.set(
+    //             target.schemaName,
+    //             list
+    //         );
+    //     }
+
+    //     for (
+    //         const [
+    //             schemaName,
+    //             schemaTargets
+    //         ]
+    //         of grouped
+    //     ) {
+
+    //         const context =
+    //             await this.contextResolver(
+    //                 schemaName
+    //             );
+
+    //         await this.writer.saveRecords(
+    //             context,
+    //             schemaTargets.map(
+    //                 x => x.record
+    //             )
+    //         );
+    //     }
+    // }
 }

@@ -36,38 +36,48 @@ export class MinStrategy implements IAggregateStrategy {
 
         //     const results = this.travExecutor.execute(context, match.rootId, plan);
 
-        for (const record of group.records) {
+        for (const match of group.aggregateMatches) {
 
-            const results = this.travExecutor.execute(context, record.id, plan);
-                // this.matchNavigator.resolveValues(
-                //     graph,
-                //     match,
-                //     request.field!
-                // );
+            const v = match.value;
 
-            const values = 
-                results.values ??
-                (results.value !== undefined
-                    ? [results.value]
-                    : []);
+            if (typeof v === "number") {
 
-            for (const v of values) {
-
-                // const key =
-                //     `${match.rootId}:${v.sourceId}:${request.field}`;
-
-                // if (seen.has(key)) continue;
-
-                // seen.add(key);
-
-                if (typeof v === "number") {
-
-                    min =
-                        min === null
-                            ? v
-                            : Math.min(min, v);
-                }
+                min =
+                    min === null
+                        ? v
+                        : Math.min(min, v);
             }
+
+            // const results = this.travExecutor.execute(context, record.id, plan);
+            //     // this.matchNavigator.resolveValues(
+            //     //     graph,
+            //     //     match,
+            //     //     request.field!
+            //     // );
+
+            // const values = 
+            //     results.values ??
+            //     (results.value !== undefined
+            //         ? [results.value]
+            //         : []);
+
+            // for (const v of values) {
+
+            //     // const key =
+            //     //     `${match.rootId}:${v.sourceId}:${request.field}`;
+
+            //     // if (seen.has(key)) continue;
+
+            //     // seen.add(key);
+
+                // if (typeof v === "number") {
+
+                //     min =
+                //         min === null
+                //             ? v
+                //             : Math.min(min, v);
+                // }
+            // }
         }
 
         return min;

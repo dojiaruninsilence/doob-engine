@@ -15,3 +15,26 @@ export interface TraversalPlanSet {
 
 	where: TraversalPlan[];
 }
+
+export interface TraversalBranchPlan {
+
+    anchorPlan: TraversalPlan;
+
+    suffixPlan: TraversalPlan;
+}
+
+export interface TraversalExecutionPlan {
+
+    rootSchema: string;
+
+    commonPrefix?: TraversalPlan;
+
+    groupBranch?: TraversalBranchPlan;
+
+    aggregateBranch?: TraversalBranchPlan;
+}
+
+export interface TraversalExecutionOptions {
+
+    returnNodes?: boolean;
+}

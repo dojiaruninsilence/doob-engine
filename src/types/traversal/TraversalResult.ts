@@ -1,7 +1,12 @@
+import { TraversalMatch } from "./TraversalMatch";
+
 export interface TraversalResult {
-    value?: any;
-    values?: any[];
-    nodes?: any[];
+    // value?: any;
+    // values?: any[];
+    // //nodes?: any[];
+    // nodeIds?: string[];
+    // sourceIds?: string[];
+    matches: TraversalMatch[];
 }
 
 export type ResolvedValue =

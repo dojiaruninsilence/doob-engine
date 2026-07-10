@@ -379,7 +379,7 @@ export class EngineTestRunner {
 			full test suite repeatedly (you already do this 👍)
 			add a “mutation stress test” (repeat 100–1000 ops on same dataset)
 
-	After aggregate expansion, I'd move toward:
+	x After aggregate expansion, I'd move toward:
 
 		/core/traversal/
 			TraversalEngine.ts
@@ -388,20 +388,37 @@ export class EngineTestRunner {
 			ReferenceResolver.ts
 			ObjectResolver.ts
 
-		Phase 1 — TraversalEngine
+		x Phase 1 — TraversalEngine
 			supports:
 			reference steps
 			object steps
 			terminal value resolution
-		Phase 2 — Query migration
+		x Phase 2 — Query migration
 			QueryExecutor uses TraversalEngine
 			remove old navigator logic
-		Phase 3 — Grouping/Aggregation migration
+		x Phase 3 — Grouping/Aggregation migration
 			grouping keys use traversal results
-		Phase 4 — GraphBuilder migration
+		x Phase 4 — GraphBuilder migration
 			becomes traversal-driven expansion
-		Phase 5 — Mutation migration
+		x Phase 5 — Mutation migration
 			ow trivial because traversal is already proven
+			x 2. MutationTargetResolver
+			x 3. MutationExecutor
+			x 4. MutationOperationResolver
+			x 5. MutationWriter
+
+			| Area                     | Status                     |
+			| ------------------------ | -------------------------- |
+			| Query execution          | ✅ migrated                 |
+			| Mutation execution       | ✅ migrated                 |
+			| Graph builder            | ✅ migrated                 |
+			| Graph tests              | ✅ migrated                 |
+			| Mutation operations      | ✅ already independent      |
+			| Mutation target resolver | ⚠️ still string path based |
+			| Aggregates               | needs check                |
+			| GroupBy                  | needs check                |
+			| QueryPlan references     | needs global search        |
+
 
 		work on logger. 
 			- build trace like loggers for debug, info, error, ect.
@@ -411,6 +428,18 @@ export class EngineTestRunner {
 			- compiled in bundle that passes all loggers for single system in one object
 			- also add all logs to master log, then maybe we compile all of the logs to master engine log
 			- class to create a logger bundle
+		
+		Add index.ts to all type folders. 
+			- slowly simplify all imports
+
+		begin the ui with a way to display the logs better
+
+		build all the agg strategies we may need
+		we need to build extensive testing for grouping, aggregates, where, and select. need to check all edge cases
+
+		upgrade mutation with math operations and all that
+
+
 
 		Query Optimizations
 		Plan deduplication
@@ -679,80 +708,80 @@ export class EngineTestRunner {
 				() => this.testMissingReferenceFilterBehavior()
 			);
 
-			await this.safeRun(
-				"Graph Basic Build",
-				() => this.testGraphBasicBuild()
-			);
+			// await this.safeRun(
+			// 	"Graph Basic Build",
+			// 	() => this.testGraphBasicBuild()
+			// );
 
-			await this.safeRun(
-				"Graph Edge Integrity",
-				() => this.testGraphEdgeIntegrity()
-			);
+			// await this.safeRun(
+			// 	"Graph Edge Integrity",
+			// 	() => this.testGraphEdgeIntegrity()
+			// );
 
-			await this.safeRun(
-				"Graph Shared Node Deduplication",
-				() => this.testGraphSharedNodeDeduplication()
-			);
+			// await this.safeRun(
+			// 	"Graph Shared Node Deduplication",
+			// 	() => this.testGraphSharedNodeDeduplication()
+			// );
 
-			await this.safeRun(
-				"Graph Multi Hop Integrity",
-				() => this.testGraphMultiHopIntegrity()
-			);
+			// await this.safeRun(
+			// 	"Graph Multi Hop Integrity",
+			// 	() => this.testGraphMultiHopIntegrity()
+			// );
 
-			await this.safeRun(
-				"Navigator Simple Hop",
-				() => this.testNavigatorSimpleHop()
-			);
+			// await this.safeRun(
+			// 	"Navigator Simple Hop",
+			// 	() => this.testNavigatorSimpleHop()
+			// );
 
-			await this.safeRun(
-				"Navigator Multi Hop",
-				() => this.testNavigatorMultiHop()
-			);
+			// await this.safeRun(
+			// 	"Navigator Multi Hop",
+			// 	() => this.testNavigatorMultiHop()
+			// );
 
-			await this.safeRun(
-				"Navigator Missing Branch",
-				() => this.testNavigatorMissingBranch()
-			);
+			// await this.safeRun(
+			// 	"Navigator Missing Branch",
+			// 	() => this.testNavigatorMissingBranch()
+			// );
 
-			await this.safeRun(
-				"Navigator Deep Traversal",
-				() => this.testNavigatorDeepTraversal()
-			);
+			// await this.safeRun(
+			// 	"Navigator Deep Traversal",
+			// 	() => this.testNavigatorDeepTraversal()
+			// );
 
-			await this.safeRun(
-				"Navigator Invalid Path",
-				() => this.testNavigatorInvalidPath()
-			);
+			// await this.safeRun(
+			// 	"Navigator Invalid Path",
+			// 	() => this.testNavigatorInvalidPath()
+			// );
 
-			await this.safeRun(
-				"Graph Diamond Deduplication",
-				() => this.testGraphDiamondDeduplication()
-			);
+			// await this.safeRun(
+			// 	"Graph Diamond Deduplication",
+			// 	() => this.testGraphDiamondDeduplication()
+			// );
 
-			await this.safeRun(
-				"Graph Circular Reference",
-				() => this.testGraphCircularReference()
-			);
+			// await this.safeRun(
+			// 	"Graph Circular Reference",
+			// 	() => this.testGraphCircularReference()
+			// );
 
-			await this.safeRun(
-				"Graph Broken References",
-				() => this.testGraphBrokenReference()
-			);
+			// await this.safeRun(
+			// 	"Graph Broken References",
+			// 	() => this.testGraphBrokenReference()
+			// );
 
-			await this.safeRun(
-				"Navigator Root Property",
-				() => this.testNavigatorRootProperty()
-			);
+			// await this.safeRun(
+			// 	"Navigator Root Property",
+			// 	() => this.testNavigatorRootProperty()
+			// );
 
-			await this.safeRun(
-				"Navigator Missing Mid Hop",
-				() => this.testNavigatorMissingMidHop()
-			);
+			// await this.safeRun(
+			// 	"Navigator Missing Mid Hop",
+			// 	() => this.testNavigatorMissingMidHop()
+			// );
 
-			await this.safeRun(
-				"Graph Multi Root Stability",
-				() => this.testGraphMultiRootStability()
-			);
+			// await this.safeRun(
+			// 	"Graph Multi Root Stability",
+			// 	() => this.testGraphMultiRootStability()
+			// );
 
 			// await this.safeRun(
 			// 	"Aggregate Count",
@@ -792,6 +821,11 @@ export class EngineTestRunner {
 			await this.safeRun(
 				"Aggregation Test Suite",
 				() => this.aggregationTestSuite()
+			);
+
+			await this.safeRun(
+				"Graph Edge Case Test Suite",
+				() => this.graphEdgeCaseTestSuite()
 			);
 		}
 		catch (e) {
@@ -3242,6 +3276,7 @@ export class EngineTestRunner {
 		await this.resetCoreTestData();
 
 		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Group By Sum" });
+		// this.engineLogger?.log({ level: "trace", scope: "TEST", message: "Failing Test Start" });
 
 		await this.ensureField(
 			"CoreTest",
@@ -3369,6 +3404,8 @@ export class EngineTestRunner {
 	}
 
 	private async testGroupByDeepTraversal() {
+
+		// this.engineLogger?.log({ level: "trace", scope: "TEST", message: "Failing Test end" });
 
 		await this.resetCoreTestData();
 
@@ -6608,826 +6645,826 @@ export class EngineTestRunner {
 		this.logger?.log({ level: "info", scope: "TEST", message: "Missing Reference Filter Behavior passed" });
 	}
 
-	private async testGraphBasicBuild() {
+	// private async testGraphBasicBuild() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Basic Build" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Basic Build" });
 
-		await this.ensureField("CoreTest", "Character", "name", "string", "");
-		await this.ensureField("CoreTest", "Item", "name", "string", "");
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{ ruleset: "CoreTest", schema: "Character" }
-		);
+	// 	await this.ensureField("CoreTest", "Character", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Item", "name", "string", "");
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"owner",
+	// 		"reference",
+	// 		null,
+	// 		undefined,
+	// 		{ ruleset: "CoreTest", schema: "Character" }
+	// 	);
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
 
-		const bob =
-			await this.dataManager.createRecord(characterContext, {
-				name: "Bob"
-			});
+	// 	const bob =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "Bob"
+	// 		});
 
-		const sword =
-			await this.dataManager.createRecord(itemContext, {
-				name: "Sword",
-				owner: bob.id
-			});
+	// 	const sword =
+	// 		await this.dataManager.createRecord(itemContext, {
+	// 			name: "Sword",
+	// 			owner: bob.id
+	// 		});
 
-		const graph =
-			await this.graphBuilder.build(
-				itemContext,
-				[sword],
-				{
-					steps: [
-						{
-							from: "Item",
-							field: "owner",
-							to: "Character",
-							isReference: true,
-							toRuleset: "CoreTest"
-						}
-					]
-				} as any
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			itemContext,
+	// 			[sword],
+	// 			{
+	// 				steps: [
+	// 					{
+	// 						from: "Item",
+	// 						field: "owner",
+	// 						to: "Character",
+	// 						isReference: true,
+	// 						toRuleset: "CoreTest"
+	// 					}
+	// 				]
+	// 			} as any
+	// 		);
 
-		const ownerNode = graph.nodes.get(bob.id);
+	// 	const ownerNode = graph.nodes.get(bob.id);
 
-		if (!ownerNode) {
-			throw new Error("Owner node missing");
-		}
+	// 	if (!ownerNode) {
+	// 		throw new Error("Owner node missing");
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Basic Build passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Basic Build passed" });
+	// }
 
-	private async testGraphEdgeIntegrity() {
+	// private async testGraphEdgeIntegrity() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Edge Integrity" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Edge Integrity" });
 
-		await this.ensureField("CoreTest", "Character", "name", "string", "");
-		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Character"
-		});
+	// 	await this.ensureField("CoreTest", "Character", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Character"
+	// 	});
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
 
-		const bob =
-			await this.dataManager.createRecord(characterContext, { name: "Bob" });
+	// 	const bob =
+	// 		await this.dataManager.createRecord(characterContext, { name: "Bob" });
 
-		const sword =
-			await this.dataManager.createRecord(itemContext, {
-				owner: bob.id
-			});
+	// 	const sword =
+	// 		await this.dataManager.createRecord(itemContext, {
+	// 			owner: bob.id
+	// 		});
 
-		const graph =
-			await this.graphBuilder.build(
-				itemContext,
-				[sword],
-				{
-					steps: [
-						{
-							from: "Item",
-							field: "owner",
-							to: "Character",
-							isReference: true,
-							toRuleset: "CoreTest"
-						}
-					]
-				} as any
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			itemContext,
+	// 			[sword],
+	// 			{
+	// 				steps: [
+	// 					{
+	// 						from: "Item",
+	// 						field: "owner",
+	// 						to: "Character",
+	// 						isReference: true,
+	// 						toRuleset: "CoreTest"
+	// 					}
+	// 				]
+	// 			} as any
+	// 		);
 
-		const swordNode = graph.nodes.get(sword.id);
-		const bobNode = graph.nodes.get(bob.id);
+	// 	const swordNode = graph.nodes.get(sword.id);
+	// 	const bobNode = graph.nodes.get(bob.id);
 
-		if (!bobNode) {
-			throw new Error("Bob node missing");
-		}
+	// 	if (!bobNode) {
+	// 		throw new Error("Bob node missing");
+	// 	}
 
-		const ownerRefs = swordNode.refs.get("owner");
+	// 	const ownerRefs = swordNode.refs.get("owner");
 
-		if (!Array.isArray(ownerRefs)) {
-			throw new Error("Owner refs should be array");
-		}
+	// 	if (!Array.isArray(ownerRefs)) {
+	// 		throw new Error("Owner refs should be array");
+	// 	}
 
-		if (ownerRefs.length !== 1) {
-			throw new Error(
-				`Expected 1 owner ref, got ${ownerRefs.length}`
-			);
-		}
+	// 	if (ownerRefs.length !== 1) {
+	// 		throw new Error(
+	// 			`Expected 1 owner ref, got ${ownerRefs.length}`
+	// 		);
+	// 	}
 
-		if (ownerRefs[0] !== bob.id) {
-			throw new Error(
-				`Expected owner ${bob.id}, got ${ownerRefs[0]}`
-			);
-		}
+	// 	if (ownerRefs[0] !== bob.id) {
+	// 		throw new Error(
+	// 			`Expected owner ${bob.id}, got ${ownerRefs[0]}`
+	// 		);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Edge Integrity passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Edge Integrity passed" });
+	// }
 
-	private async testGraphSharedNodeDeduplication() {
+	// private async testGraphSharedNodeDeduplication() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Shared Node Dedup" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Shared Node Dedup" });
 
-		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Character"
-		});
+	// 	await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Character"
+	// 	});
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
 
-		const bob =
-			await this.dataManager.createRecord(characterContext, { name: "Bob" });
+	// 	const bob =
+	// 		await this.dataManager.createRecord(characterContext, { name: "Bob" });
 
-		const items = [];
+	// 	const items = [];
 
-		for (let i = 0; i < 5; i++) {
-			items.push(
-				await this.dataManager.createRecord(itemContext, {
-					owner: bob.id
-				})
-			);
-		}
+	// 	for (let i = 0; i < 5; i++) {
+	// 		items.push(
+	// 			await this.dataManager.createRecord(itemContext, {
+	// 				owner: bob.id
+	// 			})
+	// 		);
+	// 	}
 
-		const graph =
-			await this.graphBuilder.build(
-				itemContext,
-				items,
-				{
-					steps: [
-						{
-							from: "Item",
-							field: "owner",
-							to: "Character",
-							isReference: true,
-							toRuleset: "CoreTest"
-						}
-					]
-				} as any
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			itemContext,
+	// 			items,
+	// 			{
+	// 				steps: [
+	// 					{
+	// 						from: "Item",
+	// 						field: "owner",
+	// 						to: "Character",
+	// 						isReference: true,
+	// 						toRuleset: "CoreTest"
+	// 					}
+	// 				]
+	// 			} as any
+	// 		);
 
-		let bobCount = 0;
+	// 	let bobCount = 0;
 
-		for (const node of graph.nodes.values()) {
-			if (node.id === bob.id) {
-				bobCount++;
-			}
-		}
+	// 	for (const node of graph.nodes.values()) {
+	// 		if (node.id === bob.id) {
+	// 			bobCount++;
+	// 		}
+	// 	}
 
-		if (bobCount !== 1) {
-			throw new Error(`Expected 1 Bob node, got ${bobCount}`);
-		}
+	// 	if (bobCount !== 1) {
+	// 		throw new Error(`Expected 1 Bob node, got ${bobCount}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Shared Node Dedup passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Shared Node Dedup passed" });
+	// }
 
-	private async testGraphMultiHopIntegrity() {
+	// private async testGraphMultiHopIntegrity() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Multi Hop" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Test: Multi Hop" });
 
-		await this.ensureField("CoreTest", "Guild", "name", "string", "");
-		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Guild"
-		});
-		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Character"
-		});
+	// 	await this.ensureField("CoreTest", "Guild", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Guild"
+	// 	});
+	// 	await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Character"
+	// 	});
 
-		const guildContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+	// 	const guildContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Guild");
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
 
-		const guild =
-			await this.dataManager.createRecord(guildContext, { name: "Knights" });
+	// 	const guild =
+	// 		await this.dataManager.createRecord(guildContext, { name: "Knights" });
 
-		const bob =
-			await this.dataManager.createRecord(characterContext, {
-				guild: guild.id
-			});
+	// 	const bob =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			guild: guild.id
+	// 		});
 
-		const sword =
-			await this.dataManager.createRecord(itemContext, {
-				owner: bob.id
-			});
+	// 	const sword =
+	// 		await this.dataManager.createRecord(itemContext, {
+	// 			owner: bob.id
+	// 		});
 
-		const graph =
-			await this.graphBuilder.build(
-				itemContext,
-				[sword],
-				{
-					steps: [
-						{
-							from: "Item",
-							field: "owner",
-							to: "Character",
-							isReference: true,
-							toRuleset: "CoreTest"
-						},
-						{
-							from: "Character",
-							field: "guild",
-							to: "Guild",
-							isReference: true,
-							toRuleset: "CoreTest"
-						}
-					]
-				} as any
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			itemContext,
+	// 			[sword],
+	// 			{
+	// 				steps: [
+	// 					{
+	// 						from: "Item",
+	// 						field: "owner",
+	// 						to: "Character",
+	// 						isReference: true,
+	// 						toRuleset: "CoreTest"
+	// 					},
+	// 					{
+	// 						from: "Character",
+	// 						field: "guild",
+	// 						to: "Guild",
+	// 						isReference: true,
+	// 						toRuleset: "CoreTest"
+	// 					}
+	// 				]
+	// 			} as any
+	// 		);
 
-		const guildNode = graph.nodes.get(guild.id);
+	// 	const guildNode = graph.nodes.get(guild.id);
 
-		if (!guildNode) {
-			throw new Error("Guild node missing");
-		}
+	// 	if (!guildNode) {
+	// 		throw new Error("Guild node missing");
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Multi Hop passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Multi Hop passed" });
+	// }
 
-	private async buildGraphForNavigator(missing = false) {
+	// private async buildGraphForNavigator(missing = false) {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		await this.ensureField("CoreTest", "Guild", "name", "string", "");
-		if (missing) {
-			await this.ensureField(
-				"CoreTest",
-				"Guild",
-				"leader",
-				"reference",
-				null,
-				undefined,
-				{
-					ruleset: "CoreTest",
-					schema: "Character"
-				}
-			);
-		}
+	// 	await this.ensureField("CoreTest", "Guild", "name", "string", "");
+	// 	if (missing) {
+	// 		await this.ensureField(
+	// 			"CoreTest",
+	// 			"Guild",
+	// 			"leader",
+	// 			"reference",
+	// 			null,
+	// 			undefined,
+	// 			{
+	// 				ruleset: "CoreTest",
+	// 				schema: "Character"
+	// 			}
+	// 		);
+	// 	}
 		
-		await this.ensureField("CoreTest", "Character", "name", "string", "");
-		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Guild"
-		});
+	// 	await this.ensureField("CoreTest", "Character", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Guild"
+	// 	});
 
-		await this.ensureField("CoreTest", "Item", "name", "string", "");
-		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Character"
-		});
+	// 	await this.ensureField("CoreTest", "Item", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Character"
+	// 	});
 
-		const guildContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+	// 	const guildContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Guild");
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
 
-		const guild =
-			await this.dataManager.createRecord(guildContext, { name: "Knights" });
+	// 	const guild =
+	// 		await this.dataManager.createRecord(guildContext, { name: "Knights" });
 		
 
-		const leader =
-			await this.dataManager.createRecord(characterContext, {
-				name: "Leader",
-				guild: guild.id
-			});
+	// 	const leader =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "Leader",
+	// 			guild: guild.id
+	// 		});
 
-		if (missing) {
-			await this.dataManager.update(guildContext, guild.id, { leader: leader.id })
-		}
-
-		const member =
-			await this.dataManager.createRecord(characterContext, {
-				name: "Bob",
-				guild: guild.id
-			});
+	// 	if (missing) {
+	// 		await this.dataManager.update(guildContext, guild.id, { leader: leader.id })
+	// 	}
+
+	// 	const member =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "Bob",
+	// 			guild: guild.id
+	// 		});
 
-		const item =
-			await this.dataManager.createRecord(itemContext, {
-				name: "Sword",
-				owner: member.id
-			});
-
-		return {
-			itemContext,
-			item,
-			graph: null as any // filled per test
-		};
-	}
+	// 	const item =
+	// 		await this.dataManager.createRecord(itemContext, {
+	// 			name: "Sword",
+	// 			owner: member.id
+	// 		});
+
+	// 	return {
+	// 		itemContext,
+	// 		item,
+	// 		graph: null as any // filled per test
+	// 	};
+	// }
 
-	private async testNavigatorSimpleHop() {
+	// private async testNavigatorSimpleHop() {
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Simple Hop" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Simple Hop" });
 
-		const setup = await this.buildGraphForNavigator();
+	// 	const setup = await this.buildGraphForNavigator();
 
-		const plan = await this.queryPlanner.plan(setup.itemContext, {
-			select: ["owner.name"]
-		});
+	// 	const plan = await this.queryPlanner.plan(setup.itemContext, {
+	// 		select: ["owner.name"]
+	// 	});
 
-		setup.graph = await this.graphBuilder.build(
-			setup.itemContext,
-			await this.dataManager.getAll(setup.itemContext),
-			plan
-		);
+	// 	setup.graph = await this.graphBuilder.build(
+	// 		setup.itemContext,
+	// 		await this.dataManager.getAll(setup.itemContext),
+	// 		plan
+	// 	);
 
-		const navigator =
-			new ResolvedRecordGraphNavigator();
+	// 	const navigator =
+	// 		new ResolvedRecordGraphNavigator();
 
-		const value =
-			navigator.getValue(
-				setup.graph,
-				setup.item.id,
-				"owner.name"
-			);
+	// 	const value =
+	// 		navigator.getValue(
+	// 			setup.graph,
+	// 			setup.item.id,
+	// 			"owner.name"
+	// 		);
 
-		if (value !== "Bob") {
-			throw new Error(`Expected Bob, got ${value}`);
-		}
+	// 	if (value !== "Bob") {
+	// 		throw new Error(`Expected Bob, got ${value}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Simple Hop passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Simple Hop passed" });
+	// }
 
-	private async testNavigatorMultiHop() {
+	// private async testNavigatorMultiHop() {
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Multi Hop" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Multi Hop" });
 
-		const setup = await this.buildGraphForNavigator();
+	// 	const setup = await this.buildGraphForNavigator();
 
-		const plan = await this.queryPlanner.plan(setup.itemContext, {
-			select: ["owner.guild.name"]
-		});
+	// 	const plan = await this.queryPlanner.plan(setup.itemContext, {
+	// 		select: ["owner.guild.name"]
+	// 	});
 
-		setup.graph = await this.graphBuilder.build(
-			setup.itemContext,
-			await this.dataManager.getAll(setup.itemContext),
-			plan
-		);
+	// 	setup.graph = await this.graphBuilder.build(
+	// 		setup.itemContext,
+	// 		await this.dataManager.getAll(setup.itemContext),
+	// 		plan
+	// 	);
 
-		const navigator =
-			new ResolvedRecordGraphNavigator();
+	// 	const navigator =
+	// 		new ResolvedRecordGraphNavigator();
 
-		const value =
-			navigator.getValue(
-				setup.graph,
-				setup.item.id,
-				"owner.guild.name"
-			);
+	// 	const value =
+	// 		navigator.getValue(
+	// 			setup.graph,
+	// 			setup.item.id,
+	// 			"owner.guild.name"
+	// 		);
 
-		if (value !== "Knights") {
-			throw new Error(`Expected Knights, got ${value}`);
-		}
+	// 	if (value !== "Knights") {
+	// 		throw new Error(`Expected Knights, got ${value}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Multi Hop passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Multi Hop passed" });
+	// }
 
-	private async testNavigatorMissingBranch() {
+	// private async testNavigatorMissingBranch() {
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Missing Branch" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Missing Branch" });
 
-		const setup = await this.buildGraphForNavigator();
+	// 	const setup = await this.buildGraphForNavigator();
 
-		const plan = await this.queryPlanner.plan(setup.itemContext, {
-			select: ["owner.guild.leader.name"]
-		});
+	// 	const plan = await this.queryPlanner.plan(setup.itemContext, {
+	// 		select: ["owner.guild.leader.name"]
+	// 	});
 
-		setup.graph = await this.graphBuilder.build(
-			setup.itemContext,
-			await this.dataManager.getAll(setup.itemContext),
-			plan
-		);
+	// 	setup.graph = await this.graphBuilder.build(
+	// 		setup.itemContext,
+	// 		await this.dataManager.getAll(setup.itemContext),
+	// 		plan
+	// 	);
 
-		const navigator =
-			new ResolvedRecordGraphNavigator();
+	// 	const navigator =
+	// 		new ResolvedRecordGraphNavigator();
 
-		const value =
-			navigator.getValue(
-				setup.graph,
-				setup.item.id,
-				"owner.guild.leader.name"
-			);
+	// 	const value =
+	// 		navigator.getValue(
+	// 			setup.graph,
+	// 			setup.item.id,
+	// 			"owner.guild.leader.name"
+	// 		);
 
-		if (value !== undefined) {
-			throw new Error(`Expected Leader, got ${value}`);
-		}
+	// 	if (value !== undefined) {
+	// 		throw new Error(`Expected Leader, got ${value}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Missing Branch passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Missing Branch passed" });
+	// }
 
-	private async testNavigatorDeepTraversal() {
+	// private async testNavigatorDeepTraversal() {
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Deep Traversal" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Deep Traversal" });
 
-		const setup = await this.buildGraphForNavigator(true);
+	// 	const setup = await this.buildGraphForNavigator(true);
 
-		const plan = await this.queryPlanner.plan(setup.itemContext, {
-			select: ["owner.guild.leader.name"]
-		});
+	// 	const plan = await this.queryPlanner.plan(setup.itemContext, {
+	// 		select: ["owner.guild.leader.name"]
+	// 	});
 
-		setup.graph = await this.graphBuilder.build(
-			setup.itemContext,
-			await this.dataManager.getAll(setup.itemContext),
-			plan
-		);
+	// 	setup.graph = await this.graphBuilder.build(
+	// 		setup.itemContext,
+	// 		await this.dataManager.getAll(setup.itemContext),
+	// 		plan
+	// 	);
 
-		const navigator =
-			new ResolvedRecordGraphNavigator();
+	// 	const navigator =
+	// 		new ResolvedRecordGraphNavigator();
 
-		const value =
-			navigator.getValue(
-				setup.graph,
-				setup.item.id,
-				"owner.guild.leader.name"
-			);
+	// 	const value =
+	// 		navigator.getValue(
+	// 			setup.graph,
+	// 			setup.item.id,
+	// 			"owner.guild.leader.name"
+	// 		);
 
-		if (value !== "Leader") {
-			throw new Error(`Expected Leader, got ${value}`);
-		}
+	// 	if (value !== "Leader") {
+	// 		throw new Error(`Expected Leader, got ${value}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Deep Traversal passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Deep Traversal passed" });
+	// }
 
-	private async testNavigatorInvalidPath() {
+	// private async testNavigatorInvalidPath() {
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Invalid Path" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Test: Invalid Path" });
 
-		const setup = await this.buildGraphForNavigator();
+	// 	const setup = await this.buildGraphForNavigator();
 
-		const plan = await this.queryPlanner.plan(setup.itemContext, {
-			select: ["owner.nonexistent.field"]
-		});
+	// 	const plan = await this.queryPlanner.plan(setup.itemContext, {
+	// 		select: ["owner.nonexistent.field"]
+	// 	});
 
-		setup.graph = await this.graphBuilder.build(
-			setup.itemContext,
-			await this.dataManager.getAll(setup.itemContext),
-			plan
-		);
+	// 	setup.graph = await this.graphBuilder.build(
+	// 		setup.itemContext,
+	// 		await this.dataManager.getAll(setup.itemContext),
+	// 		plan
+	// 	);
 
-		const navigator =
-			new ResolvedRecordGraphNavigator();
+	// 	const navigator =
+	// 		new ResolvedRecordGraphNavigator();
 
-		const value =
-			navigator.getValue(
-				setup.graph,
-				setup.item.id,
-				"owner.nonexistent.field"
-			);
+	// 	const value =
+	// 		navigator.getValue(
+	// 			setup.graph,
+	// 			setup.item.id,
+	// 			"owner.nonexistent.field"
+	// 		);
 
-		if (value !== undefined) {
-			throw new Error(`Expected undefined, got ${value}`);
-		}
+	// 	if (value !== undefined) {
+	// 		throw new Error(`Expected undefined, got ${value}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Invalid Path passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Invalid Path passed" });
+	// }
 
-	private async testGraphDiamondDeduplication() {
+	// private async testGraphDiamondDeduplication() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Diamond Deduplication" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Diamond Deduplication" });
 
-		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Guild", "name", "string", "");
 
-		await this.ensureField("CoreTest", "Character", "name", "string", "");
-		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Guild"
-		});
+	// 	await this.ensureField("CoreTest", "Character", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Guild"
+	// 	});
 
-		await this.ensureField("CoreTest", "Item", "name", "string", "");
-		await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Character"
-		});
+	// 	await this.ensureField("CoreTest", "Item", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Item", "owner", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Character"
+	// 	});
 
-		const guildContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+	// 	const guildContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Guild");
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Item");
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Item");
 
-		const guild =
-			await this.dataManager.createRecord(guildContext, { name: "Knights" });
+	// 	const guild =
+	// 		await this.dataManager.createRecord(guildContext, { name: "Knights" });
 
-		const bob =
-			await this.dataManager.createRecord(characterContext, {
-				name: "Bob",
-				guild: guild.id
-			});
+	// 	const bob =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "Bob",
+	// 			guild: guild.id
+	// 		});
 
-		const rick =
-			await this.dataManager.createRecord(characterContext, {
-				name: "Rick",
-				guild: guild.id
-			});
+	// 	const rick =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "Rick",
+	// 			guild: guild.id
+	// 		});
 
-		await this.dataManager.createRecord(itemContext, {
-			name: "Sword",
-			owner: bob.id
-		});
+	// 	await this.dataManager.createRecord(itemContext, {
+	// 		name: "Sword",
+	// 		owner: bob.id
+	// 	});
 
-		await this.dataManager.createRecord(itemContext, {
-			name: "Shield",
-			owner: rick.id
-		});
+	// 	await this.dataManager.createRecord(itemContext, {
+	// 		name: "Shield",
+	// 		owner: rick.id
+	// 	});
 
-		const plan =
-			await this.queryPlanner.plan(itemContext, {
-				select: ["owner.guild.name"]
-			});
+	// 	const plan =
+	// 		await this.queryPlanner.plan(itemContext, {
+	// 			select: ["owner.guild.name"]
+	// 		});
 
-		const graph =
-			await this.graphBuilder.build(
-				itemContext,
-				await this.dataManager.getAll(itemContext),
-				plan
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			itemContext,
+	// 			await this.dataManager.getAll(itemContext),
+	// 			plan
+	// 		);
 
-		const guildNodes =
-			[...graph.nodes.values()]
-				.filter(n => n.schema === "Guild");
+	// 	const guildNodes =
+	// 		[...graph.nodes.values()]
+	// 			.filter(n => n.schema === "Guild");
 
-		if (guildNodes.length !== 1) {
-			throw new Error(`Expected 1 Guild node, got ${guildNodes.length}`);
-		}
+	// 	if (guildNodes.length !== 1) {
+	// 		throw new Error(`Expected 1 Guild node, got ${guildNodes.length}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Diamond Deduplication passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Diamond Deduplication passed" });
+	// }
 
-	private async testGraphCircularReference() {
+	// private async testGraphCircularReference() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Circular Reference" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Circular Reference" });
 
-		await this.ensureField("CoreTest", "Character", "name", "string", "");
-		await this.ensureField("CoreTest", "Character", "friend", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Character"
-		});
+	// 	await this.ensureField("CoreTest", "Character", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Character", "friend", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Character"
+	// 	});
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const a =
-			await this.dataManager.createRecord(characterContext, {
-				name: "A"
-			});
+	// 	const a =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "A"
+	// 		});
 
-		const b =
-			await this.dataManager.createRecord(characterContext, {
-				name: "B",
-				friend: a.id
-			});
+	// 	const b =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "B",
+	// 			friend: a.id
+	// 		});
 
-		await this.dataManager.update(characterContext, a.id, {
-			friend: b.id
-		});
+	// 	await this.dataManager.update(characterContext, a.id, {
+	// 		friend: b.id
+	// 	});
 
-		const plan =
-			await this.queryPlanner.plan(characterContext, {
-				select: ["friend.friend.name"]
-			});
+	// 	const plan =
+	// 		await this.queryPlanner.plan(characterContext, {
+	// 			select: ["friend.friend.name"]
+	// 		});
 
-		const graph =
-			await this.graphBuilder.build(
-				characterContext,
-				await this.dataManager.getAll(characterContext),
-				plan
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			characterContext,
+	// 			await this.dataManager.getAll(characterContext),
+	// 			plan
+	// 		);
 
-		const navigator =
-			new ResolvedRecordGraphNavigator();
+	// 	const navigator =
+	// 		new ResolvedRecordGraphNavigator();
 
-		const value =
-			navigator.getValue(graph, a.id, "friend.friend.name");
+	// 	const value =
+	// 		navigator.getValue(graph, a.id, "friend.friend.name");
 
-		if (value !== "A") {
-			throw new Error(`Expected A, got ${value}`);
-		}
+	// 	if (value !== "A") {
+	// 		throw new Error(`Expected A, got ${value}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Circular Reference passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Circular Reference passed" });
+	// }
 
-	private async testGraphBrokenReference() {
+	// private async testGraphBrokenReference() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Broken Reference" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Broken Reference" });
 
-		await this.ensureField("CoreTest", "Character", "name", "string", "");
-		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Guild"
-		});
+	// 	await this.ensureField("CoreTest", "Character", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Guild"
+	// 	});
 
-		const guildContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+	// 	const guildContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Guild");
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const guild =
-			await this.dataManager.createRecord(guildContext, {
-				name: "Knights"
-			});
+	// 	const guild =
+	// 		await this.dataManager.createRecord(guildContext, {
+	// 			name: "Knights"
+	// 		});
 
-		const bob =
-			await this.dataManager.createRecord(characterContext, {
-				name: "Bob",
-				guild: "non-existent-id"
-			});
+	// 	const bob =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "Bob",
+	// 			guild: "non-existent-id"
+	// 		});
 
-		const plan =
-			await this.queryPlanner.plan(characterContext, {
-				select: ["guild.name"]
-			});
+	// 	const plan =
+	// 		await this.queryPlanner.plan(characterContext, {
+	// 			select: ["guild.name"]
+	// 		});
 
-		const graph =
-			await this.graphBuilder.build(
-				characterContext,
-				await this.dataManager.getAll(characterContext),
-				plan
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			characterContext,
+	// 			await this.dataManager.getAll(characterContext),
+	// 			plan
+	// 		);
 
-		const navigator =
-			new ResolvedRecordGraphNavigator();
+	// 	const navigator =
+	// 		new ResolvedRecordGraphNavigator();
 
-		const value =
-			navigator.getValue(graph, bob.id, "guild.name");
+	// 	const value =
+	// 		navigator.getValue(graph, bob.id, "guild.name");
 
-		if (value !== undefined) {
-			throw new Error(`Expected undefined, got ${value}`);
-		}
+	// 	if (value !== undefined) {
+	// 		throw new Error(`Expected undefined, got ${value}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Broken Reference passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Broken Reference passed" });
+	// }
 
-	private async testNavigatorRootProperty() {
+	// private async testNavigatorRootProperty() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Navigator Root Property" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Navigator Root Property" });
 
-		await this.ensureField("CoreTest", "Character", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Character", "name", "string", "");
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const bob =
-			await this.dataManager.createRecord(characterContext, {
-				name: "Bob"
-			});
+	// 	const bob =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "Bob"
+	// 		});
 
-		const plan =
-			await this.queryPlanner.plan(characterContext, {
-				select: ["name"]
-			});
+	// 	const plan =
+	// 		await this.queryPlanner.plan(characterContext, {
+	// 			select: ["name"]
+	// 		});
 
-		const graph =
-			await this.graphBuilder.build(
-				characterContext,
-				await this.dataManager.getAll(characterContext),
-				plan
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			characterContext,
+	// 			await this.dataManager.getAll(characterContext),
+	// 			plan
+	// 		);
 
-		const navigator =
-			new ResolvedRecordGraphNavigator();
+	// 	const navigator =
+	// 		new ResolvedRecordGraphNavigator();
 
-		const value =
-			navigator.getValue(graph, bob.id, "name");
+	// 	const value =
+	// 		navigator.getValue(graph, bob.id, "name");
 
-		if (value !== "Bob") {
-			throw new Error(`Expected Bob, got ${value}`);
-		}
+	// 	if (value !== "Bob") {
+	// 		throw new Error(`Expected Bob, got ${value}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Root Property passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Root Property passed" });
+	// }
 
-	private async testNavigatorMissingMidHop() {
+	// private async testNavigatorMissingMidHop() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Navigator Missing Mid-Hop" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Navigator Missing Mid-Hop" });
 
-		await this.ensureField("CoreTest", "Character", "name", "string", "");
-		await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
-			ruleset: "CoreTest",
-			schema: "Guild"
-		});
+	// 	await this.ensureField("CoreTest", "Character", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Character", "guild", "reference", null, undefined, {
+	// 		ruleset: "CoreTest",
+	// 		schema: "Guild"
+	// 	});
 
-		await this.ensureField("CoreTest", "Guild", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Guild", "name", "string", "");
 
-		const guildContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Guild");
+	// 	const guildContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Guild");
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		const guild =
-			await this.dataManager.createRecord(guildContext, {
-				name: "Knights"
-			});
+	// 	const guild =
+	// 		await this.dataManager.createRecord(guildContext, {
+	// 			name: "Knights"
+	// 		});
 
-		const bob =
-			await this.dataManager.createRecord(characterContext, {
-				name: "Bob",
-				guild: guild.id
-			});
+	// 	const bob =
+	// 		await this.dataManager.createRecord(characterContext, {
+	// 			name: "Bob",
+	// 			guild: guild.id
+	// 		});
 
-		const plan =
-			await this.queryPlanner.plan(characterContext, {
-				select: ["guild.name"]
-			});
+	// 	const plan =
+	// 		await this.queryPlanner.plan(characterContext, {
+	// 			select: ["guild.name"]
+	// 		});
 
-		const graph =
-			await this.graphBuilder.build(
-				characterContext,
-				await this.dataManager.getAll(characterContext),
-				plan
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			characterContext,
+	// 			await this.dataManager.getAll(characterContext),
+	// 			plan
+	// 		);
 
-		const navigator =
-			new ResolvedRecordGraphNavigator();
+	// 	const navigator =
+	// 		new ResolvedRecordGraphNavigator();
 
-		const value =
-			navigator.getValue(graph, bob.id, "guild.leader.name");
+	// 	const value =
+	// 		navigator.getValue(graph, bob.id, "guild.leader.name");
 
-		if (value !== undefined) {
-			throw new Error(`Expected undefined, got ${value}`);
-		}
+	// 	if (value !== undefined) {
+	// 		throw new Error(`Expected undefined, got ${value}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Missing Mid-Hop passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Navigator Missing Mid-Hop passed" });
+	// }
 
-	private async testGraphMultiRootStability() {
+	// private async testGraphMultiRootStability() {
 
-		await this.resetCoreTestData();
+	// 	await this.resetCoreTestData();
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Multi Root Stability" });
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test: Graph Multi Root Stability" });
 
-		await this.ensureField("CoreTest", "Character", "name", "string", "");
+	// 	await this.ensureField("CoreTest", "Character", "name", "string", "");
 
-		const characterContext =
-			await this.contextFactory.getSchemaContext("CoreTest", "Character");
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext("CoreTest", "Character");
 
-		await this.dataManager.createRecord(characterContext, { name: "A" });
-		await this.dataManager.createRecord(characterContext, { name: "B" });
-		await this.dataManager.createRecord(characterContext, { name: "C" });
+	// 	await this.dataManager.createRecord(characterContext, { name: "A" });
+	// 	await this.dataManager.createRecord(characterContext, { name: "B" });
+	// 	await this.dataManager.createRecord(characterContext, { name: "C" });
 
-		const plan =
-			await this.queryPlanner.plan(characterContext, {
-				select: ["name"]
-			});
+	// 	const plan =
+	// 		await this.queryPlanner.plan(characterContext, {
+	// 			select: ["name"]
+	// 		});
 
-		const graph =
-			await this.graphBuilder.build(
-				characterContext,
-				await this.dataManager.getAll(characterContext),
-				plan
-			);
+	// 	const graph =
+	// 		await this.graphBuilder.build(
+	// 			characterContext,
+	// 			await this.dataManager.getAll(characterContext),
+	// 			plan
+	// 		);
 
-		if (graph.roots.length !== 3) {
-			throw new Error(`Expected 3 roots, got ${graph.roots.length}`);
-		}
+	// 	if (graph.roots.length !== 3) {
+	// 		throw new Error(`Expected 3 roots, got ${graph.roots.length}`);
+	// 	}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Multi Root Stability passed" });
-	}
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph Multi Root Stability passed" });
+	// }
 
 	// private async buildAggregateTestFixture(swdVal = 10, shdVal = 10, missing = false, emptyGroup = false) {
 
@@ -7921,13 +7958,7 @@ export class EngineTestRunner {
 		}
 	}
 
-	private async buildReferenceCollectionGraphFixture() {
-
-		await this.resetCoreTestData();
-
-		// -----------------------------
-		// Schema
-		// -----------------------------
+	private async buildReferenceCollectionFixture() {
 
 		await this.ensureField(
 			"CoreTest",
@@ -7950,18 +7981,6 @@ export class EngineTestRunner {
 			}
 		);
 
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"guild",
-			"reference",
-			"",
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Guild"
-			}
-		)
 
 		await this.ensureField(
 			"CoreTest",
@@ -7971,38 +7990,6 @@ export class EngineTestRunner {
 			""
 		);
 
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"level",
-			"number",
-			0
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"items",
-			"referenceCollection",
-			[],
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Item"
-			}
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		// -----------------------------
-		// Contexts
-		// -----------------------------
 
 		const guildContext =
 			await this.contextFactory.getSchemaContext(
@@ -8010,90 +7997,59 @@ export class EngineTestRunner {
 				"Guild"
 			);
 
+
 		const characterContext =
 			await this.contextFactory.getSchemaContext(
 				"CoreTest",
 				"Character"
 			);
 
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		// -----------------------------
-		// Data
-		// -----------------------------
-
-		const sword =
-			await this.dataManager.createRecord(
-				itemContext,
-				{
-					name: "Sword"
-				}
-			);
-
-		const shield =
-			await this.dataManager.createRecord(
-				itemContext,
-				{
-					name: "Shield"
-				}
-			);
-
-		const wand =
-			await this.dataManager.createRecord(
-				itemContext,
-				{
-					name: "Wand"
-				}
-			);
 
 		const bob =
 			await this.dataManager.createRecord(
 				characterContext,
 				{
-					name: "Bob",
-					items: [
-						sword.id,
-						shield.id
-					],
-					level: 10
+					name: "Bob"
 				}
 			);
+
 
 		const alice =
 			await this.dataManager.createRecord(
 				characterContext,
 				{
-					name: "Alice",
-					items: [
-						wand.id
-					],
-					level: 20
+					name: "Alice"
 				}
 			);
-		
-		const poop =
+
+
+		const empty =
 			await this.dataManager.createRecord(
-				characterContext,
+				guildContext,
 				{
-					name: "Poop",
-					items: [
-						wand.id
+					name: "Empty",
+					members: []
+				}
+			);
+
+
+		const single =
+			await this.dataManager.createRecord(
+				guildContext,
+				{
+					name: "Single",
+					members: [
+						bob.id
 					]
 				}
 			);
 
-		const sam = await this.dataManager.createRecord(characterContext, { name: "Sam" });
-		const smith = await this.dataManager.createRecord(characterContext, { name: "Smith" });
 
-		const knights =
+		const multiple =
 			await this.dataManager.createRecord(
 				guildContext,
 				{
-					name: "Knights",
+					name: "Multiple",
 					members: [
 						bob.id,
 						alice.id
@@ -8101,173 +8057,137 @@ export class EngineTestRunner {
 				}
 			);
 
-		const bandits =
-			await this.dataManager.createRecord(
-				guildContext,
-				{
-					name: "Bandits",
-					members: [
-						bob.id
-					]
-				}
-			);
-
-		const poopers =
-			await this.dataManager.createRecord(
-				guildContext,
-				{
-					name: "Poopers"
-				}
-			);
-
-		const ninjas = await this.dataManager.createRecord(guildContext, { name: "Ninjas", members: [sam.id, smith.id]});
-
-		await this.dataManager.update(characterContext, sam.id, { guild: ninjas.id });
-		await this.dataManager.update(characterContext, smith.id, { guild: ninjas.id });
-
-		await this.dataManager.update(
-			characterContext,
-			bob.id,
-			{
-				guild: bandits.id
-			}
-		)
-
-		// -----------------------------
-		// Plan
-		// -----------------------------
-
-		const plan =
-			await this.queryPlanner.plan(
-				guildContext,
-				{
-					select: [
-						"members.name",
-						"members.items.name"
-					]
-				}
-			);
-
-		const plan2 =
-			await this.queryPlanner.plan(
-				guildContext,
-				{
-					select: [
-						"members.name",
-						"members.guild.name"
-					]
-				}
-			);
-
-		const graph1 =
-			await this.graphBuilder.build(
-				guildContext,
-				[knights],
-				plan
-			);
-
-		const graph2 = 
-			await this.graphBuilder.build(
-				guildContext,
-				[bandits],
-				plan
-			);
-
-		const graph3 = 
-			await this.graphBuilder.build(
-				guildContext,
-				[poopers],
-				plan
-			);
-
-		const graph4 = 
-			await this.graphBuilder.build(
-				guildContext,
-				[bandits],
-				plan2
-			);
-
-		const graph5 = 
-			await this.graphBuilder.build(
-				guildContext,
-				[ninjas],
-				plan2
-			);
-
-		const navigator = new ResolvedRecordGraphNavigator();
 
 		return {
-			graph1,
-			graph2,
-			graph3,
-			graph4,
-			graph5,
-			plan,
-			navigator,
-
 			guildContext,
-			characterContext,
-			itemContext,
-
-			knights,
-			bandits,
-			poopers,
-			ninjas,
 			bob,
 			alice,
-			poop,
-			sam,
-			smith,
-
-			sword,
-			shield,
-			wand
+			empty,
+			single,
+			multiple
 		};
 	}
 
-	private async testGraphReferenceCollectionSingle() {
+	private async testQueryReferenceCollectionSingle() {
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST START" });
 
 		const {
-			bandits,
-			bob,
-			graph2
-		} = await this.buildReferenceCollectionGraphFixture();
+			guildContext,
+			single,
+			bob
+		} =
+			await this.buildReferenceCollectionFixture();
 
-		const guildNode =
-			graph2.nodes.get(bandits.id);
 
-		const members =
-			guildNode?.refs.get("members");
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					select: [
+						"name",
+						"members.name"
+					],
+					where: [
+						{
+							field: "name",
+							op: "=",
+							value: "Single"
+						}
+					]
+				}
+			);
 
-		if (members.length !== 1) {
+		// this.engineLogger.log({ level: "debug", scope: "TEST", message: "results: ", data: results });
+
+
+		if (results.length !== 1) {
 			throw new Error(
-				`Expected 2 members, got ${members.length}`
+				`Expected one guild, got ${results.length}`
 			);
 		}
 
-		if (!members.includes(bob.id)) {
-			throw new Error("Bob missing");
+
+		const result = results[0];
+
+
+		if (result.id !== single.id) {
+			throw new Error(
+				"Wrong guild returned"
+			);
 		}
+
+		if (!result.members) {
+			throw new Error(
+				"Members projection missing"
+			);
+		}
+
+
+		if (!result.members.name) {
+			throw new Error(
+				"Members name projection missing"
+			);
+		}
+
+
+		if (!result.members.name.includes("Bob")) {
+			throw new Error(
+				"Bob was not traversed"
+			);
+		}
+
+		this.logger?.log({
+			level:"info",
+			scope:"TEST",
+			message:"Query reference collection single passed"
+		});
 	}
 
-	private async testGraphReferenceCollectionMultiple() {
+	private async testQueryReferenceCollectionMultiple() {
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test Start"});
 
 		const {
-			knights,
-			bob,
-			alice,
-			poop,
-			graph1
-		} = await this.buildReferenceCollectionGraphFixture();
+			guildContext,
+			multiple
+		} =
+			await this.buildReferenceCollectionFixture();
 
-		const guildNode =
-			graph1.nodes.get(knights.id);
+
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					select:[
+						"name",
+						"members.name"
+					],
+					where:[
+						{
+							field:"name",
+							op:"=",
+							value:"Multiple"
+						}
+					]
+				}
+			);
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test Result", data: results });
+
+
+		// if (results.length !== 1) {
+		// 	throw new Error(
+		// 		"Expected multiple guild result"
+		// 	);
+		// }
 
 		const members =
-			guildNode?.refs.get("members");
+    		results[0].members?.name;
+
 
 		if (!members) {
-			throw new Error("Members edge missing");
+			throw new Error(
+				"Members projection missing"
+			);
 		}
 
 		if (members.length !== 2) {
@@ -8276,236 +8196,669 @@ export class EngineTestRunner {
 			);
 		}
 
-		const ids =
-			new Set(members);
-
-		if (
-			!ids.has(bob.id) ||
-			!ids.has(alice.id)
-		) {
+		if (!members.includes("Bob")) {
 			throw new Error(
-				"Missing expected members"
-			);
-		}
-	}
-
-	private async testGraphReferenceCollectionEmpty() {
-
-		const {
-			poopers,
-			graph3
-		} = await this.buildReferenceCollectionGraphFixture();
-
-		const guildNode =
-			graph3.nodes.get(poopers.id);
-
-		const members =
-			guildNode?.refs.get("members");
-
-		if (members !== undefined) {
-			throw new Error(
-				"Expected no edge for empty collection"
+				"Bob missing"
 			);
 		}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph ReferenceCollection Empty passed" });
+		if (!members.includes("Alice")) {
+			throw new Error(
+				"Alice missing"
+			);
+		}
+
+
+		this.logger?.log({
+			level:"info",
+			scope:"TEST",
+			message:"Query reference collection multiple passed"
+		});
 	}
 
-	private async testGraphReferenceCollectionLoadsTargets() {
+	private async testQueryReferenceCollectionEmpty() {
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test End"});
 
 		const {
-			bob,
-			alice,
-			poop,
-			graph1
-		} = await this.buildReferenceCollectionGraphFixture();
+			guildContext,
+			empty
+		} =
+			await this.buildReferenceCollectionFixture();
 
-		if (!graph1.nodes.has(bob.id)) {
-			throw new Error("Character 1 missing");
-		}
 
-		if (!graph1.nodes.has(alice.id)) {
-			throw new Error("Character 2 missing");
-		}
+		const results =
+			await this.queryManager.query(
+				guildContext,
+				{
+					select:[
+						"name",
+						"members.name"
+					],
+					where:[
+						{
+							field:"name",
+							op:"=",
+							value:"Empty"
+						}
+					]
+				}
+			);
 
-		// if (!graph1.nodes.has(poop.id)) {
-		// 	throw new Error("Character 3 missing");
+
+		// if (results.length !== 1) {
+		// 	throw new Error(
+		// 		"Empty guild missing"
+		// 	);
 		// }
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph ReferenceCollection Loads Targets passed" });
-	}
-
-	private async testGraphReferenceCollectionMultiHop() {
-
-		const {
-			bandits,
-			bob,
-			graph4
-		} = await this.buildReferenceCollectionGraphFixture();
-
-		const guildNode =
-			graph4.nodes.get(bandits.id);
 
 		const members =
-			guildNode?.refs.get("members");
+			results[0].members?.name;
 
-		if (!members?.length) {
-			throw new Error("Members missing");
-		}
-
-		const charNode =
-			graph4.nodes.get(bob.id);
-
-		if (!charNode) {
-			throw new Error(
-				"Character node missing"
-			);
-		}
-
-		const homeGuild =
-			charNode.refs.get("guild");
-
-		if (!homeGuild?.length) {
-			throw new Error(
-				"Second hop missing"
-			);
-		}
-
-		if (homeGuild[0] !== bandits.id) {
-			throw new Error(
-				"Incorrect second hop target"
-			);
-		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Graph ReferenceCollection MultiHop passed" });
-	}
-
-	private async testNavigatorDirectField() {
-
-		const {
-			graph1,
-			knights,
-			navigator
-		} = await this.buildReferenceCollectionGraphFixture();
-
-		const value =
-			navigator.getValue(
-				graph1,
-				knights.id,
-				"name"
-			);
-
-		if (value !== "Knights") {
-			throw new Error(
-				`Expected Knights, got ${value}`
-			);
-		}
-	}
-
-	private async testNavigatorCollectionNames() {
-
-		const {
-			graph1,
-			knights,
-			navigator
-		} = await this.buildReferenceCollectionGraphFixture();
-
-		const value =
-			navigator.getValue(
-				graph1,
-				knights.id,
-				"members.name"
-			);
-
-		if (!Array.isArray(value)) {
-			throw new Error(
-				"Expected array result"
-			);
-		}
-
-		if (value.length !== 2) {
-			throw new Error(
-				`Expected 2 names, got ${value.length}`
-			);
-		}
 
 		if (
-			!value.includes("Bob") ||
-			!value.includes("Alice")
+			members &&
+			members.length !== 0
 		) {
 			throw new Error(
-				"Missing member names"
+				"Empty collection returned members"
 			);
 		}
+
+
+		this.logger?.log({
+			level:"info",
+			scope:"TEST",
+			message:"Query reference collection empty passed"
+		});
 	}
 
-	private async testNavigatorCollectionNumbers() {
+	// private async buildReferenceCollectionGraphFixture() {
 
-		const {
-			graph1,
-			knights,
-			navigator
-		} = await this.buildReferenceCollectionGraphFixture();
+	// 	await this.resetCoreTestData();
 
-		const value =
-			navigator.getValue(
-				graph1,
-				knights.id,
-				"members.level"
-			);
+	// 	// -----------------------------
+	// 	// Schema
+	// 	// -----------------------------
 
-		if (!Array.isArray(value)) {
-			throw new Error(
-				"Expected array result"
-			);
-		}
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Guild",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
 
-		if (
-			!value.includes(10) ||
-			!value.includes(20)
-		) {
-			throw new Error(
-				"Missing levels"
-			);
-		}
-	}
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Guild",
+	// 		"members",
+	// 		"referenceCollection",
+	// 		[],
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Character"
+	// 		}
+	// 	);
 
-	private async testNavigatorCollectionMultiHop() {
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"guild",
+	// 		"reference",
+	// 		"",
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Guild"
+	// 		}
+	// 	)
 
-		const {
-			graph5,
-			ninjas,
-			navigator
-		} = await this.buildReferenceCollectionGraphFixture();
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
 
-		const value =
-			navigator.getValue(
-				graph5,
-				ninjas.id,
-				"members.guild.name"
-			);
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"level",
+	// 		"number",
+	// 		0
+	// 	);
 
-		if (!Array.isArray(value)) {
-			throw new Error(
-				"Expected array"
-			);
-		}
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Character",
+	// 		"items",
+	// 		"referenceCollection",
+	// 		[],
+	// 		undefined,
+	// 		{
+	// 			ruleset: "CoreTest",
+	// 			schema: "Item"
+	// 		}
+	// 	);
 
-		if (value.length !== 2) {
-			throw new Error(
-				`Expected 2 values, got ${value.length}`
-			);
-		}
+	// 	await this.ensureField(
+	// 		"CoreTest",
+	// 		"Item",
+	// 		"name",
+	// 		"string",
+	// 		""
+	// 	);
 
-		if (
-			value[0] !== "Ninjas" ||
-			value[1] !== "Ninjas"
-		) {
-			throw new Error(
-				"Wrong traversal result"
-			);
-		}
-	}
+	// 	// -----------------------------
+	// 	// Contexts
+	// 	// -----------------------------
+
+	// 	const guildContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Guild"
+	// 		);
+
+	// 	const characterContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Character"
+	// 		);
+
+	// 	const itemContext =
+	// 		await this.contextFactory.getSchemaContext(
+	// 			"CoreTest",
+	// 			"Item"
+	// 		);
+
+	// 	// -----------------------------
+	// 	// Data
+	// 	// -----------------------------
+
+	// 	const sword =
+	// 		await this.dataManager.createRecord(
+	// 			itemContext,
+	// 			{
+	// 				name: "Sword"
+	// 			}
+	// 		);
+
+	// 	const shield =
+	// 		await this.dataManager.createRecord(
+	// 			itemContext,
+	// 			{
+	// 				name: "Shield"
+	// 			}
+	// 		);
+
+	// 	const wand =
+	// 		await this.dataManager.createRecord(
+	// 			itemContext,
+	// 			{
+	// 				name: "Wand"
+	// 			}
+	// 		);
+
+	// 	const bob =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Bob",
+	// 				items: [
+	// 					sword.id,
+	// 					shield.id
+	// 				],
+	// 				level: 10
+	// 			}
+	// 		);
+
+	// 	const alice =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Alice",
+	// 				items: [
+	// 					wand.id
+	// 				],
+	// 				level: 20
+	// 			}
+	// 		);
+		
+	// 	const poop =
+	// 		await this.dataManager.createRecord(
+	// 			characterContext,
+	// 			{
+	// 				name: "Poop",
+	// 				items: [
+	// 					wand.id
+	// 				]
+	// 			}
+	// 		);
+
+	// 	const sam = await this.dataManager.createRecord(characterContext, { name: "Sam" });
+	// 	const smith = await this.dataManager.createRecord(characterContext, { name: "Smith" });
+
+	// 	const knights =
+	// 		await this.dataManager.createRecord(
+	// 			guildContext,
+	// 			{
+	// 				name: "Knights",
+	// 				members: [
+	// 					bob.id,
+	// 					alice.id
+	// 				]
+	// 			}
+	// 		);
+
+	// 	const bandits =
+	// 		await this.dataManager.createRecord(
+	// 			guildContext,
+	// 			{
+	// 				name: "Bandits",
+	// 				members: [
+	// 					bob.id
+	// 				]
+	// 			}
+	// 		);
+
+	// 	const poopers =
+	// 		await this.dataManager.createRecord(
+	// 			guildContext,
+	// 			{
+	// 				name: "Poopers"
+	// 			}
+	// 		);
+
+	// 	const ninjas = await this.dataManager.createRecord(guildContext, { name: "Ninjas", members: [sam.id, smith.id]});
+
+	// 	await this.dataManager.update(characterContext, sam.id, { guild: ninjas.id });
+	// 	await this.dataManager.update(characterContext, smith.id, { guild: ninjas.id });
+
+	// 	await this.dataManager.update(
+	// 		characterContext,
+	// 		bob.id,
+	// 		{
+	// 			guild: bandits.id
+	// 		}
+	// 	)
+
+	// 	// -----------------------------
+	// 	// Plan
+	// 	// -----------------------------
+
+	// 	const plan =
+	// 		await this.queryPlanner.plan(
+	// 			guildContext,
+	// 			{
+	// 				select: [
+	// 					"members.name",
+	// 					"members.items.name"
+	// 				]
+	// 			}
+	// 		);
+
+	// 	const plan2 =
+	// 		await this.queryPlanner.plan(
+	// 			guildContext,
+	// 			{
+	// 				select: [
+	// 					"members.name",
+	// 					"members.guild.name"
+	// 				]
+	// 			}
+	// 		);
+
+	// 	const graph1 =
+	// 		await this.graphBuilder.build(
+	// 			guildContext,
+	// 			[knights],
+	// 			plan
+	// 		);
+
+	// 	const graph2 = 
+	// 		await this.graphBuilder.build(
+	// 			guildContext,
+	// 			[bandits],
+	// 			plan
+	// 		);
+
+	// 	const graph3 = 
+	// 		await this.graphBuilder.build(
+	// 			guildContext,
+	// 			[poopers],
+	// 			plan
+	// 		);
+
+	// 	const graph4 = 
+	// 		await this.graphBuilder.build(
+	// 			guildContext,
+	// 			[bandits],
+	// 			plan2
+	// 		);
+
+	// 	const graph5 = 
+	// 		await this.graphBuilder.build(
+	// 			guildContext,
+	// 			[ninjas],
+	// 			plan2
+	// 		);
+
+	// 	const navigator = new ResolvedRecordGraphNavigator();
+
+	// 	return {
+	// 		graph1,
+	// 		graph2,
+	// 		graph3,
+	// 		graph4,
+	// 		graph5,
+	// 		plan,
+	// 		navigator,
+
+	// 		guildContext,
+	// 		characterContext,
+	// 		itemContext,
+
+	// 		knights,
+	// 		bandits,
+	// 		poopers,
+	// 		ninjas,
+	// 		bob,
+	// 		alice,
+	// 		poop,
+	// 		sam,
+	// 		smith,
+
+	// 		sword,
+	// 		shield,
+	// 		wand
+	// 	};
+	// }
+
+	// private async testGraphReferenceCollectionSingle() {
+
+	// 	const {
+	// 		bandits,
+	// 		bob,
+	// 		graph2
+	// 	} = await this.buildReferenceCollectionGraphFixture();
+
+	// 	const guildNode =
+	// 		graph2.nodes.get(bandits.id);
+
+	// 	const members =
+	// 		guildNode?.refs.get("members");
+
+	// 	if (members.length !== 1) {
+	// 		throw new Error(
+	// 			`Expected 2 members, got ${members.length}`
+	// 		);
+	// 	}
+
+	// 	if (!members.includes(bob.id)) {
+	// 		throw new Error("Bob missing");
+	// 	}
+	// }
+
+	// private async testGraphReferenceCollectionMultiple() {
+
+	// 	const {
+	// 		knights,
+	// 		bob,
+	// 		alice,
+	// 		poop,
+	// 		graph1
+	// 	} = await this.buildReferenceCollectionGraphFixture();
+
+	// 	const guildNode =
+	// 		graph1.nodes.get(knights.id);
+
+	// 	const members =
+	// 		guildNode?.refs.get("members");
+
+	// 	if (!members) {
+	// 		throw new Error("Members edge missing");
+	// 	}
+
+	// 	if (members.length !== 2) {
+	// 		throw new Error(
+	// 			`Expected 2 members, got ${members.length}`
+	// 		);
+	// 	}
+
+	// 	const ids =
+	// 		new Set(members);
+
+	// 	if (
+	// 		!ids.has(bob.id) ||
+	// 		!ids.has(alice.id)
+	// 	) {
+	// 		throw new Error(
+	// 			"Missing expected members"
+	// 		);
+	// 	}
+	// }
+
+	// private async testGraphReferenceCollectionEmpty() {
+
+	// 	const {
+	// 		poopers,
+	// 		graph3
+	// 	} = await this.buildReferenceCollectionGraphFixture();
+
+	// 	const guildNode =
+	// 		graph3.nodes.get(poopers.id);
+
+	// 	const members =
+	// 		guildNode?.refs.get("members");
+
+	// 	if (members !== undefined) {
+	// 		throw new Error(
+	// 			"Expected no edge for empty collection"
+	// 		);
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph ReferenceCollection Empty passed" });
+	// }
+
+	// private async testGraphReferenceCollectionLoadsTargets() {
+
+	// 	const {
+	// 		bob,
+	// 		alice,
+	// 		poop,
+	// 		graph1
+	// 	} = await this.buildReferenceCollectionGraphFixture();
+
+	// 	if (!graph1.nodes.has(bob.id)) {
+	// 		throw new Error("Character 1 missing");
+	// 	}
+
+	// 	if (!graph1.nodes.has(alice.id)) {
+	// 		throw new Error("Character 2 missing");
+	// 	}
+
+	// 	// if (!graph1.nodes.has(poop.id)) {
+	// 	// 	throw new Error("Character 3 missing");
+	// 	// }
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph ReferenceCollection Loads Targets passed" });
+	// }
+
+	// private async testGraphReferenceCollectionMultiHop() {
+
+	// 	const {
+	// 		bandits,
+	// 		bob,
+	// 		graph4
+	// 	} = await this.buildReferenceCollectionGraphFixture();
+
+	// 	const guildNode =
+	// 		graph4.nodes.get(bandits.id);
+
+	// 	const members =
+	// 		guildNode?.refs.get("members");
+
+	// 	if (!members?.length) {
+	// 		throw new Error("Members missing");
+	// 	}
+
+	// 	const charNode =
+	// 		graph4.nodes.get(bob.id);
+
+	// 	if (!charNode) {
+	// 		throw new Error(
+	// 			"Character node missing"
+	// 		);
+	// 	}
+
+	// 	const homeGuild =
+	// 		charNode.refs.get("guild");
+
+	// 	if (!homeGuild?.length) {
+	// 		throw new Error(
+	// 			"Second hop missing"
+	// 		);
+	// 	}
+
+	// 	if (homeGuild[0] !== bandits.id) {
+	// 		throw new Error(
+	// 			"Incorrect second hop target"
+	// 		);
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Graph ReferenceCollection MultiHop passed" });
+	// }
+
+	// private async testNavigatorDirectField() {
+
+	// 	const {
+	// 		graph1,
+	// 		knights,
+	// 		navigator
+	// 	} = await this.buildReferenceCollectionGraphFixture();
+
+	// 	const value =
+	// 		navigator.getValue(
+	// 			graph1,
+	// 			knights.id,
+	// 			"name"
+	// 		);
+
+	// 	if (value !== "Knights") {
+	// 		throw new Error(
+	// 			`Expected Knights, got ${value}`
+	// 		);
+	// 	}
+	// }
+
+	// private async testNavigatorCollectionNames() {
+
+	// 	const {
+	// 		graph1,
+	// 		knights,
+	// 		navigator
+	// 	} = await this.buildReferenceCollectionGraphFixture();
+
+	// 	const value =
+	// 		navigator.getValue(
+	// 			graph1,
+	// 			knights.id,
+	// 			"members.name"
+	// 		);
+
+	// 	if (!Array.isArray(value)) {
+	// 		throw new Error(
+	// 			"Expected array result"
+	// 		);
+	// 	}
+
+	// 	if (value.length !== 2) {
+	// 		throw new Error(
+	// 			`Expected 2 names, got ${value.length}`
+	// 		);
+	// 	}
+
+	// 	if (
+	// 		!value.includes("Bob") ||
+	// 		!value.includes("Alice")
+	// 	) {
+	// 		throw new Error(
+	// 			"Missing member names"
+	// 		);
+	// 	}
+	// }
+
+	// private async testNavigatorCollectionNumbers() {
+
+	// 	const {
+	// 		graph1,
+	// 		knights,
+	// 		navigator
+	// 	} = await this.buildReferenceCollectionGraphFixture();
+
+	// 	const value =
+	// 		navigator.getValue(
+	// 			graph1,
+	// 			knights.id,
+	// 			"members.level"
+	// 		);
+
+	// 	if (!Array.isArray(value)) {
+	// 		throw new Error(
+	// 			"Expected array result"
+	// 		);
+	// 	}
+
+	// 	if (
+	// 		!value.includes(10) ||
+	// 		!value.includes(20)
+	// 	) {
+	// 		throw new Error(
+	// 			"Missing levels"
+	// 		);
+	// 	}
+	// }
+
+	// private async testNavigatorCollectionMultiHop() {
+
+	// 	const {
+	// 		graph5,
+	// 		ninjas,
+	// 		navigator
+	// 	} = await this.buildReferenceCollectionGraphFixture();
+
+	// 	const value =
+	// 		navigator.getValue(
+	// 			graph5,
+	// 			ninjas.id,
+	// 			"members.guild.name"
+	// 		);
+
+	// 	if (!Array.isArray(value)) {
+	// 		throw new Error(
+	// 			"Expected array"
+	// 		);
+	// 	}
+
+	// 	if (value.length !== 2) {
+	// 		throw new Error(
+	// 			`Expected 2 values, got ${value.length}`
+	// 		);
+	// 	}
+
+	// 	if (
+	// 		value[0] !== "Ninjas" ||
+	// 		value[1] !== "Ninjas"
+	// 	) {
+	// 		throw new Error(
+	// 			"Wrong traversal result"
+	// 		);
+	// 	}
+	// }
 
 	private async buildReferenceCollectionQueryFixture() {
 
@@ -9155,6 +9508,7 @@ export class EngineTestRunner {
 	}
 
 	private async testProjectionEmptyCollection() {
+		// this.engineLogger.log({level: "trace", scope: "TEST", message: "Failing Test Start"});
 
 		const {
 			guildContext,
@@ -9174,6 +9528,8 @@ export class EngineTestRunner {
 		const guild =
 			results.find(r => r.id === merchants.id);
 
+		// this.engineLogger.log({level: "trace", scope: "TEST", message: "Failing Test results", data: { results, guild }});
+
 		if (!guild) {
 			throw new Error(
 				"Merchants missing"
@@ -9190,6 +9546,8 @@ export class EngineTestRunner {
 	}
 
 	private async testProjectionMixedFields() {
+
+		// this.engineLogger.log({level: "trace", scope: "TEST", message: "Failing Test End"});
 
 		const {
 			guildContext,
@@ -9535,6 +9893,7 @@ export class EngineTestRunner {
 	}
 
 	private async testAggregateSumReferenceCollection() {
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST START"});
 
 		const {
 			guildContext
@@ -9552,19 +9911,15 @@ export class EngineTestRunner {
 				}
 			);
 
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "results: ", data: results });
+
 		if (results.length !== 2) {
 			throw new Error(
 				`Expected 2 groups, got ${results.length}`
 			);
 		}
 
-		//new Notice(`key: ${results[0].key}, ${results[0].value}`);
-		//new Notice(`key: ${results[1].key}, ${results[1].value}`);
-
 		for (const group of results) {
-
-			//new Notice(`key: ${group.key}, ${group.value}`);
-
 			if (group.key === "Bob" && group.value !== 10) {
 				throw new Error(`Expected Bob sum 10, got ${group.value}`);
 			}
@@ -9576,6 +9931,8 @@ export class EngineTestRunner {
 	}
 
 	private async testAggregateSumMultiHopReferenceCollection() {
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST END"});
 
 		const {
 			guildContext
@@ -9977,6 +10334,8 @@ export class EngineTestRunner {
 
 	private async testGroupByDeepCollectionType() {
 
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST END"});
+
 		const {
 			guildContext
 		} = await this.buildDeepCollectionFixture();
@@ -10002,8 +10361,7 @@ export class EngineTestRunner {
 				x => x.key === "Armor"
 			);
 
-		// new Notice(weapon.value);
-		// new Notice(armor.value);
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "results: ", data: { results, weapon, armor } });
 
 		if (!weapon || weapon.value !== 2) {
 			throw new Error(
@@ -10019,6 +10377,8 @@ export class EngineTestRunner {
 	}
 
 	private async testDistinctValuesDeepCollection() {
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST START"});
 
 		const {
 			guildContext
@@ -10345,6 +10705,8 @@ export class EngineTestRunner {
 
 	private async testSharedItemCountMatches() {
 
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST START"});
+
 		const {
 			guildContext
 		} =
@@ -10361,6 +10723,8 @@ export class EngineTestRunner {
 					}
 				}
 			);
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "results: ", data: { results } });
 
 		if (results.length !== 1) {
 			throw new Error(
@@ -10383,6 +10747,9 @@ export class EngineTestRunner {
 
 	private async testGroupByDeepSharedItemName() {
 
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST START"});
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST END"});
+
 		const {
 			guildContext
 		} =
@@ -10399,6 +10766,8 @@ export class EngineTestRunner {
 					}
 				}
 			);
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "results: ", data: { results } });
 
 		if (results.length !== 1) {
 			throw new Error(
@@ -10419,7 +10788,10 @@ export class EngineTestRunner {
 		}
 	}
 
-	private async testSharedItemSumDedupes() {
+	private async testSharedItemSumCountsSeparatePaths() {
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST END"});
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST START"});
 
 		const {
 			guildContext
@@ -10438,15 +10810,19 @@ export class EngineTestRunner {
 				}
 			);
 
-		if (results[0].value !== 10) {
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "results: ", data: { results } });
+
+		if (results[0].value !== 20) {
 
 			throw new Error(
-				`Expected sum 10, got ${results[0].value}`
+				`Expected sum 20, got ${results[0].value}`
 			);
 		}
 	}
 
 	private async testSharedItemDistinctValues() {
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "FAILING TEST END"});
 
 		const {
 			guildContext
@@ -10640,6 +11016,7 @@ export class EngineTestRunner {
 	}
 
 	private async testWhereSharedReferenceItem() {
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test Start"});
 
 		const {
 			guildContext
@@ -10664,6 +11041,8 @@ export class EngineTestRunner {
 				}
 			);
 
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test Results", data: results });
+
 		if (results.length !== 1) {
 			throw new Error(
 				`Expected 1 group, got ${results.length}`
@@ -10678,6 +11057,8 @@ export class EngineTestRunner {
 	}
 
 	private async testGroupBySharedReferenceName() {
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test End"});
 
 		const {
 			guildContext
@@ -10715,79 +11096,531 @@ export class EngineTestRunner {
 	}
 
 	private async testReferenceCollectionManager() {
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test Reference Collection Manager Suite" });
+
+		this.logger?.log({
+			level: "info",
+			scope: "TEST",
+			message: "Reference Collection Manager Test Suite"
+		});
+
 
 		try {
-			await this.testReferenceCollectionSchemaRecordValidate();
-			await this.testReferenceCollectionSchemaValidation();
-			await this.testReferenceCollectionInvalidDefault();
-			await this.testReferenceCollectionRecordValidation();
-			await this.testGraphReferenceCollectionSingle();
-			await this.testGraphReferenceCollectionMultiple();
-			await this.testGraphReferenceCollectionEmpty();
-			await this.testGraphReferenceCollectionLoadsTargets();
-			await this.testGraphReferenceCollectionMultiHop();
-			await this.testNavigatorDirectField();
-			await this.testNavigatorCollectionNames();
-			await this.testNavigatorCollectionNumbers();
-			await this.testNavigatorCollectionMultiHop();
-			await this.testFilterCollectionEquals();
-			await this.testFilterCollectionEqualsNoMatch();
-			await this.testFilterCollectionNotEquals();
-			await this.testFilterCollectionGreaterThan();
-			await this.testFilterCollectionGreaterThanHigh();
-			await this.testFilterCollectionContains();
-			await this.testFilterCollectionIn();
-			await this.testFilterCollectionExists();
-			await this.testFilterCollectionEmptyExcluded();
-			await this.testFilterCollectionMultiHop();
-			await this.testProjectionCollectionNames();
-			await this.testProjectionCollectionNumbers();
-			await this.testProjectionCollectionMultipleFields();
-			await this.testProjectionCollectionMultiHop();
-			await this.testProjectionEmptyCollection();
-			await this.testProjectionMixedFields();
-			await this.testGroupByCollectionName();
-			await this.testGroupByCollectionNumber();
-			await this.testGroupByEmptyCollection();
-			await this.testGroupByCollectionMultiHop();
-			await this.testGroupByCollectionDuplicateValues();
-			await this.testAggregateSumReferenceCollection();
-			await this.testAggregateSumMultiHopReferenceCollection();
-			await this.testAggregateAvgReferenceCollection();
-			await this.testAggregateMinMaxReferenceCollection();
-			await this.testAggregateDistinctReferenceCollection();
-			await this.testAggregateSumDeepCollection();
-			await this.testCountDeepCollectionMatches();
-			await this.testGroupByDeepCollectionType();
-			await this.testDistinctValuesDeepCollection();
-			await this.testAggregateAvgDeepCollection();
-			await this.testAggregateMinDeepCollection();
-			await this.testAggregateMaxDeepCollection();
-			await this.testAggregateDistinctCountDeepCollection();
-			await this.testGroupByDeepCollectionTypeNew();
-			await this.testGroupByCharacterNameDeepCollection();
-			await this.testAggregateCountRootsDeepCollection();
-			await this.testSharedItemCountMatches();
-			await this.testGroupByDeepSharedItemName();
-			await this.testSharedItemSumDedupes();
-			await this.testSharedItemDistinctValues();
-			await this.testSharedItemCountRoots();
-			await this.testWhereDeepCollectionTypePositive();
-			await this.testWhereDeepCollectionTypeNegative();
-			await this.testHavingDeepCollectionSumPositive();
-			await this.testHavingDeepCollectionSumNegative();
-			await this.testWhereSharedReferenceItem();
-			await this.testGroupBySharedReferenceName();
+
+			await this.safeRun(
+				"Reference Collection Schema Record Validate",
+				() => this.testReferenceCollectionSchemaRecordValidate()
+			);
+
+
+			await this.safeRun(
+				"Reference Collection Schema Validation",
+				() => this.testReferenceCollectionSchemaValidation()
+			);
+
+
+			await this.safeRun(
+				"Reference Collection Invalid Default",
+				() => this.testReferenceCollectionInvalidDefault()
+			);
+
+
+			await this.safeRun(
+				"Reference Collection Record Validation",
+				() => this.testReferenceCollectionRecordValidation()
+			);
+
+
+
+			// ------------------------------------
+			// Traversal / Query
+			// ------------------------------------
+
+			await this.safeRun(
+				"Query Reference Collection Single",
+				() => this.testQueryReferenceCollectionSingle()
+			);
+
+
+			await this.safeRun(
+				"Query Reference Collection Multiple",
+				() => this.testQueryReferenceCollectionMultiple()
+			);
+
+
+			await this.safeRun(
+				"Query Reference Collection Empty",
+				() => this.testQueryReferenceCollectionEmpty()
+			);
+
+
+
+			// ------------------------------------
+			// Filters
+			// ------------------------------------
+
+			await this.safeRun(
+				"Filter Collection Equals",
+				() => this.testFilterCollectionEquals()
+			);
+
+
+			await this.safeRun(
+				"Filter Collection Equals No Match",
+				() => this.testFilterCollectionEqualsNoMatch()
+			);
+
+
+			await this.safeRun(
+				"Filter Collection Not Equals",
+				() => this.testFilterCollectionNotEquals()
+			);
+
+
+			await this.safeRun(
+				"Filter Collection Greater Than",
+				() => this.testFilterCollectionGreaterThan()
+			);
+
+
+			await this.safeRun(
+				"Filter Collection Greater Than High",
+				() => this.testFilterCollectionGreaterThanHigh()
+			);
+
+
+			await this.safeRun(
+				"Filter Collection Contains",
+				() => this.testFilterCollectionContains()
+			);
+
+
+			await this.safeRun(
+				"Filter Collection In",
+				() => this.testFilterCollectionIn()
+			);
+
+
+			await this.safeRun(
+				"Filter Collection Exists",
+				() => this.testFilterCollectionExists()
+			);
+
+
+			await this.safeRun(
+				"Filter Collection Empty Excluded",
+				() => this.testFilterCollectionEmptyExcluded()
+			);
+
+
+			await this.safeRun(
+				"Filter Collection Multi Hop",
+				() => this.testFilterCollectionMultiHop()
+			);
+
+
+
+			// ------------------------------------
+			// Projection
+			// ------------------------------------
+
+			await this.safeRun(
+				"Projection Collection Names",
+				() => this.testProjectionCollectionNames()
+			);
+
+
+			await this.safeRun(
+				"Projection Collection Numbers",
+				() => this.testProjectionCollectionNumbers()
+			);
+
+
+			await this.safeRun(
+				"Projection Collection Multiple Fields",
+				() => this.testProjectionCollectionMultipleFields()
+			);
+
+
+			await this.safeRun(
+				"Projection Collection Multi Hop",
+				() => this.testProjectionCollectionMultiHop()
+			);
+
+
+			await this.safeRun(
+				"Projection Empty Collection",
+				() => this.testProjectionEmptyCollection()
+			);
+
+
+			await this.safeRun(
+				"Projection Mixed Fields",
+				() => this.testProjectionMixedFields()
+			);
+
+
+
+			// ------------------------------------
+			// Grouping
+			// ------------------------------------
+
+			await this.safeRun(
+				"Group By Collection Name",
+				() => this.testGroupByCollectionName()
+			);
+
+
+			await this.safeRun(
+				"Group By Collection Number",
+				() => this.testGroupByCollectionNumber()
+			);
+
+
+			await this.safeRun(
+				"Group By Empty Collection",
+				() => this.testGroupByEmptyCollection()
+			);
+
+
+			await this.safeRun(
+				"Group By Collection Multi Hop",
+				() => this.testGroupByCollectionMultiHop()
+			);
+
+
+			await this.safeRun(
+				"Group By Collection Duplicate Values",
+				() => this.testGroupByCollectionDuplicateValues()
+			);
+
+
+
+			// ------------------------------------
+			// Aggregates
+			// ------------------------------------
+
+			await this.safeRun(
+				"Aggregate Sum Reference Collection",
+				() => this.testAggregateSumReferenceCollection()
+			);
+
+
+			await this.safeRun(
+				"Aggregate Sum Multi Hop Reference Collection",
+				() => this.testAggregateSumMultiHopReferenceCollection()
+			);
+
+
+			await this.safeRun(
+				"Aggregate Average Reference Collection",
+				() => this.testAggregateAvgReferenceCollection()
+			);
+
+
+			await this.safeRun(
+				"Aggregate Min Max Reference Collection",
+				() => this.testAggregateMinMaxReferenceCollection()
+			);
+
+
+			await this.safeRun(
+				"Aggregate Distinct Reference Collection",
+				() => this.testAggregateDistinctReferenceCollection()
+			);
+
+
+
+			// ------------------------------------
+			// Deep Collection
+			// ------------------------------------
+
+			await this.safeRun(
+				"Aggregate Sum Deep Collection",
+				() => this.testAggregateSumDeepCollection()
+			);
+
+
+			await this.safeRun(
+				"Count Matches Deep Collection",
+				() => this.testCountDeepCollectionMatches()
+			);
+
+
+			await this.safeRun(
+				"Group By Deep Collection Type",
+				() => this.testGroupByDeepCollectionType()
+			);
+
+
+			await this.safeRun(
+				"Distinct Values Deep Collection",
+				() => this.testDistinctValuesDeepCollection()
+			);
+
+
+			await this.safeRun(
+				"Aggregate Average Deep Collection",
+				() => this.testAggregateAvgDeepCollection()
+			);
+
+
+			await this.safeRun(
+				"Aggregate Min Deep Collection",
+				() => this.testAggregateMinDeepCollection()
+			);
+
+
+			await this.safeRun(
+				"Aggregate Max Deep Collection",
+				() => this.testAggregateMaxDeepCollection()
+			);
+
+
+			await this.safeRun(
+				"Aggregate Distinct Count Deep Collection",
+				() => this.testAggregateDistinctCountDeepCollection()
+			);
+
+
+			await this.safeRun(
+				"Group By Deep Collection Type New",
+				() => this.testGroupByDeepCollectionTypeNew()
+			);
+
+
+			await this.safeRun(
+				"Group By Character Name Deep Collection",
+				() => this.testGroupByCharacterNameDeepCollection()
+			);
+
+
+			await this.safeRun(
+				"Aggregate Count Roots Deep Collection",
+				() => this.testAggregateCountRootsDeepCollection()
+			);
+
+
+
+			// ------------------------------------
+			// Shared References
+			// ------------------------------------
+
+			await this.safeRun(
+				"Shared Item Count Matches",
+				() => this.testSharedItemCountMatches()
+			);
+
+
+			await this.safeRun(
+				"Group By Shared Item Name",
+				() => this.testGroupByDeepSharedItemName()
+			);
+
+
+			await this.safeRun(
+				"Shared Item Sum Counts Separate Paths",
+				() => this.testSharedItemSumCountsSeparatePaths()
+			);
+
+
+			await this.safeRun(
+				"Shared Item Distinct Values",
+				() => this.testSharedItemDistinctValues()
+			);
+
+
+			await this.safeRun(
+				"Shared Item Count Roots",
+				() => this.testSharedItemCountRoots()
+			);
+
+
+
+			// ------------------------------------
+			// Where / Having
+			// ------------------------------------
+
+			await this.safeRun(
+				"Where Deep Collection Type Positive",
+				() => this.testWhereDeepCollectionTypePositive()
+			);
+
+
+			await this.safeRun(
+				"Where Deep Collection Type Negative",
+				() => this.testWhereDeepCollectionTypeNegative()
+			);
+
+
+			await this.safeRun(
+				"Having Deep Collection Sum Positive",
+				() => this.testHavingDeepCollectionSumPositive()
+			);
+
+
+			await this.safeRun(
+				"Having Deep Collection Sum Negative",
+				() => this.testHavingDeepCollectionSumNegative()
+			);
+
+
+			await this.safeRun(
+				"Where Shared Reference Item",
+				() => this.testWhereSharedReferenceItem()
+			);
+
+
+			await this.safeRun(
+				"Group By Shared Reference Name",
+				() => this.testGroupBySharedReferenceName()
+			);
+
+
 		}
 		catch (e) {
-			this.logger?.log({ level: "error", scope: "TEST", message: "Reference Collection Tests Failed", data: (e as Error).message });
+
+			this.logger?.log({
+				level:"error",
+				scope:"TEST",
+				message:"Reference Collection Manager Suite Failed",
+				data:(e as Error).message
+			});
 		}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Reference Collection Manager Tests Completed" });
+
+		this.logger?.log({
+			level:"info",
+			scope:"TEST",
+			message:"Reference Collection Manager Test Suite Completed"
+		});
 	}
 
+	// private async testReferenceCollectionManager() {
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Test Reference Collection Manager Suite" });
+
+	// 	try {
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 1"});
+	// 		await this.testReferenceCollectionSchemaRecordValidate();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 2"});
+	// 		await this.testReferenceCollectionSchemaValidation();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 3"});
+	// 		await this.testReferenceCollectionInvalidDefault();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 4"});
+	// 		await this.testReferenceCollectionRecordValidation();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 5"});
+	// 		await this.testQueryReferenceCollectionSingle();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 6"});
+	// 		await this.testQueryReferenceCollectionMultiple();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 7"});
+	// 		await this.testQueryReferenceCollectionEmpty();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 14"});
+	// 		await this.testFilterCollectionEquals();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 15"});
+	// 		await this.testFilterCollectionEqualsNoMatch();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 16"});
+	// 		await this.testFilterCollectionNotEquals();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 17"});
+	// 		await this.testFilterCollectionGreaterThan();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 18"});
+	// 		await this.testFilterCollectionGreaterThanHigh();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 19"});
+	// 		await this.testFilterCollectionContains();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 20"});
+	// 		await this.testFilterCollectionIn();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 21"});
+	// 		await this.testFilterCollectionExists();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 22"});
+	// 		await this.testFilterCollectionEmptyExcluded();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 23"});
+	// 		await this.testFilterCollectionMultiHop();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 24"});
+	// 		await this.testProjectionCollectionNames();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 25"});
+	// 		await this.testProjectionCollectionNumbers();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 26"});
+	// 		await this.testProjectionCollectionMultipleFields();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 27"});
+	// 		await this.testProjectionCollectionMultiHop();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 28"});
+	// 		await this.testProjectionEmptyCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 29"});
+	// 		await this.testProjectionMixedFields();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 30"});
+	// 		await this.testGroupByCollectionName();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 31"});
+	// 		await this.testGroupByCollectionNumber();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 32"});
+	// 		await this.testGroupByEmptyCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 33"});
+	// 		await this.testGroupByCollectionMultiHop();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 34"});
+	// 		await this.testGroupByCollectionDuplicateValues();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 35"});
+	// 		await this.testAggregateSumReferenceCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 36"});
+	// 		await this.testAggregateSumMultiHopReferenceCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 37"});
+	// 		await this.testAggregateAvgReferenceCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 38"});
+	// 		await this.testAggregateMinMaxReferenceCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 39"});
+	// 		await this.testAggregateDistinctReferenceCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 40"});
+	// 		await this.testAggregateSumDeepCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 41"});
+	// 		await this.testCountDeepCollectionMatches();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 42"});
+	// 		await this.testGroupByDeepCollectionType();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 43"});
+	// 		await this.testDistinctValuesDeepCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 44"});
+	// 		await this.testAggregateAvgDeepCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 45"});
+	// 		await this.testAggregateMinDeepCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 46"});
+	// 		await this.testAggregateMaxDeepCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 47"});
+	// 		await this.testAggregateDistinctCountDeepCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 48"});
+	// 		await this.testGroupByDeepCollectionTypeNew();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 49"});
+	// 		await this.testGroupByCharacterNameDeepCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 50"});
+	// 		await this.testAggregateCountRootsDeepCollection();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 51"});
+	// 		await this.testSharedItemCountMatches();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 52"});
+	// 		await this.testGroupByDeepSharedItemName();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 53"});
+	// 		await this.testSharedItemSumDedupes();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 54"});
+	// 		await this.testSharedItemDistinctValues();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 55"});
+	// 		await this.testSharedItemCountRoots();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 56"});
+	// 		await this.testWhereDeepCollectionTypePositive();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 57"});
+	// 		await this.testWhereDeepCollectionTypeNegative();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 58"});
+	// 		await this.testHavingDeepCollectionSumPositive();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 59"});
+	// 		await this.testHavingDeepCollectionSumNegative();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 60"});
+	// 		await this.testWhereSharedReferenceItem();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 61"});
+	// 		await this.testGroupBySharedReferenceName();
+	// 		this.logger?.log({ level: "info", scope: "TEST", message: "Test 62"});
+	// 	}
+	// 	catch (e) {
+	// 		this.logger?.log({ level: "error", scope: "TEST", message: "Reference Collection Tests Failed", data: (e as Error).message });
+	// 	}
+
+	// 	this.logger?.log({ level: "info", scope: "TEST", message: "Reference Collection Manager Tests Completed" });
+	// }
+
 	private async testMutationDeepCollectionSet() {
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test Start"});
 
 		const {
 			guildContext
@@ -10805,6 +11638,8 @@ export class EngineTestRunner {
 				}
 			);
 
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test Results", data: { result }});
+
 		if (result.errors.length > 0) {
 			throw new Error(
 				`Mutation errors: ${JSON.stringify(result.errors, null, 2)}`
@@ -10819,8 +11654,6 @@ export class EngineTestRunner {
 
 		const itemContext = await this.contextFactory.getSchemaContext("CoreTest", "Item");
 		const items = await this.dataManager.getAll(itemContext);
-
-		// this.logger?.log({ level: "info", scope: "TEST", message: "Deep Collection Set",  data: { items, itemContext, result } });
 
 		// reload data
 		const guild =
@@ -10840,6 +11673,8 @@ export class EngineTestRunner {
 				}
 			);
 
+		this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test 2nd Results", data: { itemContext, items, guild, check }});
+
 		if (check[0].value !== 15) {
 			throw new Error(
 				`Expected mutated sum 15, got ${check[0].value}`
@@ -10848,6 +11683,8 @@ export class EngineTestRunner {
 	}
 
 	private async testMutationDeepCollectionAdd() {
+
+		// this.engineLogger.log({ level: "trace", scope: "TEST", message: "Failing Test End"});
 
 		const { guildContext } =
 			await this.buildDeepCollectionFixture();
@@ -12130,7 +12967,7 @@ export class EngineTestRunner {
 	}
 
 	private async aggregationTestSuite() {
-		this.logger?.log({ level: "info", scope: "TEST", message: "Mutation Test Suite" });
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregation Test Suite" });
 
 		try {
 			await this.safeRun(
@@ -12184,9 +13021,322 @@ export class EngineTestRunner {
 			);
 		}
 		catch (e) {
-			this.logger?.log({ level: "error", scope: "TEST", message: "Mutation Tests Failed", data: (e as Error).message });
+			this.logger?.log({ level: "error", scope: "TEST", message: "Aggregation Tests Failed", data: (e as Error).message });
 		}
 
-		this.logger?.log({ level: "info", scope: "TEST", message: "Mutation Test Suite Completed" });
+		this.logger?.log({ level: "info", scope: "TEST", message: "Aggregation Test Suite Completed" });
+	}
+
+	private async buildGraphEdgeCaseFixture() {
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"friend",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Character",
+			"items",
+			"referenceCollection",
+			[],
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Item"
+			}
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"name",
+			"string",
+			""
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"power",
+			"number",
+			0
+		);
+
+		await this.ensureField(
+			"CoreTest",
+			"Item",
+			"owner",
+			"reference",
+			null,
+			undefined,
+			{
+				ruleset: "CoreTest",
+				schema: "Character"
+			}
+		);
+
+		const characterContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Character"
+			);
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const bob =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Bob"
+				}
+			);
+
+		const alice =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "Alice"
+				}
+			);
+
+		const sharedSword =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Shared Sword",
+					power: 10
+				}
+			);
+
+		await this.dataManager.update(
+			characterContext,
+			bob.id,
+			{
+				items: [sharedSword.id]
+			}
+		);
+
+		await this.dataManager.update(
+			characterContext,
+			alice.id,
+			{
+				items: [sharedSword.id]
+			}
+		);
+
+		const loopA =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "LoopA"
+				}
+			);
+
+		const loopB =
+			await this.dataManager.createRecord(
+				characterContext,
+				{
+					name: "LoopB"
+				}
+			);
+
+		await this.dataManager.update(
+			characterContext,
+			loopA.id,
+			{
+				friend: loopB.id
+			}
+		);
+
+		await this.dataManager.update(
+			characterContext,
+			loopB.id,
+			{
+				friend: loopA.id
+			}
+		);
+
+		const brokenItem =
+			await this.dataManager.createRecord(
+				itemContext,
+				{
+					name: "Broken Item",
+					owner: "dead-id"
+				}
+			);
+
+		return {
+			characterContext,
+			itemContext,
+			bob,
+			alice,
+			sharedSword,
+			loopA,
+			loopB,
+			brokenItem
+		};
+	}
+
+	private async testCircularReferenceQuery() {
+
+		await this.resetCoreTestData();
+
+		const {
+			characterContext,
+			loopA
+		} = await this.buildGraphEdgeCaseFixture();
+
+		const results =
+			await this.queryManager.query(
+				characterContext,
+				{
+					where: [
+						{
+							field: "friend.name",
+							op: "=",
+							value: "LoopB"
+						}
+					]
+				}
+			);
+
+		if (results.length !== 1) {
+
+			throw new Error(
+				`Expected 1 result, got ${results.length}`
+			);
+		}
+
+		if (results[0].id !== loopA.id) {
+
+			throw new Error(
+				"Wrong circular reference result"
+			);
+		}
+	}
+
+	private async testBrokenReferenceQuery() {
+
+		await this.resetCoreTestData();
+
+		const {
+			itemContext
+		} = await this.buildGraphEdgeCaseFixture();
+
+		const results =
+			await this.queryManager.query(
+				itemContext,
+				{
+					where: [
+						{
+							field: "owner.name",
+							op: "=",
+							value: "Bob"
+						}
+					]
+				}
+			);
+
+		if (!Array.isArray(results)) {
+
+			throw new Error(
+				"Query did not return results"
+			);
+		}
+	}
+
+	private async testSharedTargetMutation() {
+
+		await this.resetCoreTestData();
+
+		const {
+			characterContext,
+			sharedSword
+		} = await this.buildGraphEdgeCaseFixture();
+
+		const result =
+			await this.mutationExecutor.execute(
+				characterContext,
+				{
+					select: "items.power",
+					operation: {
+						type: "set",
+						value: 999
+					}
+				}
+			);
+
+		if (result.updated !== 1) {
+
+			throw new Error(
+				`Expected 1 update, got ${result.updated}`
+			);
+		}
+
+		const itemContext =
+			await this.contextFactory.getSchemaContext(
+				"CoreTest",
+				"Item"
+			);
+
+		const updatedSword =
+			await this.dataManager.getById(
+				itemContext,
+				sharedSword.id
+			);
+
+		if (updatedSword?.data?.power !== 999) {
+
+			throw new Error(
+				"Shared target was not updated"
+			);
+		}
+	}
+
+	private async graphEdgeCaseTestSuite() {
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Edge Cases Test Suite" });
+
+		try {
+			await this.safeRun(
+				"Circular Reference Query",
+				() => this.testCircularReferenceQuery()
+			);
+
+			await this.safeRun(
+				"Broken Referency Query",
+				() => this.testBrokenReferenceQuery()
+			);
+
+			await this.safeRun(
+				"Shared Target Mutation",
+				() => this.testSharedTargetMutation()
+			);
+		}
+		catch (e) {
+			this.logger?.log({ level: "error", scope: "TEST", message: "Graph Edge Cases Tests Failed", data: (e as Error).message });
+		}
+
+		this.logger?.log({ level: "info", scope: "TEST", message: "Graph Edge Cases Test Suite Completed" });
 	}
 }

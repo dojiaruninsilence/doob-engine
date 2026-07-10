@@ -1,3 +1,5 @@
+import { TraversalPlan, TraversalPlanSet } from "../traversal";
+
 export interface MutationPlan {
     steps: MutationPlanStep[];
 }
@@ -11,4 +13,12 @@ export interface MutationPlanStep {
     operationType: string;
 
     safe: boolean;
+}
+
+export interface MutationPlanSet {
+
+    // targetPath: string;
+     target: TraversalPlan;
+
+    traversals: TraversalPlanSet;
 }

@@ -1,6 +1,7 @@
 import { AggregateRequest } from "./AggregateTypes";
 import { DataRecord } from "../DataTypes";
 import { QueryMatch } from "./QueryMatchTypes";
+import { TraversalMatch, TraversalResult } from "../traversal";
 
 export interface Query {
 	where?: Record<string, any>;
@@ -47,6 +48,10 @@ export interface QueryRequest {
 export interface QueryGroupResult {
 	key: any;
 	records: DataRecord[];
+	// matches: TraversalMatch[];
+	groupMatches?: TraversalMatch[];
+	whereMatches?: TraversalMatch[];
+	aggregateMatches?: TraversalMatch[];
 	// matches: QueryMatch[];
-	value: number; // aggregation result
+	value: any; // aggregation result
 }

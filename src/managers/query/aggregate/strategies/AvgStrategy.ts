@@ -37,35 +37,42 @@ export class AvgStrategy implements IAggregateStrategy {
 
         //     const results = this.travExecutor.execute(context, match.rootId, plan);
 
-        for (const record of group.records) {
+        for (const matches of group.aggregateMatches) {
 
-            const results = this.travExecutor.execute(context, record.id, plan);
-                // this.matchNavigator.resolveValues(
-                //     graph,
-                //     match,
-                //     request.field!
-                // );
+            const v = matches.value;
 
-            const values = 
-                results.values ??
-                (results.value !== undefined
-                    ? [results.value]
-                    : []);
-
-            for (const v of values) {
-
-                // const key =
-                //     `${match.rootId}:${v.sourceId}:${request.field}`;
-
-                // if (seen.has(key)) continue;
-
-                // seen.add(key);
-
-                if (typeof v === "number") {
-                    sum += v;
-                    count++;
-                }
+            if (typeof v === "number") {
+                sum += v;
+                count++;
             }
+
+            // const results = this.travExecutor.execute(context, record.id, plan);
+            //     // this.matchNavigator.resolveValues(
+            //     //     graph,
+            //     //     match,
+            //     //     request.field!
+            //     // );
+
+            // const values = 
+            //     results.values ??
+            //     (results.value !== undefined
+            //         ? [results.value]
+            //         : []);
+
+            // for (const v of values) {
+
+            //     // const key =
+            //     //     `${match.rootId}:${v.sourceId}:${request.field}`;
+
+            //     // if (seen.has(key)) continue;
+
+            //     // seen.add(key);
+
+            //     if (typeof v === "number") {
+            //         sum += v;
+            //         count++;
+            //     }
+            // }
         }
 
         return count === 0

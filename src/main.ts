@@ -9,7 +9,7 @@ import { QueryManager } from "./managers/query/QueryManager";
 import { QueryPlanner } from "./managers/query/QueryPlanner";
 import { QueryExecutor } from "./managers/query/QueryExecutor";
 import { QueryExecutionPlanRunner } from "./managers/query/QueryExecutionPlanRunner";
-import { ResolvedRecordGraphBuilder } from "./managers/query/graph/ResolvedRecordGraphBuilder";
+import { ResolvedRecordGraphBuilder } from "./managers/traversal/ResolvedRecordGraphBuilder";
 import { ResolvedRecordGraphNavigator } from "./managers/query/graph/ResolvedRecordGraphNavigator";
 import { AggregateBootstrap } from "./managers/query/aggregate/AggregateBootstrap";
 import { QueryMatchBuilder } from "./managers/query/match/QueryMatchBuilder";
@@ -27,6 +27,9 @@ import { LegacyTraversalAdapter } from "./managers/traversal/LegacyTraversalAdap
 import { TraversalPlanBuilder } from "./managers/traversal/TraversalPlanBuilder";
 import { TraversalRequestBuilder } from "./managers/traversal/TraversalRequestBuilder";
 import { ValueResolver } from "./managers/traversal/resolver/ValueResolver";
+import { MutationPlanner } from "./managers/mutation/MutationPlanner";
+import { MutationRequestBuilder } from "./managers/mutation/MutationRequestBuilder";
+import { TraversalExecutionPlanBuilder } from "./managers/traversal/TraversalExecutionPlanBuilder";
 
 const VIEW_TYPE_DOOB_PANEL = "doob-tool-panel";
 
@@ -52,6 +55,7 @@ export default class DoobEngine extends Plugin {
 	public traversalExecutor!: TraversalExecutor;
 	public traversalRequestBuilder!: TraversalRequestBuilder;
 	public traversalPlanBuilder!: TraversalPlanBuilder;
+	public traceLogger!: TraceLogger;
 	
 	async onload() {
 
@@ -102,20 +106,23 @@ export default class DoobEngine extends Plugin {
 		const resolvedRecordGraphNavigator = new ResolvedRecordGraphNavigator();
 		const queryMatchBuilder = new QueryMatchBuilder();
 		const queryMatchNavigator = new QueryMatchNavigator();
-		const mutationTargetResolver = new MutationTargetResolver();
 		const mutationOperationResolver = new MutationOperationResolver();
-		const traceLogger = new TraceLogger(this.engineLog);
-		const mutationValidationLayer = new MutationValidationLayer(this.contextFactory, traceLogger);
+		this.traceLogger = new TraceLogger(this.engineLog);
+		const mutationTargetResolver = new MutationTargetResolver(this.traceLogger);
+		const mutationValidationLayer = new MutationValidationLayer(this.contextFactory, this.traceLogger);
 		const traversalAdapter = new LegacyTraversalAdapter(this.contextFactory);
 		const valueResolver = new ValueResolver();
 		//const traversalPlanBuilder = new TraversalPlanBuilder()
+		const traversalExecutionPlanBuilder = new TraversalExecutionPlanBuilder();
 		
-		this.traversalPlanner = new TraversalPlanner(traceLogger);
-		this.traversalExecutor = new TraversalExecutor(traceLogger, valueResolver);
+		this.traversalPlanner = new TraversalPlanner(this.traceLogger);
+		this.traversalExecutor = new TraversalExecutor(this.traceLogger, valueResolver);
 		this.traversalPlanBuilder = new TraversalPlanBuilder(this.traversalPlanner);
 		this.traversalRequestBuilder = new TraversalRequestBuilder(traversalAdapter);
+
+		const mutationPlanner = new MutationPlanner(new MutationRequestBuilder(traversalAdapter), this.traversalPlanBuilder);
 		
-		const aggregateResolver = AggregateBootstrap.build(this.traversalExecutor, traceLogger);
+		const aggregateResolver = AggregateBootstrap.build(this.traversalExecutor, this.traceLogger);
 
 		this.queryPlanner = new QueryPlanner(
 			this.contextFactory
@@ -124,7 +131,7 @@ export default class DoobEngine extends Plugin {
 		this.resolvedRecordGraphBuilder = new ResolvedRecordGraphBuilder(
 			this.dataManager,
 			this.contextFactory,
-			traceLogger
+			this.traceLogger
 		);
 
 		this.queryExecutionPlanRunner = new QueryExecutionPlanRunner(
@@ -143,7 +150,8 @@ export default class DoobEngine extends Plugin {
 			traversalAdapter,
 			this.traversalRequestBuilder,
 			this.traversalPlanBuilder,
-			traceLogger
+			traversalExecutionPlanBuilder,
+			this.traceLogger
 		);
 
 		this.queryManager = new QueryManager(
@@ -155,12 +163,13 @@ export default class DoobEngine extends Plugin {
 			this.dataManager,
 			this.dataManager,
 			this.resolvedRecordGraphBuilder,
-			this.queryPlanner,
+			mutationPlanner,
 			mutationTargetResolver,
 			mutationOperationResolver,
-			traceLogger,
+			this.traceLogger,
 			this.contextFactory,
-			mutationValidationLayer
+			mutationValidationLayer,
+			this.traversalExecutor
 		)
 
 

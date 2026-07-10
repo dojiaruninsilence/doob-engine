@@ -35,24 +35,27 @@ export class DistinctValuesStrategy
 
         //     const results = this.travExecutor.execute(context, match.rootId, plan);
 
-        for (const record of group.records) {
+        for (const match of group.aggregateMatches) {
 
-            const results = this.travExecutor.execute(context, record.id, plan);
-                // this.matchNavigator.resolveValues(
-                //     graph,
-                //     match,
-                //     request.field!
-                // );
+            const v = match.value;
+            values.add(v);
 
-            const resolved = 
-                results.values ??
-                (results.value !== undefined
-                    ? [results.value]
-                    : []);
+            // const results = this.travExecutor.execute(context, record.id, plan);
+            //     // this.matchNavigator.resolveValues(
+            //     //     graph,
+            //     //     match,
+            //     //     request.field!
+            //     // );
 
-            for (const v of resolved) {
-                values.add(v);
-            }
+            // const resolved = 
+            //     results.values ??
+            //     (results.value !== undefined
+            //         ? [results.value]
+            //         : []);
+
+            // for (const v of resolved) {
+            //     values.add(v);
+            // }
         }
 
         return Array.from(values);

@@ -39,24 +39,31 @@ export class SumStrategy
 
         //     const results = this.travExecutor.execute(context, match.rootId, plan);
 
-        for (const record of group.records) {
+        for (const match of group.aggregateMatches) {
+            const v = match.value;
 
-            const results = this.travExecutor.execute(context, record.id, plan);
-                // this.matchNavigator.resolveValues(
-                //     graph,
-                //     match,
-                //     request.field!
-                // );
+            if (typeof v === "number") {
+                sum += v;
+            }
 
-            const values = 
-                 results.values ??
-                (results.value !== undefined
-                    ? [results.value]
-                    : []);
+            this.trace.debug("SumStrategy", "Finished", { v, sum });
 
-            this.trace.debug("SumStrategy", "Results: ", { results, values })
+            // const results = this.travExecutor.execute(context, record.id, plan);
+            //     // this.matchNavigator.resolveValues(
+            //     //     graph,
+            //     //     match,
+            //     //     request.field!
+            //     // );
 
-            for (const v of values) {
+            // const values = 
+            //      results.values ??
+            //     (results.value !== undefined
+            //         ? [results.value]
+            //         : []);
+
+            // this.trace.debug("SumStrategy", "Results: ", { results, values })
+
+            // for (const v of values) {
 
                 // const key =
                 //     `${match.rootId}:${v.sourceId}:${request.field}`;
@@ -65,12 +72,12 @@ export class SumStrategy
 
                 // seen.add(key);
 
-                if (typeof v === "number") {
-                    sum += v;
-                }
+                // if (typeof v === "number") {
+                //     sum += v;
+                // }
 
-                this.trace.debug("SumStrategy", "Finished", { v, sum })
-            }
+                // this.trace.debug("SumStrategy", "Finished", { v, sum });
+            // }
         }
 
         return sum;

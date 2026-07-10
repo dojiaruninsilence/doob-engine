@@ -22,7 +22,26 @@ export class CountMatchesStrategy implements IAggregateStrategy {
         request: AggregateRequest
     ): Promise<any> {
 
-        // return group.matches.length;
+        if (group.whereMatches && group.whereMatches.length > 0) {
+            return group.whereMatches.length;
+        }
+
+        if (
+            group.aggregateMatches &&
+            group.aggregateMatches.length > 0
+        ) {
+            return group.aggregateMatches.length;
+        }
+
+        if (
+            group.groupMatches &&
+            group.groupMatches.length > 0
+        ) {
+            return group.groupMatches.length;
+        }
+
         return group.records.length;
+            // return group.matches.length;
+            // return group.records.length;
     }
 }

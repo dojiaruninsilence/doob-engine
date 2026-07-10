@@ -19,7 +19,9 @@ import { Logger } from "../logging/Logger";
 import { TraceLogger } from "../logging/TraceLogger";
 import { TraversalRequestBuilder } from "../traversal/TraversalRequestBuilder";
 import { TraversalPlanBuilder } from "../traversal/TraversalPlanBuilder";
-import { TraversalContext, TraversalPlan } from "../../types/traversal";
+import { TraversalContext, TraversalMatch, TraversalPlan, TraversalResult } from "../../types/traversal";
+import { TraversalExecutionPlanBuilder } from "../traversal/TraversalExecutionPlanBuilder";
+import { FilterResult } from "../../types/query";
 
 export class QueryExecutor {
 
@@ -35,6 +37,7 @@ export class QueryExecutor {
         private traversalAdapter: LegacyTraversalAdapter,
         private traversalRequestBuilder: TraversalRequestBuilder,
         private traversalPlanBuilder: TraversalPlanBuilder,
+        private traversalExecutionPlanBuilder: TraversalExecutionPlanBuilder,
         private trace: TraceLogger
 	) {}
 
@@ -43,12 +46,54 @@ export class QueryExecutor {
         return Array.isArray(value) ? value : [value];
     }
 
+    private compareValue(
+        value: any,
+        filter: QueryFilter
+    ): boolean {
+
+        switch (filter.op) {
+
+            case "=":
+                return value === filter.value;
+
+            case "!=":
+                return value !== filter.value;
+
+            case ">":
+                return value > filter.value;
+
+            case ">=":
+                return value >= filter.value;
+
+            case "<":
+                return value < filter.value;
+
+            case "<=":
+                return value <= filter.value;
+
+            case "in":
+                return Array.isArray(filter.value)
+                    && filter.value.includes(value);
+
+            case "contains":
+                return typeof value === "string"
+                    && value.includes(filter.value);
+
+            case "exists":
+                return value !== undefined
+                    && value !== null;
+
+            default:
+                return false;
+        }
+    }
+
     private async matches(
         context: TraversalContext,
         plan: TraversalPlan,
         filter: QueryFilter,
         record: DataRecord
-    ): Promise<boolean> {
+    ): Promise<FilterResult> {
 
         const result =
             this.traversalExecutor.execute(
@@ -57,53 +102,95 @@ export class QueryExecutor {
                 plan
             );
 
-        const rawValue =
-            result.values ??
-            (result.value !== undefined
-                ? [result.value]
-                : []);
 
-        const values =
-            this.normalizeValue(rawValue);
+        const matches =
+            result.matches.filter(
+                m => this.compareValue(
+                    m.value,
+                    filter
+                )
+            );
 
-        switch (filter.op) {
 
-            case "=":
-                return values.some(v => v === filter.value);
-
-            case "!=":
-                return values.every(v => v !== filter.value);
-
-            case ">":
-                return values.some(v => v > filter.value);
-
-            case ">=":
-                return values.some(v => v >= filter.value);
-
-            case "<":
-                return values.some(v => v < filter.value);
-
-            case "<=":
-                return values.some(v => v <= filter.value);
-
-            case "in":
-                return Array.isArray(filter.value)
-                    ? values.some(v => filter.value.includes(v))
-                    : false;
-
-            case "contains":
-                return values.some(v =>
-                    typeof v === "string" &&
-                    v.includes(filter.value)
-                );
-
-            case "exists":
-                return values.length > 0;
-
-            default:
-                return false;
-        }
+        return {
+            keep: matches.length > 0,
+            matches
+        };
     }
+
+    // private async matches(
+    //     context: TraversalContext,
+    //     plan: TraversalPlan,
+    //     filter: QueryFilter,
+    //     record: DataRecord
+    // ): Promise<FilterResult> {
+
+    //     const result =
+    //         this.traversalExecutor.execute(
+    //             context,
+    //             record.id,
+    //             plan
+    //         );
+
+    //     const values =
+    //         result.matches.map(
+    //             m => m.value
+    //         );
+
+    //     const normalizedValues =
+    //         this.normalizeValue(values);
+
+    //     let keep: boolean;
+
+    //     // const rawValue =
+    //     //     result.values ??
+    //     //     (result.value !== undefined
+    //     //         ? [result.value]
+    //     //         : []);
+
+    //     // const values =
+    //     //     this.normalizeValue(rawValue);
+
+    //     switch (filter.op) {
+
+    //         case "=":
+    //             keep = normalizedValues.some(v => v === filter.value);
+
+    //         case "!=":
+    //             keep = normalizedValues.every(v => v !== filter.value);
+
+    //         case ">":
+    //             keep = normalizedValues.some(v => v > filter.value);
+
+    //         case ">=":
+    //             keep = normalizedValues.some(v => v >= filter.value);
+
+    //         case "<":
+    //             keep = normalizedValues.some(v => v < filter.value);
+
+    //         case "<=":
+    //             keep = normalizedValues.some(v => v <= filter.value);
+
+    //         case "in":
+    //             keep = Array.isArray(filter.value)
+    //                 ? normalizedValues.some(v => filter.value.includes(v))
+    //                 : false;
+
+    //         case "contains":
+    //             keep = normalizedValues.some(v =>
+    //                 typeof v === "string" &&
+    //                 v.includes(filter.value)
+    //             );
+
+    //         case "exists":
+    //             keep = normalizedValues.length > 0;
+
+    //         default:
+    //             keep = false;
+    //     }
+
+    //     return { keep, }
+    // }
 
     // private async matches(
     //     record: DataRecord,
@@ -215,6 +302,64 @@ export class QueryExecutor {
         }
     }
 
+    private dedupeMatches(
+        matches: TraversalMatch[]
+    ): TraversalMatch[] {
+
+        const unique =
+            new Map<string, TraversalMatch>();
+
+        this.trace.debug("QueryExecutor.dedupeMatches", "matches: ", { matches });
+
+        for (const match of matches) {
+
+            const key =
+                [
+                    match.sourceId,
+                    ...match.branchPath,
+                    match.nodeId
+                ]
+                .join(":");
+
+            this.trace.debug("QueryExecutor.dedupeMatches", "match: and key: ", { match, key });
+
+            if (!unique.has(key)) {
+
+                unique.set(
+                    key,
+                    match
+                );
+            }
+        }
+
+        this.trace.debug("QueryExecutor.dedupeMatches", "...unique.values: ", { ...unique.values() });
+
+        return [
+            ...unique.values()
+        ];
+    }
+
+    // private dedupeMatches(
+    //     matches: TraversalMatch[]
+    // ): TraversalMatch[] {
+
+    //     const unique =
+    //         new Map<string, TraversalMatch>();
+
+    //     for (const match of matches) {
+
+    //         const key =
+    //             match.nodeId ??
+    //             `${match.sourceId}:${match.value}`;
+
+    //         if (!unique.has(key)) {
+    //             unique.set(key, match);
+    //         }
+    //     }
+
+    //     return [...unique.values()];
+    // }
+
     // private async evaluateAggregate(
     //     graph: ResolvedRecordGraph,
     //     records: DataRecord[],
@@ -249,12 +394,53 @@ export class QueryExecutor {
         context: TraversalContext,
         aggregatePlan: TraversalPlan | undefined,
         records: DataRecord[],
-        request: AggregateRequest
+        request: AggregateRequest,
+        whereMatches: TraversalMatch[] = []
     ): Promise<any> {
 
+        const aggregateMatches: TraversalMatch[] = [];
+
+
+        // ----------------------------------
+        // Build aggregate traversal matches
+        // ----------------------------------
+
+        if (aggregatePlan) {
+
+            for (const record of records) {
+
+                const result =
+                    this.traversalExecutor.execute(
+                        context,
+                        record.id,
+                        aggregatePlan
+                    );
+
+
+                aggregateMatches.push(
+                    ...result.matches
+                );
+            }
+        }
+
+
         const group: QueryGroupResult = {
+
             key: "__all__",
+
+
             records,
+
+
+            groupMatches: [],
+
+
+            aggregateMatches,
+
+
+            whereMatches,
+
+
             value: 0
         };
 
@@ -293,6 +479,89 @@ export class QueryExecutor {
             request
         );
     }
+
+    // private async evaluateAggregate(
+    //     context: TraversalContext,
+    //     aggregatePlan: TraversalPlan | undefined,
+    //     records: DataRecord[],
+    //     request: AggregateRequest
+    // ): Promise<any> {
+
+    //     const matches: TraversalMatch[] = [];
+
+    //     if (aggregatePlan) {
+
+    //         for (const record of records) {
+
+    //             const result =
+    //                 this.traversalExecutor.execute(
+    //                     context,
+    //                     record.id,
+    //                     aggregatePlan
+    //                 );
+
+    //             matches.push(
+    //                 ...result.matches
+    //             );
+    //         }
+    //     }
+
+    //     // if (aggregatePlan) {
+
+    //     //     for (const record of records) {
+
+    //     //         matches.push(
+    //     //             this.traversalExecutor.execute(
+    //     //                 context,
+    //     //                 record.id,
+    //     //                 aggregatePlan
+    //     //             )
+    //     //         );
+    //     //     }
+    //     // }
+
+    //     const group: QueryGroupResult = {
+    //         key: "__all__",
+    //         records,
+    //         aggregateMatches: matches,
+    //         value: 0
+    //     };
+
+
+    //     // ----------------------------------
+    //     // Aggregates that do not need a field
+    //     // ----------------------------------
+
+    //     if (!request.field) {
+
+    //         return this.aggregateResolver.evaluate(
+    //             context,
+    //             undefined,
+    //             group,
+    //             request
+    //         );
+    //     }
+
+
+    //     // ----------------------------------
+    //     // Field aggregates
+    //     // ----------------------------------
+
+    //     if (!aggregatePlan) {
+
+    //         throw new Error(
+    //             `Missing aggregate traversal plan for field: ${request.field}`
+    //         );
+    //     }
+
+
+    //     return this.aggregateResolver.evaluate(
+    //         context,
+    //         aggregatePlan,
+    //         group,
+    //         request
+    //     );
+    // }
 
     // private async evaluateAggregate(
     //     context: SchemaContext,
@@ -425,42 +694,142 @@ export class QueryExecutor {
         }
     }
 
+    private setCollectionProjectedValue(
+        target:any,
+        path:string,
+        values:any[]
+    ):void {
+
+        const parts =
+            path.split(".");
+
+
+        if (parts.length === 1) {
+
+            target[parts[0]] =
+                values;
+
+            return;
+        }
+
+
+        const collectionField =
+            parts[0];
+
+
+        target[collectionField] =
+            values;
+    }
+
     private async applyFilters(
         records: DataRecord[],
         filters: QueryFilter[],
         context: TraversalContext,
         plans: TraversalPlan[]
-    ): Promise<DataRecord[]> {
+    ): Promise<{
+        records: DataRecord[];
+        matches: TraversalMatch[];
+    }> {
 
         let result = records;
+
+        let allMatches: TraversalMatch[] = [];
+
 
         for (let i = 0; i < filters.length; i++) {
 
             const filter = filters[i];
             const plan = plans[i];
 
+
             const evaluated =
                 await Promise.all(
-                    result.map(async record => ({
-                        record,
-                        keep:
+                    result.map(async record => {
+
+                        const evaluation =
                             await this.matches(
                                 context,
                                 plan,
                                 filter,
                                 record
-                            )
-                    }))
+                            );
+
+
+                        return {
+                            record,
+                            ...evaluation
+                        };
+
+                    })
                 );
+
+
 
             result =
                 evaluated
-                    .filter(x => x.keep)
-                    .map(x => x.record);
+                    .filter(
+                        x => x.keep
+                    )
+                    .map(
+                        x => x.record
+                    );
+
+
+
+            allMatches.push(
+                ...evaluated
+                    .filter(
+                        x => x.keep
+                    )
+                    .flatMap(
+                        x => x.matches
+                    )
+            );
         }
 
-        return result;
+
+        return {
+            records: result,
+            matches: allMatches
+        };
     }
+
+    // private async applyFilters(
+    //     records: DataRecord[],
+    //     filters: QueryFilter[],
+    //     context: TraversalContext,
+    //     plans: TraversalPlan[]
+    // ): Promise<DataRecord[]> {
+
+    //     let result = records;
+
+    //     for (let i = 0; i < filters.length; i++) {
+
+    //         const filter = filters[i];
+    //         const plan = plans[i];
+
+    //         const evaluated =
+    //             await Promise.all(
+    //                 result.map(async record => ({
+    //                     record,
+    //                     keep:
+    //                         await this.matches(
+    //                             context,
+    //                             plan,
+    //                             filter,
+    //                             record
+    //                         )
+    //                 }))
+    //             );
+
+    //         result =
+    //             evaluated
+    //                 .filter(x => x.keep)
+    //                 .map(x => x.record);
+    //     }
+
+    //     return result;
+    // }
 
     // private async applyFilters(
     //     records: DataRecord[],
@@ -591,18 +960,22 @@ export class QueryExecutor {
             return records;
         }
 
+
         const result: any[] = [];
+
 
         for (const record of records) {
 
-            const projected: any = {
+            const projected:any = {
                 id: record.id
             };
+
 
             for (let i = 0; i < select.length; i++) {
 
                 const path = select[i];
                 const plan = plans[i];
+
 
                 const traversalResult =
                     this.traversalExecutor.execute(
@@ -611,68 +984,180 @@ export class QueryExecutor {
                         plan
                     );
 
-                const rawValue =
-                    traversalResult.values ??
-                    (
-                        traversalResult.value !== undefined
-                            ? traversalResult.value
-                            : undefined
+                const matches =
+                    traversalResult.matches;
+                    
+
+                const values =
+                    matches.map(
+                        m => m.value
                     );
 
+                // const values =
+                //     traversalResult.values ??
+                //     (
+                //         traversalResult.value !== undefined
+                //             ? [
+                //                 traversalResult.value
+                //             ]
+                //             : []
+                //     );
 
-                const field =
-                    schema.fields[path.split(".")[0]];
+                // this.trace.debug("QueryExecutor.applyProjection", "Before set projected values", { path, traversalResult, projected });
 
 
-                // --------------------------------------------------
-                // CASE 1: no field (safety fallback)
-                // --------------------------------------------------
+                /*
+                * A traversal that ends on multiple values
+                * is a collection traversal.
+                *
+                * Do not rebuild the path tree.
+                * Collapse the collection onto the final field.
+                */
 
-                if (!field) {
-                    this.setProjectedValue(
-                        projected,
-                        path,
-                        rawValue
+                const containsCollection =
+                    matches.length > 1 ||
+                    plan.steps.some(
+                        s => s.kind === "collection"
                     );
+
+                if (values.length === 0) {
+
+                    if (containsCollection) {
+
+                        this.setProjectedValue(
+                            projected,
+                            path,
+                            []
+                        );
+
+                    } else {
+
+                        this.setProjectedValue(
+                            projected,
+                            path,
+                            undefined
+                        );
+                    }
+
                     continue;
                 }
 
-
-                // --------------------------------------------------
-                // CASE 2: referenceCollection OR array field
-                // --------------------------------------------------
-
-                if (field.type === "referenceCollection") {
-
-                    const values =
-                        this.normalizeValue(rawValue);
-
-                    this.setProjectedValue(
-                        projected,
-                        path,
-                        values
-                    );
-
-                    continue;
-                }
-
-
-                // --------------------------------------------------
-                // CASE 3: scalar field
-                // --------------------------------------------------
+                const value =
+                    values.length <= 1
+                        ? values[0]
+                        : values;
 
                 this.setProjectedValue(
                     projected,
                     path,
-                    rawValue
+                    value
                 );
+
+                // this.trace.debug("QueryExecutor.applyProjection", "After set projected values", { path, projected });
             }
+
 
             result.push(projected);
         }
 
+
         return result;
     }
+
+    // private async applyProjection(
+    //     records: DataRecord[],
+    //     context: TraversalContext,
+    //     schema: Schema,
+    //     select: string[] | undefined,
+    //     plans: TraversalPlan[]
+    // ): Promise<any[]> {
+
+    //     if (!select || select.length === 0) {
+    //         return records;
+    //     }
+
+    //     const result: any[] = [];
+
+    //     for (const record of records) {
+
+    //         const projected: any = {
+    //             id: record.id
+    //         };
+
+    //         for (let i = 0; i < select.length; i++) {
+
+    //             const path = select[i];
+    //             const plan = plans[i];
+
+    //             const traversalResult =
+    //                 this.traversalExecutor.execute(
+    //                     context,
+    //                     record.id,
+    //                     plan
+    //                 );
+
+    //             const rawValue =
+    //                 traversalResult.values ??
+    //                 (
+    //                     traversalResult.value !== undefined
+    //                         ? traversalResult.value
+    //                         : undefined
+    //                 );
+
+
+    //             const field =
+    //                 schema.fields[path.split(".")[0]];
+
+
+    //             // --------------------------------------------------
+    //             // CASE 1: no field (safety fallback)
+    //             // --------------------------------------------------
+
+    //             if (!field) {
+    //                 this.setProjectedValue(
+    //                     projected,
+    //                     path,
+    //                     rawValue
+    //                 );
+    //                 continue;
+    //             }
+
+
+    //             // --------------------------------------------------
+    //             // CASE 2: referenceCollection OR array field
+    //             // --------------------------------------------------
+
+    //             if (field.type === "referenceCollection") {
+
+    //                 const values =
+    //                     this.normalizeValue(rawValue);
+
+    //                 this.setProjectedValue(
+    //                     projected,
+    //                     path,
+    //                     values
+    //                 );
+
+    //                 continue;
+    //             }
+
+
+    //             // --------------------------------------------------
+    //             // CASE 3: scalar field
+    //             // --------------------------------------------------
+
+    //             this.setProjectedValue(
+    //                 projected,
+    //                 path,
+    //                 rawValue
+    //             );
+    //         }
+
+    //         result.push(projected);
+    //     }
+
+    //     return result;
+    // }
 
     // private async applyProjection(
     //     records: DataRecord[],
@@ -767,17 +1252,6 @@ export class QueryExecutor {
         let records =
             await this.reader.getAll(context);
 
-        const graph =
-            await this.runner.run(
-                context,
-                records,
-                plan
-            );
-
-        const travContext: TraversalContext = {
-            schema: context.schema,
-            graph
-        };
 
         const travReqSet =
             await this.traversalRequestBuilder.build(
@@ -785,10 +1259,26 @@ export class QueryExecutor {
                 request
             );
 
+
         const travPlanSet =
             this.traversalPlanBuilder.build(
                 travReqSet
             );
+
+
+        const graph =
+            await this.runner.run(
+                context,
+                records,
+                travPlanSet
+            );
+
+
+        const travContext: TraversalContext = {
+            schema: context.schema,
+            graph
+        };
+
 
         this.trace.debug(
             "QueryExecutor",
@@ -804,15 +1294,26 @@ export class QueryExecutor {
         // 1. Apply filters
         // ----------------------------------
 
+        let whereMatches: TraversalMatch[] = [];
+
+
         if (request.where?.length) {
 
-            records =
+            const filterResult =
                 await this.applyFilters(
                     records,
                     request.where,
                     travContext,
                     travPlanSet.where
                 );
+
+
+            records =
+                filterResult.records;
+
+
+            whereMatches =
+                filterResult.matches;
         }
 
 
@@ -853,6 +1354,102 @@ export class QueryExecutor {
             travPlanSet.select
         );
     }
+
+    // async executeQuery(
+    //     context: SchemaContext,
+    //     request: QueryRequest,
+    //     plan: QueryPlan
+    // ): Promise<any[]> {
+
+    //     let records =
+    //         await this.reader.getAll(context);
+
+    //     const travReqSet =
+    //         await this.traversalRequestBuilder.build(
+    //             context,
+    //             request
+    //         );
+
+    //     const travPlanSet =
+    //         this.traversalPlanBuilder.build(
+    //             travReqSet
+    //         );
+
+    //     const graph =
+    //         await this.runner.run(
+    //             context,
+    //             records,
+    //             travPlanSet
+    //         );
+
+    //     const travContext: TraversalContext = {
+    //         schema: context.schema,
+    //         graph
+    //     };
+
+    //     this.trace.debug(
+    //         "QueryExecutor",
+    //         "Traversal Plans Built",
+    //         {
+    //             travReqSet,
+    //             travPlanSet
+    //         }
+    //     );
+
+
+    //     // ----------------------------------
+    //     // 1. Apply filters
+    //     // ----------------------------------
+
+    //     if (request.where?.length) {
+
+    //         records =
+    //             await this.applyFilters(
+    //                 records,
+    //                 request.where,
+    //                 travContext,
+    //                 travPlanSet.where
+    //             );
+    //     }
+
+
+    //     // ----------------------------------
+    //     // 2. Sort
+    //     // ----------------------------------
+
+    //     if (request.sort) {
+
+    //         records =
+    //             this.applySort(
+    //                 records,
+    //                 request.sort
+    //             );
+    //     }
+
+
+    //     // ----------------------------------
+    //     // 3. Pagination
+    //     // ----------------------------------
+
+    //     records =
+    //         this.applyPagination(
+    //             records,
+    //             request
+    //         );
+
+
+    //     // ----------------------------------
+    //     // 4. Projection
+    //     // ----------------------------------
+
+    //     return await this.applyProjection(
+    //         records,
+    //         travContext,
+    //         context.schema,
+    //         request.select,
+    //         travPlanSet.select
+    //     );
+    // }
 
 	// async executeQuery(
     //     context: SchemaContext,
@@ -901,20 +1498,6 @@ export class QueryExecutor {
             await this.reader.getAll(context);
 
 
-        const graph =
-            await this.runner.run(
-                context,
-                records,
-                plan
-            );
-
-
-        const travContext: TraversalContext = {
-            schema: context.schema,
-            graph
-        };
-
-
         const travReqSet =
             await this.traversalRequestBuilder.build(
                 context,
@@ -928,6 +1511,20 @@ export class QueryExecutor {
             );
 
 
+        const graph =
+            await this.runner.run(
+                context,
+                records,
+                travPlanSet
+            );
+
+
+        const travContext: TraversalContext = {
+            schema: context.schema,
+            graph
+        };
+
+
         this.trace.debug(
             "QueryExecutor",
             "Aggregate Traversal Built",
@@ -938,20 +1535,41 @@ export class QueryExecutor {
         );
 
 
+        let whereMatches: TraversalMatch[] = [];
+
+
         // ----------------------------------
         // Apply filters
         // ----------------------------------
 
         if (request.where?.length) {
 
-            records =
+            const filterResult =
                 await this.applyFilters(
                     records,
                     request.where,
                     travContext,
                     travPlanSet.where
                 );
+
+
+            records =
+                filterResult.records;
+
+
+            whereMatches =
+                filterResult.matches;
         }
+
+
+        this.trace.debug(
+            "QueryExecutor.executeAggregate",
+            "Filter Result",
+            {
+                recordCount: records.length,
+                whereMatches
+            }
+        );
 
 
         // ----------------------------------
@@ -962,9 +1580,83 @@ export class QueryExecutor {
             travContext,
             travPlanSet.aggregate,
             records,
-            request.aggregate
+            request.aggregate,
+            whereMatches
         );
     }
+
+    // async executeAggregate(
+    //     context: SchemaContext,
+    //     request: QueryRequest,
+    //     plan: QueryPlan
+    // ): Promise<number> {
+
+    //     let records =
+    //         await this.reader.getAll(context);
+
+
+    //     const travReqSet =
+    //         await this.traversalRequestBuilder.build(
+    //             context,
+    //             request
+    //         );
+
+
+    //     const travPlanSet =
+    //         this.traversalPlanBuilder.build(
+    //             travReqSet
+    //         );
+
+    //     const graph =
+    //         await this.runner.run(
+    //             context,
+    //             records,
+    //             travPlanSet
+    //         );
+
+
+    //     const travContext: TraversalContext = {
+    //         schema: context.schema,
+    //         graph
+    //     };
+
+    //     this.trace.debug(
+    //         "QueryExecutor",
+    //         "Aggregate Traversal Built",
+    //         {
+    //             travReqSet,
+    //             travPlanSet
+    //         }
+    //     );
+
+
+    //     // ----------------------------------
+    //     // Apply filters
+    //     // ----------------------------------
+
+    //     if (request.where?.length) {
+
+    //         records =
+    //             await this.applyFilters(
+    //                 records,
+    //                 request.where,
+    //                 travContext,
+    //                 travPlanSet.where
+    //             );
+    //     }
+
+
+    //     // ----------------------------------
+    //     // Aggregate
+    //     // ----------------------------------
+
+    //     return await this.evaluateAggregate(
+    //         travContext,
+    //         travPlanSet.aggregate,
+    //         records,
+    //         request.aggregate
+    //     );
+    // }
 
     // async executeAggregate(
     //     context: SchemaContext,
@@ -1000,44 +1692,11 @@ export class QueryExecutor {
         plan: QueryPlan
     ): Promise<QueryGroupResult[]> {
 
-        // ----------------------------------
-        // 1. Load records + graph
-        // ----------------------------------
 
         const records =
             await this.reader.getAll(context);
 
-        this.trace.debug(
-            "QueryExecutor",
-            "Before Runner"
-        );
 
-        const graph =
-            await this.runner.run(
-                context,
-                records,
-                plan
-            );
-
-        this.trace.debug(
-            "QueryExecutor",
-            "After Runner",
-            {
-                roots: graph.roots,
-                nodeCount: graph.nodes.size
-            }
-        );
-
-        this.trace.debug("QueryExecutot", "Records and Graph", { records, graph, roots: graph.roots, nodeCount: graph.nodes.size })
-
-        const travContext: TraversalContext = {
-            schema: context.schema,
-            graph
-        };
-
-        // ----------------------------------
-        // 2. Build traversal plans
-        // ----------------------------------
 
         const travReqSet =
             await this.traversalRequestBuilder.build(
@@ -1045,209 +1704,1094 @@ export class QueryExecutor {
                 request
             );
 
+
+
         const travPlanSet =
             this.traversalPlanBuilder.build(
                 travReqSet
             );
 
-        this.trace.debug(
-            "QueryExecutor",
-            "Traversal Plans Built",
-            {
-                groupPlan:
-                    travPlanSet.groupBy,
 
-                aggregatePlan:
-                    travPlanSet.aggregate
+
+        const executionPlan =
+            this.traversalExecutionPlanBuilder.build(
+                travPlanSet
+            );
+
+
+
+        const graph =
+            await this.runner.run(
+                context,
+                records,
+                travPlanSet
+            );
+
+
+
+        const travContext: TraversalContext = {
+            schema: context.schema,
+            graph
+        };
+
+
+
+        this.trace.debug(
+            "QueryExecutor.executeGroup",
+            "Traversal Built",
+            {
+                travReqSet,
+                travPlanSet
             }
         );
 
 
-        // ----------------------------------
-        // 3. Apply filters
-        // ----------------------------------
-        //
-        // Temporarily keep old filtering.
-        // This will be migrated separately.
-        //
 
-        let validRecords = records;
+        // ----------------------------------
+        // Apply filters
+        // ----------------------------------
+
+        let validRecords =
+            records;
+
+        let whereMatches: TraversalMatch[] = [];
+
 
         if (request.where?.length) {
 
-            validRecords =
+            const filterResult =
                 await this.applyFilters(
                     records,
                     request.where,
                     travContext,
                     travPlanSet.where
                 );
+
+
+            validRecords =
+                filterResult.records;
+
+
+            whereMatches =
+                filterResult.matches;
         }
 
 
-        // ----------------------------------
-        // 4. Grouping
-        // ----------------------------------
 
         const groups =
             new Map<any, QueryGroupResult>();
 
-        const mode =
-            request.groupByMode ??
-            "fanout";
 
+
+        // ----------------------------------
+        // Process records
+        // ----------------------------------
 
         for (const record of validRecords) {
 
-            const result =
-                this.traversalExecutor.execute(
-                    travContext,
-                    record.id,
-                    travPlanSet.groupBy
-                );
 
+            /*
+            * Find anchor points.
+            *
+            * Example:
+            *
+            * Guild
+            *   |
+            * members
+            *
+            * returns:
+            *
+            * Bob
+            * Alice
+            */
 
-            const rawKeys =
-                result.values ??
-                (
-                    result.value !== undefined
-                        ? [result.value]
-                        : []
-                );
-
-
-            const keys =
-                rawKeys.filter(
-                    k =>
-                        k !== undefined &&
-                        k !== null
-                );
-
-
-            let finalKeys: any[];
-
-
-            switch (mode) {
-
-                case "collapse":
-
-                    finalKeys =
-                        keys.length
-                            ? [keys.join("|")]
-                            : [];
-
-                    break;
-
-
-                case "first":
-
-                    finalKeys =
-                        keys.length
-                            ? [keys[0]]
-                            : [];
-
-                    break;
-
-
-                case "distinct":
-
-                    finalKeys =
-                        [...new Set(keys)];
-
-                    break;
-
-
-                case "fanout":
-                default:
-
-                    finalKeys =
-                        keys;
-
-                    break;
-            }
-
-
-            for (const key of finalKeys) {
-
-                let group =
-                    groups.get(key);
-
-
-                if (!group) {
-
-                    group = {
-                        key,
-                        records: [],
-                        value: 0
+            const anchorResult =
+                executionPlan.commonPrefix
+                    ? this.traversalExecutor.execute(
+                        travContext,
+                        record.id,
+                        executionPlan.commonPrefix,
+                        {
+                            returnNodes: true
+                        }
+                    )
+                    : {
+                        matches: [
+                            {
+                                value: undefined,
+                                nodeId: record.id,
+                                sourceId: record.id,
+                                branchPath: []
+                            }
+                        ]
                     };
 
-                    groups.set(
-                        key,
-                        group
-                    );
+
+
+            for (const anchor of anchorResult.matches) {
+
+
+                const anchorNode =
+                    anchor.nodeId;
+
+
+
+                if (!anchorNode) {
+                    continue;
                 }
 
 
-                if (
-                    !group.records.some(
-                        r =>
-                            r.id === record.id
-                    )
-                ) {
 
-                    group.records.push(
-                        record
+                /*
+                * Group branch
+                *
+                * Example:
+                *
+                * Bob -> name
+                *
+                * returns:
+                *
+                * "Bob"
+                */
+
+                const groupResult =
+                    executionPlan.groupBranch
+                        ? this.traversalExecutor.execute(
+                            travContext,
+                            anchorNode,
+                            executionPlan.groupBranch.suffixPlan
+                        )
+                        : undefined;
+
+
+
+                const groupMatches =
+                    groupResult?.matches ?? [];
+
+
+
+                this.trace.debug(
+                    "QueryExecutor.executeGroup",
+                    "Group Branch Result",
+                    {
+                        anchor: anchorNode,
+                        matches: groupMatches
+                    }
+                );
+
+
+
+                for (const groupMatch of groupMatches) {
+
+
+                    const key =
+                        groupMatch.value;
+
+
+
+                    let group =
+                        groups.get(key);
+
+
+
+                    if (!group) {
+
+
+                        group = {
+
+                            key,
+
+                            records: [],
+
+                            groupMatches: [],
+
+                            whereMatches: [],
+
+                            aggregateMatches: [],
+
+                            value: 0
+                        };
+
+
+
+                        groups.set(
+                            key,
+                            group
+                        );
+                    }
+
+
+
+                    /*
+                    * Attach group matches
+                    */
+
+                    group.groupMatches!.push(
+                        groupMatch
                     );
+
+
+
+                    /*
+                    * Attach where matches
+                    */
+
+                    group.whereMatches!.push(
+                        ...whereMatches
+                    );
+
+
+
+                    /*
+                    * Track records
+                    */
+
+                    if (
+                        !group.records.some(
+                            r =>
+                                r.id === record.id
+                        )
+                    ) {
+
+                        group.records.push(
+                            record
+                        );
+                    }
+
+
+
+                    /*
+                    * Aggregate branch
+                    *
+                    * IMPORTANT:
+                    *
+                    * No global node dedupe.
+                    *
+                    * Bob -> Sword
+                    * Alice -> Sword
+                    *
+                    * are two valid aggregate matches.
+                    */
+
+                    if (
+                        executionPlan.aggregateBranch
+                    ) {
+
+
+                        const aggregateResult =
+                            this.traversalExecutor.execute(
+                                travContext,
+                                anchorNode,
+                                executionPlan.aggregateBranch.suffixPlan
+                            );
+
+
+
+                        const aggregateMatches =
+                            aggregateResult.matches.filter(
+                                m =>
+                                    m.value !== undefined &&
+                                    m.value !== null
+                            );
+
+
+
+                        group.aggregateMatches!.push(
+                            ...aggregateMatches
+                        );
+                    }
                 }
             }
         }
 
 
+
         // ----------------------------------
-        // 5. Aggregate
+        // Evaluate groups
         // ----------------------------------
 
-        const results:
-            QueryGroupResult[] = [];
+        const results: QueryGroupResult[] = [];
 
 
         for (const group of groups.values()) {
 
+
             group.value =
                 await this.aggregateResolver.evaluate(
                     travContext,
-                    travPlanSet.aggregate,
+                    undefined,
                     group,
                     request.aggregate
                 );
 
 
-            results.push(group);
+
+            results.push(
+                group
+            );
         }
 
 
-        // ----------------------------------
-        // 6. Having
-        // ----------------------------------
 
-        const filtered =
+        return this.applyGroupSort(
             await this.applyHaving(
                 results,
                 context,
                 graph,
                 request.having
-            );
-
-
-        // ----------------------------------
-        // 7. Sort
-        // ----------------------------------
-
-        return this.applyGroupSort(
-            filtered,
+            ),
             request.sort
         );
     }
+
+    // async executeGroup(
+    //     context: SchemaContext,
+    //     request: QueryRequest,
+    //     plan: QueryPlan
+    // ): Promise<QueryGroupResult[]> {
+
+
+    //     const records =
+    //         await this.reader.getAll(context);
+
+
+
+    //     const travReqSet =
+    //         await this.traversalRequestBuilder.build(
+    //             context,
+    //             request
+    //         );
+
+
+    //     const travPlanSet =
+    //         this.traversalPlanBuilder.build(
+    //             travReqSet
+    //         );
+
+
+    //     const executionPlan =
+    //         this.traversalExecutionPlanBuilder.build(
+    //             travPlanSet
+    //         );
+
+
+
+    //     const graph =
+    //         await this.runner.run(
+    //             context,
+    //             records,
+    //             travPlanSet
+    //         );
+
+
+    //     const travContext: TraversalContext = {
+    //         schema: context.schema,
+    //         graph
+    //     };
+
+
+
+    //     let validRecords = records;
+
+
+    //     if (request.where?.length) {
+
+    //         validRecords =
+    //             await this.applyFilters(
+    //                 records,
+    //                 request.where,
+    //                 travContext,
+    //                 travPlanSet.where
+    //             );
+    //     }
+
+
+
+    //     const groups =
+    //         new Map<any, QueryGroupResult>();
+
+
+    //     for (const record of validRecords) {
+
+
+    //         /*
+    //         * 1. Find anchors
+    //         *
+    //         * Example:
+    //         *
+    //         * Guild
+    //         *  |
+    //         * members
+    //         *
+    //         * returns:
+    //         *
+    //         * Bob node
+    //         * Alice node
+    //         */
+    //         const anchorResult =
+    //             executionPlan.commonPrefix
+    //                 ? this.traversalExecutor.execute(
+    //                     travContext,
+    //                     record.id,
+    //                     executionPlan.commonPrefix,
+    //                     {
+    //                         returnNodes: true
+    //                     }
+    //                 )
+    //                 : {
+    //                     matches: [{
+    //                         value: undefined,
+    //                         nodeId: record.id,
+    //                         sourceId: record.id
+    //                     }]
+    //                 };
+
+    //         this.trace.debug(
+    //             "QueryExecutor.executeGroup",
+    //             "Anchor Result",
+    //             {
+    //                 matches:
+    //                     anchorResult?.matches
+    //             }
+    //         );
+
+    //         for (const anchor of anchorResult.matches) {
+
+
+    //             const anchorNode =
+    //                 anchor.nodeId;
+
+
+
+    //             if (!anchorNode) {
+    //                 continue;
+    //             }
+
+
+
+    //             /*
+    //             * 2. Execute group branch
+    //             *
+    //             * Bob:
+    //             *
+    //             * anchor = Bob node
+    //             * suffix = name
+    //             *
+    //             * result = Bob
+    //             */
+    //             const groupResult =
+    //                 executionPlan.groupBranch
+    //                     ? this.traversalExecutor.execute(
+    //                         travContext,
+    //                         anchorNode,
+    //                         executionPlan.groupBranch.suffixPlan
+    //                     )
+    //                     : undefined;
+
+    //             this.trace.debug(
+    //                 "QueryExecutor.executeGroup",
+    //                 "Group Branch Result",
+    //                 {
+    //                     anchor: anchor.nodeId,
+    //                     matches: groupResult.matches
+    //                 }
+    //             );
+
+    //             const groupMatches =
+    //                 groupResult?.matches ?? [];
+
+
+
+    //             for (const groupMatch of groupMatches) {
+
+
+    //                 const key =
+    //                     groupMatch.value;
+
+
+
+    //                 let group =
+    //                     groups.get(key);
+
+
+
+    //                 if (!group) {
+
+    //                     group = {
+
+    //                         key,
+
+    //                         records: [],
+
+    //                         groupMatches: [],
+
+    //                         aggregateMatches: [],
+
+    //                         value: 0
+    //                     };
+
+
+    //                     groups.set(
+    //                         key,
+    //                         group
+    //                     );
+    //                 }
+
+
+
+    //                 group.groupMatches.push(
+    //                     groupMatch
+    //                 );
+
+
+
+    //                 if (
+    //                     !group.records.some(
+    //                         r =>
+    //                             r.id === record.id
+    //                     )
+    //                 ) {
+
+    //                     group.records.push(
+    //                         record
+    //                     );
+    //                 }
+
+
+
+    //                 /*
+    //                 * 3. Execute aggregate from SAME anchor
+    //                 *
+    //                 * Bob:
+    //                 *
+    //                 * anchor = Bob node
+    //                 * suffix = items.damage
+    //                 *
+    //                 * result = [10]
+    //                 */
+    //                 if (
+    //                     executionPlan.aggregateBranch
+    //                 ) {
+
+
+    //                     const aggregateResult =
+    //                         this.traversalExecutor.execute(
+    //                             travContext,
+    //                             anchorNode,
+    //                             executionPlan.aggregateBranch.suffixPlan
+    //                         );
+
+
+    //                     const aggregateMatches = this.dedupeMatches(
+    //                         aggregateResult.matches.filter(
+    //                             m =>
+    //                                 m.value !== undefined &&
+    //                                 m.value !== null
+    //                         )
+    //                     );
+
+
+    //                     group.aggregateMatches.push(
+    //                         ...aggregateMatches
+    //                     );
+    //                 }
+    //             }
+    //         }
+    //     }
+
+
+
+    //     const results: QueryGroupResult[] = [];
+
+
+    //     for (const group of groups.values()) {
+
+
+    //         group.value =
+    //             await this.aggregateResolver.evaluate(
+    //                 travContext,
+    //                 undefined,
+    //                 group,
+    //                 request.aggregate
+    //             );
+
+
+    //         results.push(group);
+    //     }
+
+
+
+    //     return this.applyGroupSort(
+    //         await this.applyHaving(
+    //             results,
+    //             context,
+    //             graph,
+    //             request.having
+    //         ),
+    //         request.sort
+    //     );
+    // }
+
+    // async executeGroup(
+    //     context: SchemaContext,
+    //     request: QueryRequest,
+    //     plan: QueryPlan
+    // ): Promise<QueryGroupResult[]> {
+
+    //     // ----------------------------------
+    //     // 1. Load records + graph
+    //     // ----------------------------------
+
+    //     const records =
+    //         await this.reader.getAll(context);
+
+    //     this.trace.debug(
+    //         "QueryExecutor",
+    //         "Before Runner"
+    //     );
+
+    //     // this.trace.debug(
+    //     //     "QueryExecutor",
+    //     //     "After Runner",
+    //     //     {
+    //     //         roots: graph.roots,
+    //     //         nodeCount: graph.nodes.size
+    //     //     }
+    //     // );
+
+    //     // this.trace.debug("QueryExecutot", "Records and Graph", { records, graph, roots: graph.roots, nodeCount: graph.nodes.size })
+
+    //     // ----------------------------------
+    //     // 2. Build traversal plans
+    //     // ----------------------------------
+
+    //     const travReqSet =
+    //         await this.traversalRequestBuilder.build(
+    //             context,
+    //             request
+    //         );
+
+    //     const travPlanSet =
+    //         this.traversalPlanBuilder.build(
+    //             travReqSet
+    //         );
+
+    //     const graph =
+    //         await this.runner.run(
+    //             context,
+    //             records,
+    //             travPlanSet
+    //         );
+
+    //     const travContext: TraversalContext = {
+    //         schema: context.schema,
+    //         graph
+    //     };
+
+    //     this.trace.debug(
+    //         "QueryExecutor",
+    //         "Traversal Plans Built",
+    //         {
+    //             groupPlan:
+    //                 travPlanSet.groupBy,
+
+    //             aggregatePlan:
+    //                 travPlanSet.aggregate
+    //         }
+    //     );
+
+
+    //     // ----------------------------------
+    //     // 3. Apply filters
+    //     // ----------------------------------
+    //     //
+    //     // Temporarily keep old filtering.
+    //     // This will be migrated separately.
+    //     //
+
+    //     let validRecords = records;
+
+    //     if (request.where?.length) {
+
+    //         validRecords =
+    //             await this.applyFilters(
+    //                 records,
+    //                 request.where,
+    //                 travContext,
+    //                 travPlanSet.where
+    //             );
+    //     }
+
+
+    //     // ----------------------------------
+    //     // 4. Grouping
+    //     // ----------------------------------
+
+    //     const groups =
+    //         new Map<any, QueryGroupResult>();
+
+    //     const mode =
+    //         request.groupByMode ??
+    //         "fanout";
+
+
+    //     for (const record of validRecords) {
+
+    //         const result =
+    //             this.traversalExecutor.execute(
+    //                 travContext,
+    //                 record.id,
+    //                 travPlanSet.groupBy
+    //             );
+
+    //         let aggregateMatches: TraversalMatch[] | undefined;
+
+
+    //         if (travPlanSet.aggregate) {
+
+    //             const aggregateResult =
+    //                 this.traversalExecutor.execute(
+    //                     travContext,
+    //                     record.id,
+    //                     travPlanSet.aggregate
+    //                 );
+
+    //             aggregateMatches =
+    //                 aggregateResult.matches.filter(
+    //                     m =>
+    //                         m.value !== undefined &&
+    //                         m.value !== null
+    //                 );
+    //         }
+
+    //         // const aggregateMatches =
+    //         //     aggregateResult.matches.filter(
+    //         //         m =>
+    //         //             m.value !== undefined &&
+    //         //             m.value !== null
+    //         //     );
+
+
+    //             // group.aggregateMatches.push(
+    //             //     aggregateResult.matches
+    //             // );
+
+
+    //         // const rawKeys =
+    //         //     result.values ??
+    //         //     (
+    //         //         result.value !== undefined
+    //         //             ? [result.value]
+    //         //             : []
+    //         //     );
+
+
+    //         // const keys =
+    //         //     rawKeys.filter(
+    //         //         k =>
+    //         //             k !== undefined &&
+    //         //             k !== null
+    //         //     );
+
+    //         const matches =
+    //             result.matches.filter(
+    //                 m =>
+    //                     m.value !== undefined &&
+    //                     m.value !== null
+    //             );
+
+
+    //         const keys =
+    //             matches.map(
+    //                 m => m.value
+    //             );
+
+    //         let finalMatches: TraversalMatch[];
+
+
+    //         switch (mode) {
+
+    //             case "collapse":
+
+    //                 finalMatches =
+    //                     keys.length
+    //                         ? [{
+    //                             value: keys.join("|"),
+    //                             nodeId: undefined,
+    //                             sourceId: record.id
+    //                         }]
+    //                         : [];
+
+    //                 break;
+
+
+    //             case "first":
+
+    //                 finalMatches =
+    //                     matches.length
+    //                         ? [matches[0]]
+    //                         : [];
+
+    //                 break;
+
+
+    //             case "distinct":
+
+    //                 finalMatches =
+    //                     [
+    //                         ...new Map(
+    //                             matches.map(
+    //                                 m => [
+    //                                     m.value,
+    //                                     m
+    //                                 ]
+    //                             )
+    //                         ).values()
+    //                     ];
+
+    //                 break;
+
+
+    //             case "fanout":
+    //             default:
+
+    //                 finalMatches =
+    //                     matches;
+
+    //                 break;
+    //         }
+
+
+    //         // let finalKeys: any[];
+
+
+    //         // switch (mode) {
+
+    //         //     case "collapse":
+
+    //         //         finalKeys =
+    //         //             keys.length
+    //         //                 ? [keys.join("|")]
+    //         //                 : [];
+
+    //         //         break;
+
+
+    //         //     case "first":
+
+    //         //         finalKeys =
+    //         //             keys.length
+    //         //                 ? [keys[0]]
+    //         //                 : [];
+
+    //         //         break;
+
+
+    //         //     case "distinct":
+
+    //         //         finalKeys =
+    //         //             [...new Set(keys)];
+
+    //         //         break;
+
+
+    //         //     case "fanout":
+    //         //     default:
+
+    //         //         finalKeys =
+    //         //             keys;
+
+    //         //         break;
+    //         // }
+
+    //         for (const match of finalMatches) {
+
+    //             const key =
+    //                 match.value;
+
+
+    //             let group =
+    //                 groups.get(key);
+
+
+    //             if (!group) {
+
+    //                 group = {
+    //                     key,
+    //                     records: [],
+    //                     groupMatches: [],
+    //                     aggregateMatches: [],
+    //                     value: 0
+    //                 };
+
+    //                 groups.set(
+    //                     key,
+    //                     group
+    //                 );
+    //             }
+
+
+    //             if (
+    //                 !group.records.some(
+    //                     r =>
+    //                         r.id === record.id
+    //                 )
+    //             ) {
+
+    //                 group.records.push(
+    //                     record
+    //                 );
+    //             }
+
+
+    //             group.groupMatches.push(
+    //                 match
+    //             );
+
+    //             group.aggregateMatches.push(
+    //                     ...aggregateMatches
+    //                 );
+
+
+    //             // if (travPlanSet.aggregate) {
+
+    //             //     group.aggregateMatches.push(
+    //             //         ...aggregateMatches
+    //             //     );
+    //             // }
+    //         }
+
+    //         // for (const match of finalMatches) {
+
+    //         //     const key =
+    //         //         match.value;
+
+
+    //         //     let group =
+    //         //         groups.get(key);
+
+
+    //         //     if (!group) {
+
+    //         //         group = {
+    //         //             key,
+    //         //             records: [],
+    //         //             groupMatches: [],
+    //         //             aggregateMatches: [],
+    //         //             value: 0
+    //         //         };
+
+    //         //         groups.set(
+    //         //             key,
+    //         //             group
+    //         //         );
+    //         //     }
+
+
+    //         //     if (
+    //         //         !group.records.some(
+    //         //             r =>
+    //         //                 r.id === record.id
+    //         //         )
+    //         //     ) {
+
+    //         //         group.records.push(
+    //         //             record
+    //         //         );
+    //         //     }
+
+
+    //         //     group.groupMatches.push(
+    //         //         match
+    //         //     );
+    //         // }
+
+            
+
+    //         // for (const key of finalKeys) {
+
+    //         //     let group =
+    //         //         groups.get(key);
+
+
+    //         //     if (!group) {
+
+    //         //         group = {
+    //         //             key,
+    //         //             records: [],
+    //         //             matches: [],
+    //         //             value: 0
+    //         //         };
+
+    //         //         groups.set(
+    //         //             key,
+    //         //             group
+    //         //         );
+    //         //     }
+
+
+    //         //     if (
+    //         //         !group.records.some(
+    //         //             r =>
+    //         //                 r.id === record.id
+    //         //         )
+    //         //     ) {
+
+    //         //         group.records.push(
+    //         //             record
+    //         //         );
+    //         //     }
+
+    //         //     group.matches.push(result);
+    //         // }
+    //     }
+
+
+    //     // ----------------------------------
+    //     // 5. Aggregate
+    //     // ----------------------------------
+
+    //     const results:
+    //         QueryGroupResult[] = [];
+
+
+    //     for (const group of groups.values()) {
+
+    //         group.value =
+    //             await this.aggregateResolver.evaluate(
+    //                 travContext,
+    //                 travPlanSet.aggregate,
+    //                 group,
+    //                 request.aggregate
+    //             );
+
+
+    //         results.push(group);
+    //     }
+
+
+    //     // ----------------------------------
+    //     // 6. Having
+    //     // ----------------------------------
+
+    //     const filtered =
+    //         await this.applyHaving(
+    //             results,
+    //             context,
+    //             graph,
+    //             request.having
+    //         );
+
+
+    //     // ----------------------------------
+    //     // 7. Sort
+    //     // ----------------------------------
+
+    //     return this.applyGroupSort(
+    //         filtered,
+    //         request.sort
+    //     );
+    // }
 
     // async executeGroup(
     //     context: SchemaContext,

@@ -1,7 +1,14 @@
+import { TraversalMatch } from "../traversal";
+
 export interface MutationTarget {
-    rootId: string;
-    nodeId: string;
-    fieldPath: string;
+    match: TraversalMatch;
+    // rootId: string;
+    // nodeId: string;
+    field: string;
 	valid: boolean;
 }
 
+export interface MutationTargetSet {
+    targets: MutationTarget[];
+    whereMatches: TraversalMatch[];
+}
