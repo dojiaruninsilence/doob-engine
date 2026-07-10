@@ -1,14 +1,11 @@
 import { SchemaContext } from "../../types/ContextTypes";
 import { QueryRequest, QueryGroupResult } from "../../types/query/QueryTypes";
 import { DataRecord } from "../../types/DataTypes";
-import { QueryPlanner } from "./QueryPlanner";
 import { QueryExecutor } from "./QueryExecutor";
-// import { Notice } from "obsidian";
 
 export class QueryManager {
 
 	constructor(
-		private queryPlanner: QueryPlanner,
 		private queryExecutor: QueryExecutor
 	) {}
 
@@ -17,12 +14,10 @@ export class QueryManager {
 		request: QueryRequest
 	): Promise<DataRecord[]> {
 
-		const plan = await this.queryPlanner.plan(context, request);
-
 		return await this.queryExecutor.executeQuery(
 			context,
 			request,
-			plan
+			// plan
 		);
 	}
 
@@ -61,12 +56,10 @@ export class QueryManager {
 			);
 		}
 
-		const plan = await this.queryPlanner.plan(context, request);
-
 		return await this.queryExecutor.executeAggregate(
 			context,
 			request,
-			plan
+			// plan
 		);
 	}
 
@@ -87,12 +80,10 @@ export class QueryManager {
 			);
 		}
 
-		const plan = await this.queryPlanner.plan(context, request);
-
 		return await this.queryExecutor.executeGroup(
 			context,
 			request,
-			plan
+			// plan
 		);
 	}
 }

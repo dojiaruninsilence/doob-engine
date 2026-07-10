@@ -1,25 +1,15 @@
 import { IDataReader } from "../../interfaces/IDataReader";
 import { SchemaContext } from "../../types/ContextTypes";
 import { QueryRequest, QueryGroupResult, QueryFilter } from "../../types/query/QueryTypes";
-import { QueryPlan } from "../../types/query/QueryPlannerTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryExecutionPlanRunner } from "./QueryExecutionPlanRunner";
-// import { Notice } from "obsidian";
-// import { ResolvedRecordGraphNavigator } from "./graph/ResolvedRecordGraphNavigator";
-import { ResolvedRecordGraph } from "../../types/query/ResolvedRecordGraph";
 import { AggregateRequest } from "../../types/query/AggregateTypes";
 import { AggregateResolver } from "./aggregate/AggregateResolver";
-import { Schema } from "../../types/SchemaTypes";
-// import { QueryMatchBuilder } from "./match/QueryMatchBuilder";
-// import { QueryMatchNavigator } from "./match/QueryMatchNavigator";
-// import { TraversalPlanner } from "../traversal/TraversalPlanner";
 import { TraversalExecutor } from "../traversal/TraversalExecutor";
-// import { LegacyTraversalAdapter } from "../traversal/LegacyTraversalAdapter";
-// import { Logger } from "../logging/Logger";
 import { TraceLogger } from "../logging/TraceLogger";
 import { TraversalRequestBuilder } from "../traversal/TraversalRequestBuilder";
 import { TraversalPlanBuilder } from "../traversal/TraversalPlanBuilder";
-import { TraversalContext, TraversalMatch, TraversalPlan, TraversalResult } from "../../types/traversal";
+import { TraversalContext, TraversalMatch, TraversalPlan } from "../../types/traversal";
 import { TraversalExecutionPlanBuilder } from "../traversal/TraversalExecutionPlanBuilder";
 import { FilterResult } from "../../types/query";
 
@@ -28,23 +18,13 @@ export class QueryExecutor {
 	constructor(
 		private reader: IDataReader,
         private runner: QueryExecutionPlanRunner,
-        // private graphNavigator: ResolvedRecordGraphNavigator,
         private aggregateResolver: AggregateResolver,
-        // private matchBuilder: QueryMatchBuilder,
-        // private matchNavigator: QueryMatchNavigator,
-        // private traversalPlanner: TraversalPlanner,
         private traversalExecutor: TraversalExecutor,
-        // private traversalAdapter: LegacyTraversalAdapter,
         private traversalRequestBuilder: TraversalRequestBuilder,
         private traversalPlanBuilder: TraversalPlanBuilder,
         private traversalExecutionPlanBuilder: TraversalExecutionPlanBuilder,
         private trace: TraceLogger
 	) {}
-
-    // private normalizeValue(value: any): any[] {
-    //     if (value === undefined || value === null) return [];
-    //     return Array.isArray(value) ? value : [value];
-    // }
 
     private compareValue(
         value: any,
@@ -180,43 +160,6 @@ export class QueryExecutor {
                 return false;
         }
     }
-
-    // private dedupeMatches(
-    //     matches: TraversalMatch[]
-    // ): TraversalMatch[] {
-
-    //     const unique =
-    //         new Map<string, TraversalMatch>();
-
-    //     this.trace.debug("QueryExecutor.dedupeMatches", "matches: ", { matches });
-
-    //     for (const match of matches) {
-
-    //         const key =
-    //             [
-    //                 match.sourceId,
-    //                 ...match.branchPath,
-    //                 match.nodeId
-    //             ]
-    //             .join(":");
-
-    //         this.trace.debug("QueryExecutor.dedupeMatches", "match: and key: ", { match, key });
-
-    //         if (!unique.has(key)) {
-
-    //             unique.set(
-    //                 key,
-    //                 match
-    //             );
-    //         }
-    //     }
-
-    //     this.trace.debug("QueryExecutor.dedupeMatches", "...unique.values: ", { ...unique.values() });
-
-    //     return [
-    //         ...unique.values()
-    //     ];
-    // }
 
     private async evaluateAggregate(
         context: TraversalContext,
@@ -373,33 +316,6 @@ export class QueryExecutor {
             current = current[part];
         }
     }
-
-    // private setCollectionProjectedValue(
-    //     target:any,
-    //     path:string,
-    //     values:any[]
-    // ):void {
-
-    //     const parts =
-    //         path.split(".");
-
-
-    //     if (parts.length === 1) {
-
-    //         target[parts[0]] =
-    //             values;
-
-    //         return;
-    //     }
-
-
-    //     const collectionField =
-    //         parts[0];
-
-
-    //     target[collectionField] =
-    //         values;
-    // }
 
     private async applyFilters(
         records: DataRecord[],
@@ -565,7 +481,6 @@ export class QueryExecutor {
     private async applyProjection(
         records: DataRecord[],
         context: TraversalContext,
-        schema: Schema,
         select: string[] | undefined,
         plans: TraversalPlan[]
     ): Promise<any[]> {
@@ -665,8 +580,6 @@ export class QueryExecutor {
 
     private async applyHaving(
         groups: QueryGroupResult[],
-        context: SchemaContext,
-        graph: ResolvedRecordGraph,
         having?: QueryFilter[]
     ): Promise<QueryGroupResult[]> {
 
@@ -693,8 +606,7 @@ export class QueryExecutor {
 
     async executeQuery(
         context: SchemaContext,
-        request: QueryRequest,
-        plan: QueryPlan
+        request: QueryRequest
     ): Promise<any[]> {
 
         let records =
@@ -797,7 +709,7 @@ export class QueryExecutor {
         return await this.applyProjection(
             records,
             travContext,
-            context.schema,
+            // context.schema,
             request.select,
             travPlanSet.select
         );
@@ -805,8 +717,7 @@ export class QueryExecutor {
 
     async executeAggregate(
         context: SchemaContext,
-        request: QueryRequest,
-        plan: QueryPlan
+        request: QueryRequest
     ): Promise<number> {
 
         let records =
@@ -902,8 +813,7 @@ export class QueryExecutor {
 
     async executeGroup(
         context: SchemaContext,
-        request: QueryRequest,
-        plan: QueryPlan
+        request: QueryRequest
     ): Promise<QueryGroupResult[]> {
 
 
@@ -1250,8 +1160,6 @@ export class QueryExecutor {
         return this.applyGroupSort(
             await this.applyHaving(
                 results,
-                context,
-                graph,
                 request.having
             ),
             request.sort

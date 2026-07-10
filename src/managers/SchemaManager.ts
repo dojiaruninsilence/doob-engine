@@ -1,4 +1,4 @@
-import { App, Notice, TFile, normalizePath } from "obsidian";
+import { App, TFile, normalizePath } from "obsidian";
 import { Schema, SchemaField } from "../types/SchemaTypes";
 import { RulesetManager } from "./RulesetManager";
 import { FIELD_TYPES, FieldType } from "../types/FieldTypes";

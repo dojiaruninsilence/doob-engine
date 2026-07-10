@@ -1,10 +1,8 @@
 import { SchemaContext } from "../../types/ContextTypes";
 import { DataRecord } from "../../types/DataTypes";
-// import { QueryPlan } from "../../types/query/QueryPlannerTypes";
 import { ResolvedRecordGraph } from "../../types/query/ResolvedRecordGraph";
-import { TraversalPlan, TraversalPlanSet } from "../../types/traversal";
+import { TraversalPlanSet } from "../../types/traversal";
 import { ResolvedRecordGraphBuilder } from "../traversal/ResolvedRecordGraphBuilder";
-// import { Notice } from "obsidian";
 
 export class QueryExecutionPlanRunner {
 

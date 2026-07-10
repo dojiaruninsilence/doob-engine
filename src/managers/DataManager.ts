@@ -1,4 +1,4 @@
-import { App, Notice, TFile, normalizePath } from "obsidian";
+import { App, TFile, normalizePath } from "obsidian";
 import { DataFile, DataRecord } from "../types/DataTypes";
 import { SchemaManager } from "./SchemaManager";
 import { SchemaContext } from "../types/ContextTypes";

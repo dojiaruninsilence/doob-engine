@@ -1,22 +1,7 @@
 import { Notice } from "obsidian";
-// import { ResolvedRecordGraphNavigator } from "../managers/query/graph/ResolvedRecordGraphNavigator";
-// import { AggregateResolver } from "../managers/query/aggregate/AggregateResolver";
-// import { QueryGroupResult } from "../types/query/QueryTypes";
-// import { AggregateStrategyRegistry } from "../managers/query/aggregate/AggregateStrategyRegistry";
-// import { CountMatchesStrategy } from "../managers/query/aggregate/strategies/CountMatchesStrategy";
-// import { SumStrategy } from "../managers/query/aggregate/strategies/SumStrategy";
-// import { AvgStrategy } from "../managers/query/aggregate/strategies/AvgStrategy";
-// import { MinStrategy } from "../managers/query/aggregate/strategies/MinStrategy";
-// import { MaxStrategy } from "../managers/query/aggregate/strategies/MaxStrategy";
-// import { DistinctCountStrategy } from "../managers/query/aggregate/strategies/DistinctCountStrategy";
-// import { DistinctValuesStrategy } from "../managers/query/aggregate/strategies/DistinctValuesStrategy";
-// import { QueryMatchNavigator } from "../managers/query/match/QueryMatchNavigator";
-// import { CountRootsStrategy } from "../managers/query/aggregate/strategies/CountRootsStrategy";
 import { Logger } from "../managers/logging/Logger";
 import { LoggerFactory } from "../managers/logging/LoggerFactory";
-// import { TraversalExecutor } from "../managers/traversal/TraversalExecutor";
 import { TraceLogger } from "../managers/logging/TraceLogger";
-// import { ValueResolver } from "../managers/traversal/resolver/ValueResolver";
 
 export class EngineTestRunner {
 
@@ -24,25 +9,19 @@ export class EngineTestRunner {
 	private dataManager: any;
 	private contextFactory: any;
 	private queryManager: any;
-	private queryPlanner: any;
-	// private graphBuilder: any;
 	private logger!: Logger;
 	private engineLogger!: Logger;
 	private loggerFactory!: LoggerFactory;
 	private mutationExecutor: any;
-	// private trace: TraceLogger;
 
 	constructor(
 		schemaManager: any, 
 		dataManager: any, 
 		contextFactory: any, 
-		queryManager: any, 
-		queryPlanner: any,
-		// graphBuilder: any,
+		queryManager: any,
 		mutationExecutor: any,
 		engineLogger: Logger,
-		loggerFactory: LoggerFactory,
-		// trace: TraceLogger
+		loggerFactory: LoggerFactory
 	) {
 
         if (!schemaManager) {
@@ -64,32 +43,25 @@ export class EngineTestRunner {
         this.dataManager = dataManager;
         this.contextFactory = contextFactory;
         this.queryManager = queryManager;
-		this.queryPlanner = queryPlanner;
-		// this.graphBuilder = graphBuilder;
 		this.mutationExecutor = mutationExecutor;
 		this.engineLogger = engineLogger;
 		this.loggerFactory = loggerFactory;
-		// this.trace = trace;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
 		this.logger?.log({ level: "info", scope: "TEST", message: `START: ${name}` });
         try {
             await fn();
-            // new Notice(`✔ ${name}`);
 			this.logger?.log({ level: "info", scope: "TEST", message: `✔ PASS: ${name}` });
         } catch (e) {
             console.error(`❌ ${name} failed`, e);
-            // new Notice(`❌ ${name} failed\n${(e as Error).message}`);
 			this.logger?.log({ level: "error", scope: "TEST", message: `❌ FAIL: ${name}`, data: (e as Error).message });
 			new Notice(`❌ FAIL: ${name}\n${(e as Error).message}`);
-            //throw e;
         }
     }
 
 	private async resetCoreTestData() {
 
-		// new Notice("Reset: CoreTest Data + Schema");
 		this.logger?.log({ level: "info", scope: "TEST", message: "Resetting CoreTest Data + Schema" });
 
 		const schemas = ["Item", "Character", "Guild"];
@@ -142,7 +114,6 @@ export class EngineTestRunner {
 			}
 		}
 
-		// new Notice("Reset complete");
 		this.logger?.log({ level: "info", scope: "TEST", message: "Reset complete" });
 	}
 
@@ -626,26 +597,6 @@ export class EngineTestRunner {
 			);
 
 			await this.safeRun(
-				"Query Planner Single Hop",
-				() => this.testQueryPlannerSingleHop()
-			);
-
-			await this.safeRun(
-				"Query Planner Multi Hop",
-				() => this.testQueryPlannerMultiHop()
-			);
-
-			await this.safeRun(
-				"Query Planner Combined Fields",
-				() => this.testQueryPlannerCombinedFields()
-			);
-
-			await this.safeRun(
-				"Query Planner No Traversal",
-				() => this.testQueryPlannerNoTraversal()
-			);
-
-			await this.safeRun(
 				"Planner Filter Integration",
 				() => this.testPlannerFilterIntegration()
 			);
@@ -658,21 +609,6 @@ export class EngineTestRunner {
 			await this.safeRun(
 				"Planner Group Integration",
 				() => this.testPlannerGroupIntegration()
-			);
-
-			await this.safeRun(
-				"Deduplication Test (select explosion)",
-				() => this.testQueryPlannerDeduplication()
-			);
-
-			await this.safeRun(
-				"Shared SELECT + WHERE Path Test",
-				() => this.testQueryPlannerSelectWhereDeduplication()
-			);
-
-			await this.safeRun(
-				"GroupBy Deduplication Test",
-				() => this.testQueryPlannerGroupByDeduplication()
 			);
 
 			await this.safeRun(
@@ -4569,309 +4505,6 @@ export class EngineTestRunner {
 		this.logger?.log({ level: "info", scope: "TEST", message: "Group Order By Count Desc passed" });
 	}
 
-	private async testQueryPlannerSingleHop() {
-
-		await this.resetCoreTestData();
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner Single Hop" });
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		const plan =
-			await this.queryPlanner.plan(
-				itemContext,
-				{
-					select: [
-						"owner.name"
-					]
-				}
-			);
-
-		if (plan.rootSchema !== "Item") {
-			throw new Error(
-				"Root schema incorrect"
-			);
-		}
-
-		if (plan.steps.length !== 1) {
-			throw new Error(
-				`Expected 1 step, got ${plan.steps.length}`
-			);
-		}
-
-		const step = plan.steps[0];
-
-		if (step.from !== "Item") {
-			throw new Error("Wrong from schema");
-		}
-
-		if (step.field !== "owner") {
-			throw new Error("Wrong field");
-		}
-
-		if (step.to !== "Character") {
-			throw new Error("Wrong target schema");
-		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Query Planner Single Hop passed" });
-	}
-
-	private async testQueryPlannerMultiHop() {
-
-		await this.resetCoreTestData();
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner Multi Hop" });
-
-		// --------------------------------------------------
-		// Schema
-		// --------------------------------------------------
-
-		await this.ensureField(
-			"CoreTest",
-			"Guild",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"guild",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Guild"
-			}
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		// --------------------------------------------------
-		// Reload contexts
-		// --------------------------------------------------
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		const characterContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Character"
-			);
-
-		// --------------------------------------------------
-		// Verify schema state
-		// --------------------------------------------------
-
-		if (!itemContext.schema.fields.owner) {
-			throw new Error(
-				"Item.owner missing"
-			);
-		}
-
-		if (!characterContext.schema.fields.guild) {
-			throw new Error(
-				"Character.guild missing"
-			);
-		}
-
-		// --------------------------------------------------
-		// Plan
-		// --------------------------------------------------
-
-		const plan =
-			await this.queryPlanner.plan(
-				itemContext,
-				{
-					select: [
-						"owner.guild.name"
-					]
-				}
-			);
-
-		if (plan.steps.length !== 2) {
-			throw new Error(
-				`Expected 2 steps, got ${plan.steps.length}`
-			);
-		}
-
-		if (
-			plan.steps[0].from !== "Item" ||
-			plan.steps[0].field !== "owner" ||
-			plan.steps[0].to !== "Character"
-		) {
-			throw new Error(
-				"Step 1 incorrect"
-			);
-		}
-
-		if (
-			plan.steps[1].from !== "Character" ||
-			plan.steps[1].field !== "guild" ||
-			plan.steps[1].to !== "Guild"
-		) {
-			throw new Error(
-				"Step 2 incorrect"
-			);
-		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Query Planner Multi Hop passed" });
-	}
-
-	private async testQueryPlannerCombinedFields() {
-
-		await this.resetCoreTestData();
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner Combined Fields" });
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"guild",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Guild"
-			}
-		);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		const plan =
-			await this.queryPlanner.plan(
-				itemContext,
-				{
-					select: [
-						"owner.name"
-					],
-					where: [
-						{
-							field: "owner.guild.name",
-							op: "=",
-							value: "Knights"
-						}
-					],
-					groupBy: "owner.guild.name"
-				}
-			);
-
-		if (plan.steps.length === 0) {
-			throw new Error(
-				"No traversal steps generated"
-			);
-		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Query Planner Combined Fields passed" });
-	}
-
-	private async testQueryPlannerNoTraversal() {
-
-		await this.resetCoreTestData();
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner No Traversal" });
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		const plan =
-			await this.queryPlanner.plan(
-				itemContext,
-				{
-					select: [
-						"name"
-					]
-				}
-			);
-
-		if (plan.steps.length !== 0) {
-			throw new Error(
-				"Expected no traversal steps"
-			);
-		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Query Planner No Traversal passed" });
-	}
-
 	private async testPlannerFilterIntegration() {
 
 		await this.resetCoreTestData();
@@ -5400,282 +5033,6 @@ export class EngineTestRunner {
 		}
 
 		this.logger?.log({ level: "info", scope: "TEST", message: "Planner Group Integration passed" });
-	}
-
-	private async testQueryPlannerDeduplication() {
-
-		await this.resetCoreTestData();
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Query Planner Deduplication" });
-
-		// --------------------------------------------------
-		// Schema
-		// --------------------------------------------------
-
-		await this.ensureField(
-			"CoreTest",
-			"Guild",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"guild",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Guild"
-			}
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		// --------------------------------------------------
-		// Plan
-		// --------------------------------------------------
-
-		const plan =
-			await this.queryPlanner.plan(itemContext, {
-				select: [
-					"owner.name",
-					"owner.guild.name",
-					"owner.guild.rank"
-				]
-			});
-
-		// --------------------------------------------------
-		// Assert
-		// --------------------------------------------------
-
-		if (plan.steps.length !== 2) {
-			throw new Error(
-				`Expected 2 steps, got ${plan.steps.length}`
-			);
-		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Deduplication test passed" });
-	}
-
-	private async testQueryPlannerSelectWhereDeduplication() {
-
-		await this.resetCoreTestData();
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: Select + Where Deduplication" });
-
-		// --------------------------------------------------
-		// Schema
-		// --------------------------------------------------
-
-		await this.ensureField(
-			"CoreTest",
-			"Guild",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"guild",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Guild"
-			}
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		// --------------------------------------------------
-		// Plan
-		// --------------------------------------------------
-
-		const plan =
-			await this.queryPlanner.plan(itemContext, {
-				select: ["owner.guild.name"],
-				where: [
-					{
-						field: "owner.guild.name",
-						op: "=",
-						value: "Knights"
-					}
-				]
-			});
-
-		// --------------------------------------------------
-		// Assert
-		// --------------------------------------------------
-
-		if (plan.steps.length !== 2) {
-			throw new Error(
-				`Expected 2 steps, got ${plan.steps.length}`
-			);
-		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Select/Where dedup passed" });
-	}
-
-	private async testQueryPlannerGroupByDeduplication() {
-
-		await this.resetCoreTestData();
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "Test: GroupBy Deduplication" });
-
-		// --------------------------------------------------
-		// Schema
-		// --------------------------------------------------
-
-		await this.ensureField(
-			"CoreTest",
-			"Guild",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Character",
-			"guild",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Guild"
-			}
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"name",
-			"string",
-			""
-		);
-
-		await this.ensureField(
-			"CoreTest",
-			"Item",
-			"owner",
-			"reference",
-			null,
-			undefined,
-			{
-				ruleset: "CoreTest",
-				schema: "Character"
-			}
-		);
-
-		const itemContext =
-			await this.contextFactory.getSchemaContext(
-				"CoreTest",
-				"Item"
-			);
-
-		// --------------------------------------------------
-		// Plan
-		// --------------------------------------------------
-
-		const plan =
-			await this.queryPlanner.plan(itemContext, {
-				select: ["owner.guild.name"],
-				groupBy: "owner.guild.name"
-			});
-
-		// --------------------------------------------------
-		// Assert
-		// --------------------------------------------------
-
-		if (plan.steps.length !== 2) {
-			throw new Error(
-				`Expected 2 steps, got ${plan.steps.length}`
-			);
-		}
-
-		this.logger?.log({ level: "info", scope: "TEST", message: "GroupBy dedup passed" });
 	}
 
 	private async testRunnerBatchDeduplication() {

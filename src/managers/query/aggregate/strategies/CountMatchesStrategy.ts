@@ -1,8 +1,5 @@
 import { IAggregateStrategy } from "../IAggregateStrategy";
-// import { AggregateRequest } from "../../../../types/query/AggregateTypes";
-// import { ResolvedRecordGraph } from "../../../../types/query/ResolvedRecordGraph";
 import { QueryGroupResult } from "../../../../types/query/QueryTypes";
-// import { TraversalContext, TraversalPlan } from "../../../../types/traversal";
 import { TraceLogger } from "../../../logging/TraceLogger";
 
 export class CountMatchesStrategy implements IAggregateStrategy {
@@ -10,10 +7,7 @@ export class CountMatchesStrategy implements IAggregateStrategy {
     constructor(private trace: TraceLogger) {}
 
     async evaluate(
-        // context: TraversalContext,
-        // plan: TraversalPlan,
-        group: QueryGroupResult,
-        // request: AggregateRequest
+        group: QueryGroupResult
     ): Promise<any> {
 
         if (group.whereMatches && group.whereMatches.length > 0) {
