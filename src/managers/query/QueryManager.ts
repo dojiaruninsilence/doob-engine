@@ -2,11 +2,13 @@ import { SchemaContext } from "../../types/ContextTypes";
 import { QueryRequest, QueryGroupResult } from "../../types/query/QueryTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryExecutor } from "./QueryExecutor";
+import { TraceLogger } from "../logging/TraceLogger";
 
 export class QueryManager {
 
 	constructor(
-		private queryExecutor: QueryExecutor
+		private queryExecutor: QueryExecutor,
+		private trace: TraceLogger
 	) {}
 
 	async query(

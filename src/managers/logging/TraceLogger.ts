@@ -3,6 +3,15 @@ import { Logger } from "./Logger";
 export class TraceLogger {
 
     constructor(private logger: Logger) {}
+    
+    trace(scope: string, message: string, data?: any) {
+        this.logger.log({
+            level: "trace",
+            scope,
+            message,
+            data
+        });
+    }
 
     debug(scope: string, message: string, data?: any) {
         this.logger.log({
@@ -34,6 +43,24 @@ export class TraceLogger {
     error(scope: string, message: string, data?: any) {
         this.logger.log({
             level: "error",
+            scope,
+            message,
+            data
+        });
+    }
+
+    fatal(scope: string, message: string, data?: any) {
+        this.logger.log({
+            level: "fatal",
+            scope,
+            message,
+            data
+        });
+    }
+
+    dooblog(scope: string, message: string, data?: any) {
+        this.logger.log({
+            level: "dooblog",
             scope,
             message,
             data

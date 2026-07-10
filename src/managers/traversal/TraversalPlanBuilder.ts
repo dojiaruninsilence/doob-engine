@@ -1,10 +1,12 @@
 import { TraversalPlanner } from "./TraversalPlanner";
 import { TraversalRequestSet, TraversalPlanSet } from "../../types/traversal";
+import { TraceLogger } from "../logging/TraceLogger";
 
 export class TraversalPlanBuilder {
 
 	constructor(
-		private planner: TraversalPlanner
+		private planner: TraversalPlanner,
+		private trace: TraceLogger
 	) {}
 
 	build(

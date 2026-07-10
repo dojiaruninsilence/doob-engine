@@ -1,10 +1,11 @@
 import { App, normalizePath, TFolder } from "obsidian";
+import { TraceLogger } from "./logging/TraceLogger";
 
 export class RulesetManager {
 
 	private app: App;
 
-	constructor(app: App) {
+	constructor(app: App, private trace: TraceLogger) {
 		this.app = app;
 	}
 

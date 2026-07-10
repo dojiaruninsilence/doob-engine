@@ -8,7 +8,8 @@ export type LogLevel =
 	| "info"
 	| "warn"
 	| "error"
-	| "fatal";
+	| "fatal"
+	| "dooblog";
 
 export interface LoggerConfig {
 	filePath: string;

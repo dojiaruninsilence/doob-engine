@@ -1,6 +1,7 @@
 import { IDataWriter } from "../../../interfaces/IDataWriter";
 import { SchemaContext } from "../../../types/ContextTypes";
 import { MutationWriteTarget } from "../../../types/mutation/MutationWriteTargetTypes";
+import { TraceLogger } from "../../logging/TraceLogger";
 
 export class DataMutationWriter {
 
@@ -8,7 +9,8 @@ export class DataMutationWriter {
         private writer: IDataWriter,
         private contextResolver: (
             schemaName: string
-        ) => Promise<SchemaContext>
+        ) => Promise<SchemaContext>,
+        private trace: TraceLogger
     ) {}
 
     async save(

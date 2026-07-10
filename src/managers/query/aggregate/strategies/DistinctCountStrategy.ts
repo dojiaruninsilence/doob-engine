@@ -6,7 +6,6 @@ export class DistinctCountStrategy
     implements IAggregateStrategy {
 
     constructor(
-        // private travExecutor: TraversalExecutor,
         private trace: TraceLogger
     ) {}
 

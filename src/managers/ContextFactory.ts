@@ -1,12 +1,14 @@
 import { SchemaManager } from "./SchemaManager";
 import { SchemaContext } from "../types/ContextTypes";
+import { TraceLogger } from "./logging/TraceLogger";
 
 export class ContextFactory {
 
 	private schemaManager: SchemaManager;
 
 	constructor(
-		schemaManager: SchemaManager
+		schemaManager: SchemaManager,
+		private trace: TraceLogger
 	) {
 		this.schemaManager = schemaManager;
 	}

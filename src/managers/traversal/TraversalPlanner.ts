@@ -7,7 +7,7 @@ import { TraceLogger } from "../logging/TraceLogger";
 
 export class TraversalPlanner {
 
-    constructor(trace: TraceLogger){}
+    constructor(private trace: TraceLogger){}
 
 	build(
 		request: TraversalRequest

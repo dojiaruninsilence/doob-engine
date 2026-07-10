@@ -11,13 +11,6 @@ export class DoobToolPanel extends ItemView {
 		this.plugin = plugin;
 		this.testRunner = new EngineTestRunner(
 			this.plugin.services
-			// this.plugin.services.schemaManager, 
-			// this.plugin.services.dataManager, 
-			// this.plugin.services.contextFactory, 
-			// this.plugin.services.queryManager, 
-			// this.plugin.services.mutationExecutor,
-			// this.plugin.services.engineLog,
-			// this.plugin.services.loggerFactory,
 		);
 	}
 

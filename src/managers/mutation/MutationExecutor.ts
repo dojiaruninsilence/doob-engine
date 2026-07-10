@@ -353,7 +353,8 @@ export class MutationExecutor {
 						this.contextFactory.getSchemaContext(
 							context.ruleset,
 							schemaName
-						)
+						),
+					this.trace
 				);
 
 

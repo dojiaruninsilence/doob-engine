@@ -42,32 +42,35 @@ export class EngineBootstrap {
 			defaultScope: "ENGINE",
 			includeTimestamp: true
 		});
+        
+		const traceLogger = new TraceLogger(engineLog);
 
-		const cacheManager = new CacheManager(engineLog);
+		const cacheManager = new CacheManager(traceLogger);
 
-		const rulesetManager = new RulesetManager(app);
+		const rulesetManager = new RulesetManager(app, traceLogger);
 
 		const schemaManager = new SchemaManager(
 			app,
 			rulesetManager,
-			cacheManager
+			cacheManager,
+            traceLogger
 		);
 
 		const dataManager = new DataManager(
 			app,
 			schemaManager,
 			rulesetManager,
-			cacheManager
+			cacheManager,
+            traceLogger
 		);
 
 		const contextFactory = new ContextFactory(
-			schemaManager
+			schemaManager,
+            traceLogger
 		);
 
-		const traceLogger = new TraceLogger(engineLog);
-
 		const mutationOperationResolver =
-			new MutationOperationResolver();
+			new MutationOperationResolver(traceLogger);
 
 		const mutationTargetResolver =
 			new MutationTargetResolver(traceLogger);
@@ -80,14 +83,15 @@ export class EngineBootstrap {
 
 		const traversalAdapter =
 			new LegacyTraversalAdapter(
-				contextFactory
+				contextFactory,
+                traceLogger
 			);
 
 		const valueResolver =
-			new ValueResolver();
+			new ValueResolver(traceLogger);
 
 		const traversalExecutionPlanBuilder =
-			new TraversalExecutionPlanBuilder();
+			new TraversalExecutionPlanBuilder(traceLogger);
 
 		const traversalPlanner =
 			new TraversalPlanner(
@@ -102,20 +106,24 @@ export class EngineBootstrap {
 
 		const traversalPlanBuilder =
 			new TraversalPlanBuilder(
-				traversalPlanner
+				traversalPlanner,
+                traceLogger
 			);
 
 		const traversalRequestBuilder =
 			new TraversalRequestBuilder(
-				traversalAdapter
+				traversalAdapter,
+                traceLogger
 			);
 
 		const mutationPlanner =
 			new MutationPlanner(
 				new MutationRequestBuilder(
-					traversalAdapter
+					traversalAdapter,
+                    traceLogger
 				),
-				traversalPlanBuilder
+				traversalPlanBuilder,
+                traceLogger
 			);
 
 		const aggregateResolver =
@@ -149,7 +157,8 @@ export class EngineBootstrap {
 
 		const queryManager =
 			new QueryManager(
-				queryExecutor
+				queryExecutor,
+                traceLogger
 			);
 
 		const mutationExecutor =

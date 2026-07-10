@@ -1,7 +1,10 @@
 import { MutationOperation, SetOperation, MathOperation, TransformOperation } from "../../../types/mutation/MutationOperationTypes";
 import { MutationContext } from "../../../types/mutation/MutationTypes";
+import { TraceLogger } from "../../logging/TraceLogger";
 
 export class MutationOperationResolver {
+
+    constructor(trace: TraceLogger) {}
 
     apply(
         currentValue: any,

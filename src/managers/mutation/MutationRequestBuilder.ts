@@ -3,13 +3,15 @@ import { SchemaContext } from "../../types/ContextTypes";
 import { MutationRequestSet, MutationRequest } from "../../types/mutation";
 
 import { TraversalRequest } from "../../types/traversal";
+import { TraceLogger } from "../logging/TraceLogger";
 
 import { LegacyTraversalAdapter } from "../traversal/LegacyTraversalAdapter";
 
 export class MutationRequestBuilder {
 
     constructor(
-        private traversalAdapter: LegacyTraversalAdapter
+        private traversalAdapter: LegacyTraversalAdapter,
+        private trace: TraceLogger
     ) {}
 
     async build(

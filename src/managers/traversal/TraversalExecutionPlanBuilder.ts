@@ -1,6 +1,9 @@
 import { TraversalPlan, TraversalPlanSet, TraversalExecutionPlan, TraversalBranchPlan } from "../../types/traversal";
+import { TraceLogger } from "../logging/TraceLogger";
 
 export class TraversalExecutionPlanBuilder {
+
+    constructor(private trace: TraceLogger) {}
 
     build(
         plans: TraversalPlanSet

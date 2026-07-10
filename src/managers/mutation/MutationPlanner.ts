@@ -12,13 +12,15 @@ import {
 import { MutationRequestBuilder } from "./MutationRequestBuilder";
 
 import { TraversalPlanBuilder } from "../traversal/TraversalPlanBuilder";
+import { TraceLogger } from "../logging/TraceLogger";
 
 
 export class MutationPlanner {
 
 	constructor(
 		private requestBuilder: MutationRequestBuilder,
-		private planBuilder: TraversalPlanBuilder
+		private planBuilder: TraversalPlanBuilder,
+		private trace: TraceLogger
 	) {}
 
 

@@ -6,6 +6,7 @@ import { RulesetManager } from "./RulesetManager";
 import { CacheManager } from "./CacheManager";
 import { IDataReader } from "../interfaces/IDataReader";
 import { IDataWriter } from "../interfaces/IDataWriter";
+import { TraceLogger } from "./logging/TraceLogger";
 
 export class DataManager implements IDataReader, IDataWriter {
 
@@ -14,7 +15,7 @@ export class DataManager implements IDataReader, IDataWriter {
 	private rulesetManager: RulesetManager;
     private cacheManager: CacheManager;
 
-	constructor(app: App, schemaManager: SchemaManager, rulesetManager: RulesetManager, cacheManager: CacheManager) {
+	constructor(app: App, schemaManager: SchemaManager, rulesetManager: RulesetManager, cacheManager: CacheManager, private trace: TraceLogger) {
 		this.app = app;
 		this.schemaManager = schemaManager;
         this.rulesetManager = rulesetManager;

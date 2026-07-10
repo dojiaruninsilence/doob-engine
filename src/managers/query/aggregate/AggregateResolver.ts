@@ -1,11 +1,13 @@
 import { QueryGroupResult } from "../../../types/query/QueryTypes";
 import { AggregateRequest } from "../../../types/query/AggregateTypes";
 import { AggregateStrategyRegistry } from "./AggregateStrategyRegistry";
+import { TraceLogger } from "../../logging/TraceLogger";
 
 export class AggregateResolver {
 
     constructor(
-        private registry: AggregateStrategyRegistry
+        private registry: AggregateStrategyRegistry,
+        private trace: TraceLogger
     ) {}
 
     async evaluate(

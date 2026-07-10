@@ -6,11 +6,13 @@ import {
 } from "../../types/traversal";
 
 import { ContextFactory } from "../ContextFactory";
+import { TraceLogger } from "../logging/TraceLogger";
 
 export class LegacyTraversalAdapter {
 
 	constructor(
-		private contextFactory: ContextFactory
+		private contextFactory: ContextFactory,
+		private trace: TraceLogger
 	) {}
 
 	async buildRequest(

@@ -5,6 +5,7 @@ import { FIELD_TYPES, FieldType } from "../types/FieldTypes";
 import { ValidationResult } from "../types/ValidationTypes";
 import { DataRecord } from "../types/DataTypes";
 import { CacheManager } from "./CacheManager";
+import { TraceLogger } from "./logging/TraceLogger";
 
 export class SchemaManager {
 
@@ -15,7 +16,8 @@ export class SchemaManager {
 	constructor(
 		app: App,
 		rulesetManager: RulesetManager,
-		cacheManager: CacheManager
+		cacheManager: CacheManager,
+		private trace: TraceLogger
 	) {
 		this.app = app;
 		this.rulesetManager = rulesetManager;

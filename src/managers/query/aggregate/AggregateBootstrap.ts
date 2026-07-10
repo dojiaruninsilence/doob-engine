@@ -28,6 +28,6 @@ export class AggregateBootstrap {
         registry.register("distinct-count", new DistinctCountStrategy(trace));
         registry.register("distinct-values", new DistinctValuesStrategy(trace));
 
-        return new AggregateResolver(registry);
+        return new AggregateResolver(registry, trace);
     }
 }

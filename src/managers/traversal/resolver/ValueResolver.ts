@@ -1,7 +1,10 @@
 import { ResolvedRecordGraph, ResolvedNode } from "../../../types/query/ResolvedRecordGraph";
 import { TraversalStep, ResolvedValue } from "../../../types/traversal";
+import { TraceLogger } from "../../logging/TraceLogger";
 
 export class ValueResolver {
+
+	constructor(private trace: TraceLogger) {}
 
 	resolve(
 		node: ResolvedNode,

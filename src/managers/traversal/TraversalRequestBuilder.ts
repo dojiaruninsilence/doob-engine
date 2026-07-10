@@ -2,11 +2,13 @@ import { SchemaContext } from "../../types/ContextTypes";
 import { TraversalRequestSet } from "../../types/traversal";
 import { QueryRequest } from "../../types/query/QueryTypes";
 import { LegacyTraversalAdapter } from "./LegacyTraversalAdapter";
+import { TraceLogger } from "../logging/TraceLogger";
 
 export class TraversalRequestBuilder {
 
 	constructor(
-		private adapter: LegacyTraversalAdapter
+		private adapter: LegacyTraversalAdapter,
+		private trace: TraceLogger
 	) {}
 
 	async build(

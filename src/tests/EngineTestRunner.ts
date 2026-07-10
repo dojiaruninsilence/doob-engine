@@ -15,16 +15,10 @@ export class EngineTestRunner {
 	private engineLogger!: Logger;
 	private loggerFactory!: LoggerFactory;
 	private mutationExecutor: any;
+	private trace: TraceLogger;
 
 	constructor(
 		services: EngineServices
-		// schemaManager: any, 
-		// dataManager: any, 
-		// contextFactory: any, 
-		// queryManager: any,
-		// mutationExecutor: any,
-		// engineLogger: Logger,
-		// loggerFactory: LoggerFactory
 	) {
 
 		this.services = services;
@@ -51,6 +45,7 @@ export class EngineTestRunner {
 		this.mutationExecutor = this.services.mutationExecutor;
 		this.engineLogger = this.services.engineLog;
 		this.loggerFactory = this.services.loggerFactory;
+		this.trace = this.services.traceLogger;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
@@ -410,10 +405,10 @@ export class EngineTestRunner {
 			| QueryPlan references     | needs global search        |
 
 
-		need to check main.ts, and clean up where needed
-			Second extraction: DebugHooks
-			Third extraction: UI Manager
-			Fourth extraction: Plugin Commands
+		x need to check main.ts, and clean up where needed
+			x Second extraction: DebugHooks
+			x Third extraction: UI Manager
+			x Fourth extraction: Plugin Commands
 			Fifth extraction: Soft Reload
 
 		work on logger. 
