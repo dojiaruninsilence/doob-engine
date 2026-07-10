@@ -2,9 +2,11 @@ import { Notice } from "obsidian";
 import { Logger } from "../managers/logging/Logger";
 import { LoggerFactory } from "../managers/logging/LoggerFactory";
 import { TraceLogger } from "../managers/logging/TraceLogger";
+import { EngineServices } from "../types";
 
 export class EngineTestRunner {
 
+	private services: EngineServices;
 	private schemaManager: any;
 	private dataManager: any;
 	private contextFactory: any;
@@ -15,37 +17,40 @@ export class EngineTestRunner {
 	private mutationExecutor: any;
 
 	constructor(
-		schemaManager: any, 
-		dataManager: any, 
-		contextFactory: any, 
-		queryManager: any,
-		mutationExecutor: any,
-		engineLogger: Logger,
-		loggerFactory: LoggerFactory
+		services: EngineServices
+		// schemaManager: any, 
+		// dataManager: any, 
+		// contextFactory: any, 
+		// queryManager: any,
+		// mutationExecutor: any,
+		// engineLogger: Logger,
+		// loggerFactory: LoggerFactory
 	) {
 
-        if (!schemaManager) {
+		this.services = services;
+
+        if (!this.services.schemaManager) {
             new Notice("SchemaManager not injected");
             throw new Error("SchemaManager not injected");
         }
 
-        if (!dataManager) {
+        if (!this.services.dataManager) {
             new Notice("DataManager not injected");
             throw new Error("DataManager not injected");
         }
 
-        if (!contextFactory) {
+        if (!this.services.contextFactory) {
             new Notice("ContextFactory not injected");
             throw new Error("ContextFactory not injected");
         }
 
-        this.schemaManager = schemaManager;
-        this.dataManager = dataManager;
-        this.contextFactory = contextFactory;
-        this.queryManager = queryManager;
-		this.mutationExecutor = mutationExecutor;
-		this.engineLogger = engineLogger;
-		this.loggerFactory = loggerFactory;
+        this.schemaManager = this.services.schemaManager;
+        this.dataManager = this.services.dataManager;
+        this.contextFactory = this.services.contextFactory;
+        this.queryManager = this.services.queryManager;
+		this.mutationExecutor = this.services.mutationExecutor;
+		this.engineLogger = this.services.engineLog;
+		this.loggerFactory = this.services.loggerFactory;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
@@ -180,16 +185,16 @@ export class EngineTestRunner {
     │   │       Logger.ts
     │   │       LoggerFactory.ts
     │   │       ScopedLogger.ts
+    │   │       TraceLogger.ts
     │   │       
     │   ├───mutation
     │   │   │   MutationExecutor.ts
     │   │   │   MutationManager.ts
     │   │   │   MutationPlanner.ts
+    │   │   │   MutationRequestBuilder.ts
     │   │   │   MutationTargetResolver.ts
     │   │   │   
     │   │   ├───debug
-    │   │   │       MutationTraceLogger.ts
-    │   │   │       
     │   │   ├───operations
     │   │   │       MutationOperationResolver.ts
     │   │   │       
@@ -204,7 +209,6 @@ export class EngineTestRunner {
     │   │   │   QueryExecutionPlanRunner.ts
     │   │   │   QueryExecutor.ts
     │   │   │   QueryManager.ts
-    │   │   │   QueryPlanner.ts
     │   │   │   
     │   │   ├───aggregate
     │   │   │   │   AggregateBootstrap.ts
@@ -223,20 +227,23 @@ export class EngineTestRunner {
     │   │   │           SumStrategy.ts
     │   │   │           
     │   │   ├───graph
-    │   │   │       ResolvedRecordGraphBuilder.ts
-    │   │   │       ResolvedRecordGraphNavigator.ts
-    │   │   │       
     │   │   └───match
-    │   │           QueryMatchBuilder.ts
-    │   │           QueryMatchNavigator.ts
-    │   │           
     │   ├───reference
     │   └───traversal
-    │           ObjectResolver.ts
-    │           ReferenceResolver.ts
-    │           TraversalExecutor.ts
-    │           TraversalManager.ts
-    │           
+    │       │   LegacyTraversalAdapter.ts
+    │       │   ResolvedRecordGraphBuilder.ts
+    │       │   TraversalExecutionPlanBuilder.ts
+    │       │   TraversalExecutor.ts
+    │       │   TraversalManager.ts
+    │       │   TraversalPlanBuilder.ts
+    │       │   TraversalPlanner.ts
+    │       │   TraversalRequestBuilder.ts
+    │       │   
+    │       └───resolver
+    │               ObjectResolver.ts
+    │               ReferenceResolver.ts
+    │               ValueResolver.ts
+    │               
     ├───tests
     │       EngineTestRunner.ts
     │       
@@ -246,7 +253,6 @@ export class EngineTestRunner {
     │   │   FieldTypes.ts
     │   │   LoggerTypes.ts
     │   │   SchemaTypes.ts
-    │   │   TraversalTypes.ts
     │   │   ValidationTypes.ts
     │   │   
     │   ├───core
@@ -254,23 +260,36 @@ export class EngineTestRunner {
     │   │       ResolvedReference.ts
     │   │       
     │   ├───mutation
+    │   │       index.ts
     │   │       MutationOperationTypes.ts
     │   │       MutationPatchTypes.ts
     │   │       MutationPlanTypes.ts
+    │   │       MutationRequestTypes.ts
     │   │       MutationResultTypes.ts
     │   │       MutationTargetTypes.ts
     │   │       MutationTypes.ts
     │   │       MutationValidationTypes.ts
     │   │       MutationWriteTargetTypes.ts
     │   │       
-    │   └───query
-    │           AggregateTypes.ts
-    │           QueryExecutionTypes.ts
-    │           QueryExecutorTypes.ts
-    │           QueryMatchTypes.ts
-    │           QueryPlannerTypes.ts
-    │           QueryTypes.ts
-    │           ResolvedRecordGraph.ts
+    │   ├───query
+    │   │       AggregateTypes.ts
+    │   │       index.ts
+    │   │       QueryExecutionTypes.ts
+    │   │       QueryExecutorTypes.ts
+    │   │       QueryMatchTypes.ts
+    │   │       QueryPlannerTypes.ts
+    │   │       QueryResultTypes.ts
+    │   │       QueryTypes.ts
+    │   │       ResolvedRecordGraph.ts
+    │   │       
+    │   └───traversal
+    │           index.ts
+    │           TraversalContext.ts
+    │           TraversalMatch.ts
+    │           TraversalPlan.ts
+    │           TraversalRequest.ts
+    │           TraversalResult.ts
+    │           TraversalStep.ts
     │           
     ├───ui
     │       ToolPanelManager.ts
@@ -392,6 +411,10 @@ export class EngineTestRunner {
 
 
 		need to check main.ts, and clean up where needed
+			Second extraction: DebugHooks
+			Third extraction: UI Manager
+			Fourth extraction: Plugin Commands
+			Fifth extraction: Soft Reload
 
 		work on logger. 
 			- build trace like loggers for debug, info, error, ect.
