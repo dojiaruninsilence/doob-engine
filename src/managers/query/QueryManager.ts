@@ -3,7 +3,7 @@ import { QueryRequest, QueryGroupResult } from "../../types/query/QueryTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryPlanner } from "./QueryPlanner";
 import { QueryExecutor } from "./QueryExecutor";
-import { Notice } from "obsidian";
+// import { Notice } from "obsidian";
 
 export class QueryManager {
 

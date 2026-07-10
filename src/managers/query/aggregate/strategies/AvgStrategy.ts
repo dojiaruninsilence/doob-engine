@@ -1,24 +1,24 @@
 import { IAggregateStrategy } from "../IAggregateStrategy";
-import { AggregateRequest } from "../../../../types/query/AggregateTypes";
-import { ResolvedRecordGraph } from "../../../../types/query/ResolvedRecordGraph";
+// import { AggregateRequest } from "../../../../types/query/AggregateTypes";
+// import { ResolvedRecordGraph } from "../../../../types/query/ResolvedRecordGraph";
 import { QueryGroupResult } from "../../../../types/query/QueryTypes";
-import { QueryMatchNavigator } from "../../match/QueryMatchNavigator";
-import { TraversalContext, TraversalPlan } from "../../../../types/traversal";
-import { TraversalExecutor } from "../../../traversal/TraversalExecutor";
+// import { QueryMatchNavigator } from "../../match/QueryMatchNavigator";
+// import { TraversalContext, TraversalPlan } from "../../../../types/traversal";
+// import { TraversalExecutor } from "../../../traversal/TraversalExecutor";
 import { TraceLogger } from "../../../logging/TraceLogger";
 
 export class AvgStrategy implements IAggregateStrategy {
 
     constructor(
-        private travExecutor: TraversalExecutor,
+        // private travExecutor: TraversalExecutor,
         private trace: TraceLogger
     ) {}
 
     async evaluate(
-        context: TraversalContext,
-        plan: TraversalPlan,
+        // context: TraversalContext,
+        // plan: TraversalPlan,
         group: QueryGroupResult,
-        request: AggregateRequest
+        // request: AggregateRequest
     ): Promise<any> {
         let sum = 0;
         let count = 0;

@@ -1,185 +1,185 @@
-import { QueryMatch } from "../../../types/query/QueryMatchTypes";
-import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
+// import { QueryMatch } from "../../../types/query/QueryMatchTypes";
+// import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
 
-export class QueryMatchNavigator {
+// export class QueryMatchNavigator {
 
-	// --------------------------------------------------
-	// FIELD TARGET RESOLUTION
-	// --------------------------------------------------
+// 	// --------------------------------------------------
+// 	// FIELD TARGET RESOLUTION
+// 	// --------------------------------------------------
 
-	private resolveFieldTarget(
-		match: QueryMatch,
-		fieldPath: string
-	): {
-		nodeIndex: number;
-		remainingPath: string[];
-	} {
+// 	private resolveFieldTarget(
+// 		match: QueryMatch,
+// 		fieldPath: string
+// 	): {
+// 		nodeIndex: number;
+// 		remainingPath: string[];
+// 	} {
 
-		const fieldParts = fieldPath.split(".");
-		let bestDepth = 0;
+// 		const fieldParts = fieldPath.split(".");
+// 		let bestDepth = 0;
 
-		for (const bindingKey of Object.keys(match.bindings)) {
+// 		for (const bindingKey of Object.keys(match.bindings)) {
 
-			const bindingParts = bindingKey.split(".");
+// 			const bindingParts = bindingKey.split(".");
 
-			// strip root (e.g. guild.members -> members)
-			const traversalParts = bindingParts.slice(1);
+// 			// strip root (e.g. guild.members -> members)
+// 			const traversalParts = bindingParts.slice(1);
 
-			let matches = true;
+// 			let matches = true;
 
-			for (let i = 0; i < traversalParts.length; i++) {
+// 			for (let i = 0; i < traversalParts.length; i++) {
 
-				if (fieldParts[i] !== traversalParts[i]) {
-					matches = false;
-					break;
-				}
-			}
+// 				if (fieldParts[i] !== traversalParts[i]) {
+// 					matches = false;
+// 					break;
+// 				}
+// 			}
 
-			if (matches) {
-				bestDepth = Math.max(bestDepth, traversalParts.length);
-			}
-		}
+// 			if (matches) {
+// 				bestDepth = Math.max(bestDepth, traversalParts.length);
+// 			}
+// 		}
 
-		return {
-			nodeIndex: bestDepth,
-			remainingPath: fieldParts.slice(bestDepth)
-		};
-	}
+// 		return {
+// 			nodeIndex: bestDepth,
+// 			remainingPath: fieldParts.slice(bestDepth)
+// 		};
+// 	}
 
-	// --------------------------------------------------
-	// GROUP VALUE (STRUCTURAL WALK)
-	// --------------------------------------------------
+// 	// --------------------------------------------------
+// 	// GROUP VALUE (STRUCTURAL WALK)
+// 	// --------------------------------------------------
 
-	getGroupValue(
-		graph: ResolvedRecordGraph,
-		match: QueryMatch,
-		path: string
-	): any {
+// 	getGroupValue(
+// 		graph: ResolvedRecordGraph,
+// 		match: QueryMatch,
+// 		path: string
+// 	): any {
 
-		const parts = path.split(".");
+// 		const parts = path.split(".");
 
-		let node =
-			graph.nodes.get(match.rootId);
+// 		let node =
+// 			graph.nodes.get(match.rootId);
 
-		if (!node) return undefined;
+// 		if (!node) return undefined;
 
-		let pathIndex = 0;
+// 		let pathIndex = 0;
 
-		for (let i = 0; i < parts.length; i++) {
+// 		for (let i = 0; i < parts.length; i++) {
 
-			const part = parts[i];
-			const isLast = i === parts.length - 1;
+// 			const part = parts[i];
+// 			const isLast = i === parts.length - 1;
 
-			// --------------------------------------------------
-			// FINAL FIELD
-			// --------------------------------------------------
-			if (isLast) {
-				return node.record.data?.[part];
-			}
+// 			// --------------------------------------------------
+// 			// FINAL FIELD
+// 			// --------------------------------------------------
+// 			if (isLast) {
+// 				return node.record.data?.[part];
+// 			}
 
-			// --------------------------------------------------
-			// TRAVERSE REFERENCES
-			// --------------------------------------------------
-			const refs = node.refs.get(part);
+// 			// --------------------------------------------------
+// 			// TRAVERSE REFERENCES
+// 			// --------------------------------------------------
+// 			const refs = node.refs.get(part);
 
-			if (!refs || refs.length === 0) {
-				return undefined;
-			}
+// 			if (!refs || refs.length === 0) {
+// 				return undefined;
+// 			}
 
-			const nextId = match.pathNodes[pathIndex + 1];
+// 			const nextId = match.pathNodes[pathIndex + 1];
 
-			if (!nextId) return undefined;
+// 			if (!nextId) return undefined;
 
-			const next = graph.nodes.get(nextId);
+// 			const next = graph.nodes.get(nextId);
 
-			if (!next) return undefined;
+// 			if (!next) return undefined;
 
-			node = next;
-			pathIndex++;
-		}
+// 			node = next;
+// 			pathIndex++;
+// 		}
 
-		return undefined;
-	}
+// 		return undefined;
+// 	}
 
-	// --------------------------------------------------
-	// AGGREGATION VALUE RESOLUTION
-	// --------------------------------------------------
+// 	// --------------------------------------------------
+// 	// AGGREGATION VALUE RESOLUTION
+// 	// --------------------------------------------------
 
-	resolveValues(
-		graph: ResolvedRecordGraph,
-		match: QueryMatch,
-		path: string
-	): { value: any; sourceId: string }[] {
+// 	resolveValues(
+// 		graph: ResolvedRecordGraph,
+// 		match: QueryMatch,
+// 		path: string
+// 	): { value: any; sourceId: string }[] {
 
-		const { nodeIndex, remainingPath } =
-			this.resolveFieldTarget(match, path);
+// 		const { nodeIndex, remainingPath } =
+// 			this.resolveFieldTarget(match, path);
 
-		let current =
-			graph.nodes.get(match.pathNodes[nodeIndex]);
+// 		let current =
+// 			graph.nodes.get(match.pathNodes[nodeIndex]);
 
-		if (!current) return [];
+// 		if (!current) return [];
 
-		let currentNodes = [current];
+// 		let currentNodes = [current];
 
-		// --------------------------------------------------
-		// traverse structural part
-		// --------------------------------------------------
-		for (let i = 0; i < remainingPath.length - 1; i++) {
+// 		// --------------------------------------------------
+// 		// traverse structural part
+// 		// --------------------------------------------------
+// 		for (let i = 0; i < remainingPath.length - 1; i++) {
 
-			const part = remainingPath[i];
-			const nextNodes: typeof currentNodes = [];
+// 			const part = remainingPath[i];
+// 			const nextNodes: typeof currentNodes = [];
 
-			for (const node of currentNodes) {
+// 			for (const node of currentNodes) {
 
-				const refs = node.refs.get(part);
+// 				const refs = node.refs.get(part);
 
-				if (!refs) continue;
+// 				if (!refs) continue;
 
-				for (const refId of refs) {
+// 				for (const refId of refs) {
 
-					const next = graph.nodes.get(refId);
+// 					const next = graph.nodes.get(refId);
 
-					if (next) {
-						nextNodes.push(next);
-					}
-				}
-			}
+// 					if (next) {
+// 						nextNodes.push(next);
+// 					}
+// 				}
+// 			}
 
-			if (nextNodes.length === 0) {
-				return [];
-			}
+// 			if (nextNodes.length === 0) {
+// 				return [];
+// 			}
 
-			currentNodes = nextNodes;
-		}
+// 			currentNodes = nextNodes;
+// 		}
 
-		const last = remainingPath[remainingPath.length - 1];
+// 		const last = remainingPath[remainingPath.length - 1];
 
-		if (!last) return [];
+// 		if (!last) return [];
 
-		const results: { value: any; sourceId: string }[] = [];
+// 		const results: { value: any; sourceId: string }[] = [];
 
-		for (const node of currentNodes) {
+// 		for (const node of currentNodes) {
 
-			const value = node.record.data?.[last];
+// 			const value = node.record.data?.[last];
 
-			if (Array.isArray(value)) {
+// 			if (Array.isArray(value)) {
 
-				for (const v of value) {
-					results.push({
-						value: v,
-						sourceId: node.id
-					});
-				}
+// 				for (const v of value) {
+// 					results.push({
+// 						value: v,
+// 						sourceId: node.id
+// 					});
+// 				}
 
-			} else if (value !== undefined && value !== null) {
+// 			} else if (value !== undefined && value !== null) {
 
-				results.push({
-					value,
-					sourceId: node.id
-				});
-			}
-		}
+// 				results.push({
+// 					value,
+// 					sourceId: node.id
+// 				});
+// 			}
+// 		}
 
-		return results;
-	}
-}
+// 		return results;
+// 	}
+// }

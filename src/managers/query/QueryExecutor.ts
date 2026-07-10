@@ -4,18 +4,18 @@ import { QueryRequest, QueryGroupResult, QueryFilter } from "../../types/query/Q
 import { QueryPlan } from "../../types/query/QueryPlannerTypes";
 import { DataRecord } from "../../types/DataTypes";
 import { QueryExecutionPlanRunner } from "./QueryExecutionPlanRunner";
-import { Notice } from "obsidian";
-import { ResolvedRecordGraphNavigator } from "./graph/ResolvedRecordGraphNavigator";
+// import { Notice } from "obsidian";
+// import { ResolvedRecordGraphNavigator } from "./graph/ResolvedRecordGraphNavigator";
 import { ResolvedRecordGraph } from "../../types/query/ResolvedRecordGraph";
 import { AggregateRequest } from "../../types/query/AggregateTypes";
 import { AggregateResolver } from "./aggregate/AggregateResolver";
 import { Schema } from "../../types/SchemaTypes";
-import { QueryMatchBuilder } from "./match/QueryMatchBuilder";
-import { QueryMatchNavigator } from "./match/QueryMatchNavigator";
-import { TraversalPlanner } from "../traversal/TraversalPlanner";
+// import { QueryMatchBuilder } from "./match/QueryMatchBuilder";
+// import { QueryMatchNavigator } from "./match/QueryMatchNavigator";
+// import { TraversalPlanner } from "../traversal/TraversalPlanner";
 import { TraversalExecutor } from "../traversal/TraversalExecutor";
-import { LegacyTraversalAdapter } from "../traversal/LegacyTraversalAdapter";
-import { Logger } from "../logging/Logger";
+// import { LegacyTraversalAdapter } from "../traversal/LegacyTraversalAdapter";
+// import { Logger } from "../logging/Logger";
 import { TraceLogger } from "../logging/TraceLogger";
 import { TraversalRequestBuilder } from "../traversal/TraversalRequestBuilder";
 import { TraversalPlanBuilder } from "../traversal/TraversalPlanBuilder";
@@ -28,23 +28,23 @@ export class QueryExecutor {
 	constructor(
 		private reader: IDataReader,
         private runner: QueryExecutionPlanRunner,
-        private graphNavigator: ResolvedRecordGraphNavigator,
+        // private graphNavigator: ResolvedRecordGraphNavigator,
         private aggregateResolver: AggregateResolver,
-        private matchBuilder: QueryMatchBuilder,
-        private matchNavigator: QueryMatchNavigator,
-        private traversalPlanner: TraversalPlanner,
+        // private matchBuilder: QueryMatchBuilder,
+        // private matchNavigator: QueryMatchNavigator,
+        // private traversalPlanner: TraversalPlanner,
         private traversalExecutor: TraversalExecutor,
-        private traversalAdapter: LegacyTraversalAdapter,
+        // private traversalAdapter: LegacyTraversalAdapter,
         private traversalRequestBuilder: TraversalRequestBuilder,
         private traversalPlanBuilder: TraversalPlanBuilder,
         private traversalExecutionPlanBuilder: TraversalExecutionPlanBuilder,
         private trace: TraceLogger
 	) {}
 
-    private normalizeValue(value: any): any[] {
-        if (value === undefined || value === null) return [];
-        return Array.isArray(value) ? value : [value];
-    }
+    // private normalizeValue(value: any): any[] {
+    //     if (value === undefined || value === null) return [];
+    //     return Array.isArray(value) ? value : [value];
+    // }
 
     private compareValue(
         value: any,
@@ -181,42 +181,42 @@ export class QueryExecutor {
         }
     }
 
-    private dedupeMatches(
-        matches: TraversalMatch[]
-    ): TraversalMatch[] {
+    // private dedupeMatches(
+    //     matches: TraversalMatch[]
+    // ): TraversalMatch[] {
 
-        const unique =
-            new Map<string, TraversalMatch>();
+    //     const unique =
+    //         new Map<string, TraversalMatch>();
 
-        this.trace.debug("QueryExecutor.dedupeMatches", "matches: ", { matches });
+    //     this.trace.debug("QueryExecutor.dedupeMatches", "matches: ", { matches });
 
-        for (const match of matches) {
+    //     for (const match of matches) {
 
-            const key =
-                [
-                    match.sourceId,
-                    ...match.branchPath,
-                    match.nodeId
-                ]
-                .join(":");
+    //         const key =
+    //             [
+    //                 match.sourceId,
+    //                 ...match.branchPath,
+    //                 match.nodeId
+    //             ]
+    //             .join(":");
 
-            this.trace.debug("QueryExecutor.dedupeMatches", "match: and key: ", { match, key });
+    //         this.trace.debug("QueryExecutor.dedupeMatches", "match: and key: ", { match, key });
 
-            if (!unique.has(key)) {
+    //         if (!unique.has(key)) {
 
-                unique.set(
-                    key,
-                    match
-                );
-            }
-        }
+    //             unique.set(
+    //                 key,
+    //                 match
+    //             );
+    //         }
+    //     }
 
-        this.trace.debug("QueryExecutor.dedupeMatches", "...unique.values: ", { ...unique.values() });
+    //     this.trace.debug("QueryExecutor.dedupeMatches", "...unique.values: ", { ...unique.values() });
 
-        return [
-            ...unique.values()
-        ];
-    }
+    //     return [
+    //         ...unique.values()
+    //     ];
+    // }
 
     private async evaluateAggregate(
         context: TraversalContext,
@@ -280,8 +280,8 @@ export class QueryExecutor {
         if (!request.field) {
 
             return this.aggregateResolver.evaluate(
-                context,
-                undefined,
+                // context,
+                // undefined,
                 group,
                 request
             );
@@ -301,8 +301,8 @@ export class QueryExecutor {
 
 
         return this.aggregateResolver.evaluate(
-            context,
-            aggregatePlan,
+            // context,
+            // aggregatePlan,
             group,
             request
         );
@@ -374,32 +374,32 @@ export class QueryExecutor {
         }
     }
 
-    private setCollectionProjectedValue(
-        target:any,
-        path:string,
-        values:any[]
-    ):void {
+    // private setCollectionProjectedValue(
+    //     target:any,
+    //     path:string,
+    //     values:any[]
+    // ):void {
 
-        const parts =
-            path.split(".");
-
-
-        if (parts.length === 1) {
-
-            target[parts[0]] =
-                values;
-
-            return;
-        }
+    //     const parts =
+    //         path.split(".");
 
 
-        const collectionField =
-            parts[0];
+    //     if (parts.length === 1) {
+
+    //         target[parts[0]] =
+    //             values;
+
+    //         return;
+    //     }
 
 
-        target[collectionField] =
-            values;
-    }
+    //     const collectionField =
+    //         parts[0];
+
+
+    //     target[collectionField] =
+    //         values;
+    // }
 
     private async applyFilters(
         records: DataRecord[],
@@ -1232,8 +1232,8 @@ export class QueryExecutor {
 
             group.value =
                 await this.aggregateResolver.evaluate(
-                    travContext,
-                    undefined,
+                    // travContext,
+                    // undefined,
                     group,
                     request.aggregate
                 );

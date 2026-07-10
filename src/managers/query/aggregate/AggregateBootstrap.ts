@@ -7,15 +7,15 @@ import { MinStrategy } from "./strategies/MinStrategy";
 import { MaxStrategy } from "./strategies/MaxStrategy";
 import { DistinctCountStrategy } from "./strategies/DistinctCountStrategy";
 import { DistinctValuesStrategy } from "./strategies/DistinctValuesStrategy";
-import { QueryMatchNavigator } from "../match/QueryMatchNavigator";
+// import { QueryMatchNavigator } from "../match/QueryMatchNavigator";
 import { CountRootsStrategy } from "./strategies/CountRootsStrategy";
-import { TraversalExecutor } from "../../traversal/TraversalExecutor";
+// import { TraversalExecutor } from "../../traversal/TraversalExecutor";
 import { TraceLogger } from "../../logging/TraceLogger";
 
 export class AggregateBootstrap {
 
     static build(
-        travExecutor: TraversalExecutor,
+        // travExecutor: TraversalExecutor,
         trace: TraceLogger
     ): AggregateResolver {
 
@@ -24,12 +24,12 @@ export class AggregateBootstrap {
 
         registry.register("count-matches", new CountMatchesStrategy(trace));
         registry.register("count-roots", new CountRootsStrategy(trace));
-        registry.register("sum", new SumStrategy(travExecutor, trace));
-        registry.register("avg", new AvgStrategy(travExecutor, trace));
-        registry.register("min", new MinStrategy(travExecutor, trace));
-        registry.register("max", new MaxStrategy(travExecutor, trace));
-        registry.register("distinct-count", new DistinctCountStrategy(travExecutor, trace));
-        registry.register("distinct-values", new DistinctValuesStrategy(travExecutor, trace));
+        registry.register("sum", new SumStrategy(trace));
+        registry.register("avg", new AvgStrategy(trace));
+        registry.register("min", new MinStrategy(trace));
+        registry.register("max", new MaxStrategy(trace));
+        registry.register("distinct-count", new DistinctCountStrategy(trace));
+        registry.register("distinct-values", new DistinctValuesStrategy(trace));
 
         return new AggregateResolver(registry);
     }

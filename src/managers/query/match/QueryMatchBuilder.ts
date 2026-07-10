@@ -1,91 +1,91 @@
-import { QueryPlan } from "../../../types/query/QueryPlannerTypes";
-import { QueryMatch } from "../../../types/query/QueryMatchTypes";
-import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
-import { Notice } from "obsidian";
+// import { QueryPlan } from "../../../types/query/QueryPlannerTypes";
+// import { QueryMatch } from "../../../types/query/QueryMatchTypes";
+// import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
+// import { Notice } from "obsidian";
 
-export class QueryMatchBuilder {
+// export class QueryMatchBuilder {
 
-    build(
-        graph: ResolvedRecordGraph,
-        plan: QueryPlan
-    ): QueryMatch[] {
+//     build(
+//         graph: ResolvedRecordGraph,
+//         plan: QueryPlan
+//     ): QueryMatch[] {
 
-        let matches: QueryMatch[] = [];
+//         let matches: QueryMatch[] = [];
 
-        // ----------------------------------
-        // INIT ROOTS
-        // ----------------------------------
+//         // ----------------------------------
+//         // INIT ROOTS
+//         // ----------------------------------
 
-        for (const rootId of graph.roots) {
+//         for (const rootId of graph.roots) {
 
-            matches.push({
-                rootId,
-                currentId: rootId,
+//             matches.push({
+//                 rootId,
+//                 currentId: rootId,
 
-                pathNodes: [rootId],
-                pathIndexes: [],
+//                 pathNodes: [rootId],
+//                 pathIndexes: [],
 
-                bindings: {}
-            });
-        }
+//                 bindings: {}
+//             });
+//         }
 
-        // ----------------------------------
-        // TRAVERSE PLAN
-        // ----------------------------------
+//         // ----------------------------------
+//         // TRAVERSE PLAN
+//         // ----------------------------------
 
-        for (const step of plan.steps) {
+//         for (const step of plan.steps) {
 
-            const nextMatches: QueryMatch[] = [];
+//             const nextMatches: QueryMatch[] = [];
 
-            for (const match of matches) {
+//             for (const match of matches) {
 
-                const sourceNode =
-                    graph.nodes.get(match.currentId);
+//                 const sourceNode =
+//                     graph.nodes.get(match.currentId);
 
-                if (!sourceNode) continue;
+//                 if (!sourceNode) continue;
 
-                const refs =
-                    sourceNode.refs.get(step.field) ?? [];
+//                 const refs =
+//                     sourceNode.refs.get(step.field) ?? [];
 
-                if (refs.length === 0) continue;
+//                 if (refs.length === 0) continue;
 
-                const pathKey =
-                    `${step.from}.${step.field}`;
+//                 const pathKey =
+//                     `${step.from}.${step.field}`;
 
-                for (let index = 0; index < refs.length; index++) {
+//                 for (let index = 0; index < refs.length; index++) {
 
-                    const refId = refs[index];
+//                     const refId = refs[index];
 
-                    nextMatches.push({
-                        rootId: match.rootId,
-                        currentId: refId,
+//                     nextMatches.push({
+//                         rootId: match.rootId,
+//                         currentId: refId,
 
-                        // ----------------------------------
-                        // CRITICAL: structural trace
-                        // ----------------------------------
-                        pathNodes: [
-                            ...match.pathNodes,
-                            refId
-                        ],
+//                         // ----------------------------------
+//                         // CRITICAL: structural trace
+//                         // ----------------------------------
+//                         pathNodes: [
+//                             ...match.pathNodes,
+//                             refId
+//                         ],
 
-                        // ----------------------------------
-                        // CRITICAL: decision trace
-                        // ----------------------------------
-                        pathIndexes: [
-                            ...match.pathIndexes,
-                            index
-                        ],
+//                         // ----------------------------------
+//                         // CRITICAL: decision trace
+//                         // ----------------------------------
+//                         pathIndexes: [
+//                             ...match.pathIndexes,
+//                             index
+//                         ],
 
-                        bindings: {
-                            ...match.bindings,
-                            [pathKey]: refId
-                        }
-                    });
-                }
-            }
+//                         bindings: {
+//                             ...match.bindings,
+//                             [pathKey]: refId
+//                         }
+//                     });
+//                 }
+//             }
 
-            matches = nextMatches;
-        }
-        return matches;
-    }
-}
+//             matches = nextMatches;
+//         }
+//         return matches;
+//     }
+// }

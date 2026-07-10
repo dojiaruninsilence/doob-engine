@@ -1,13 +1,13 @@
-import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
+// import { ResolvedRecordGraph } from "../../../types/query/ResolvedRecordGraph";
 import { QueryGroupResult } from "../../../types/query/QueryTypes";
-import { AggregateRequest } from "../../../types/query/AggregateTypes";
-import { TraversalContext, TraversalPlan } from "../../../types/traversal";
+// import { AggregateRequest } from "../../../types/query/AggregateTypes";
+// import { TraversalContext, TraversalPlan } from "../../../types/traversal";
 
 export interface IAggregateStrategy {
     evaluate(
-        context: TraversalContext,
-        plan: TraversalPlan,
+        // context: TraversalContext,
+        // plan: TraversalPlan,
         group: QueryGroupResult,
-        request: AggregateRequest
+        // request: AggregateRequest
     ): Promise<any>;
 }

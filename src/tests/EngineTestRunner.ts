@@ -1,22 +1,22 @@
 import { Notice } from "obsidian";
-import { ResolvedRecordGraphNavigator } from "../managers/query/graph/ResolvedRecordGraphNavigator";
-import { AggregateResolver } from "../managers/query/aggregate/AggregateResolver";
-import { QueryGroupResult } from "../types/query/QueryTypes";
-import { AggregateStrategyRegistry } from "../managers/query/aggregate/AggregateStrategyRegistry";
-import { CountMatchesStrategy } from "../managers/query/aggregate/strategies/CountMatchesStrategy";
-import { SumStrategy } from "../managers/query/aggregate/strategies/SumStrategy";
-import { AvgStrategy } from "../managers/query/aggregate/strategies/AvgStrategy";
-import { MinStrategy } from "../managers/query/aggregate/strategies/MinStrategy";
-import { MaxStrategy } from "../managers/query/aggregate/strategies/MaxStrategy";
-import { DistinctCountStrategy } from "../managers/query/aggregate/strategies/DistinctCountStrategy";
-import { DistinctValuesStrategy } from "../managers/query/aggregate/strategies/DistinctValuesStrategy";
-import { QueryMatchNavigator } from "../managers/query/match/QueryMatchNavigator";
-import { CountRootsStrategy } from "../managers/query/aggregate/strategies/CountRootsStrategy";
+// import { ResolvedRecordGraphNavigator } from "../managers/query/graph/ResolvedRecordGraphNavigator";
+// import { AggregateResolver } from "../managers/query/aggregate/AggregateResolver";
+// import { QueryGroupResult } from "../types/query/QueryTypes";
+// import { AggregateStrategyRegistry } from "../managers/query/aggregate/AggregateStrategyRegistry";
+// import { CountMatchesStrategy } from "../managers/query/aggregate/strategies/CountMatchesStrategy";
+// import { SumStrategy } from "../managers/query/aggregate/strategies/SumStrategy";
+// import { AvgStrategy } from "../managers/query/aggregate/strategies/AvgStrategy";
+// import { MinStrategy } from "../managers/query/aggregate/strategies/MinStrategy";
+// import { MaxStrategy } from "../managers/query/aggregate/strategies/MaxStrategy";
+// import { DistinctCountStrategy } from "../managers/query/aggregate/strategies/DistinctCountStrategy";
+// import { DistinctValuesStrategy } from "../managers/query/aggregate/strategies/DistinctValuesStrategy";
+// import { QueryMatchNavigator } from "../managers/query/match/QueryMatchNavigator";
+// import { CountRootsStrategy } from "../managers/query/aggregate/strategies/CountRootsStrategy";
 import { Logger } from "../managers/logging/Logger";
 import { LoggerFactory } from "../managers/logging/LoggerFactory";
-import { TraversalExecutor } from "../managers/traversal/TraversalExecutor";
+// import { TraversalExecutor } from "../managers/traversal/TraversalExecutor";
 import { TraceLogger } from "../managers/logging/TraceLogger";
-import { ValueResolver } from "../managers/traversal/resolver/ValueResolver";
+// import { ValueResolver } from "../managers/traversal/resolver/ValueResolver";
 
 export class EngineTestRunner {
 
@@ -25,12 +25,12 @@ export class EngineTestRunner {
 	private contextFactory: any;
 	private queryManager: any;
 	private queryPlanner: any;
-	private graphBuilder: any;
+	// private graphBuilder: any;
 	private logger!: Logger;
 	private engineLogger!: Logger;
 	private loggerFactory!: LoggerFactory;
 	private mutationExecutor: any;
-	private trace: TraceLogger;
+	// private trace: TraceLogger;
 
 	constructor(
 		schemaManager: any, 
@@ -38,11 +38,11 @@ export class EngineTestRunner {
 		contextFactory: any, 
 		queryManager: any, 
 		queryPlanner: any,
-		graphBuilder: any,
+		// graphBuilder: any,
 		mutationExecutor: any,
 		engineLogger: Logger,
 		loggerFactory: LoggerFactory,
-		trace: TraceLogger
+		// trace: TraceLogger
 	) {
 
         if (!schemaManager) {
@@ -65,11 +65,11 @@ export class EngineTestRunner {
         this.contextFactory = contextFactory;
         this.queryManager = queryManager;
 		this.queryPlanner = queryPlanner;
-		this.graphBuilder = graphBuilder;
+		// this.graphBuilder = graphBuilder;
 		this.mutationExecutor = mutationExecutor;
 		this.engineLogger = engineLogger;
 		this.loggerFactory = loggerFactory;
-		this.trace = trace;
+		// this.trace = trace;
     }
 
     private async safeRun(name: string, fn: () => Promise<void>) {
