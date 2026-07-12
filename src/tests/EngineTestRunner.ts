@@ -420,7 +420,7 @@ export class EngineTestRunner {
 			- also add all logs to master log, then maybe we compile all of the logs to master engine log
 			- class to create a logger bundle
 		
-		Add index.ts to all type folders. 
+		x Add index.ts to all type folders. 
 			- slowly simplify all imports
 
 		begin the ui with a way to display the logs better

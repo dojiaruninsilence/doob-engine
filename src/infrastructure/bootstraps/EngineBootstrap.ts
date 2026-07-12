@@ -1,32 +1,35 @@
 import { App } from "obsidian";
 
-import { CacheManager } from "../managers/CacheManager";
-import { ContextFactory } from "../managers/ContextFactory";
-import { DataManager } from "../managers/DataManager";
-import { LoggerFactory } from "../managers/logging/LoggerFactory";
-import { TraceLogger } from "../managers/logging/TraceLogger";
-import { MutationExecutor } from "../managers/mutation/MutationExecutor";
-import { MutationPlanner } from "../managers/mutation/MutationPlanner";
-import { MutationRequestBuilder } from "../managers/mutation/MutationRequestBuilder";
-import { MutationTargetResolver } from "../managers/mutation/MutationTargetResolver";
-import { MutationOperationResolver } from "../managers/mutation/operations/MutationOperationResolver";
-import { MutationValidationLayer } from "../managers/mutation/validation/MutationValidationLayer";
-import { AggregateBootstrap } from "../managers/query/aggregate/AggregateBootstrap";
-import { QueryExecutionPlanRunner } from "../managers/query/QueryExecutionPlanRunner";
-import { QueryExecutor } from "../managers/query/QueryExecutor";
-import { QueryManager } from "../managers/query/QueryManager";
-import { RulesetManager } from "../managers/RulesetManager";
-import { SchemaManager } from "../managers/SchemaManager";
-import { LegacyTraversalAdapter } from "../managers/traversal/LegacyTraversalAdapter";
-import { ResolvedRecordGraphBuilder } from "../managers/traversal/ResolvedRecordGraphBuilder";
-import { TraversalExecutionPlanBuilder } from "../managers/traversal/TraversalExecutionPlanBuilder";
-import { TraversalExecutor } from "../managers/traversal/TraversalExecutor";
-import { TraversalPlanBuilder } from "../managers/traversal/TraversalPlanBuilder";
-import { TraversalPlanner } from "../managers/traversal/TraversalPlanner";
-import { TraversalRequestBuilder } from "../managers/traversal/TraversalRequestBuilder";
-import { ValueResolver } from "../managers/traversal/resolver/ValueResolver";
+import { CacheManager } from "../../managers/CacheManager";
+import { ContextFactory } from "../../managers/ContextFactory";
+import { DataManager } from "../../managers/DataManager";
+import { LoggerFactory } from "../../managers/logging/LoggerFactory";
+import { TraceLogger } from "../../managers/logging/TraceLogger";
+import { MutationExecutor } from "../../managers/mutation/MutationExecutor";
+import { MutationPlanner } from "../../managers/mutation/MutationPlanner";
+import { MutationRequestBuilder } from "../../managers/mutation/MutationRequestBuilder";
+import { MutationTargetResolver } from "../../managers/mutation/MutationTargetResolver";
+import { MutationOperationResolver } from "../../managers/mutation/operations/MutationOperationResolver";
+import { MutationValidationLayer } from "../../managers/mutation/validation/MutationValidationLayer";
+import { AggregateBootstrap } from "./AggregateBootstrap";
+import { QueryExecutionPlanRunner } from "../../managers/query/QueryExecutionPlanRunner";
+import { QueryExecutor } from "../../managers/query/QueryExecutor";
+import { QueryManager } from "../../managers/query/QueryManager";
+import { RulesetManager } from "../../managers/RulesetManager";
+import { SchemaManager } from "../../managers/SchemaManager";
+import { LegacyTraversalAdapter } from "../../managers/traversal/LegacyTraversalAdapter";
+import { ResolvedRecordGraphBuilder } from "../../managers/traversal/ResolvedRecordGraphBuilder";
+import { TraversalExecutionPlanBuilder } from "../../managers/traversal/TraversalExecutionPlanBuilder";
+import { TraversalExecutor } from "../../managers/traversal/TraversalExecutor";
+import { TraversalPlanBuilder } from "../../managers/traversal/TraversalPlanBuilder";
+import { TraversalPlanner } from "../../managers/traversal/TraversalPlanner";
+import { TraversalRequestBuilder } from "../../managers/traversal/TraversalRequestBuilder";
+import { ValueResolver } from "../../managers/traversal/resolver/ValueResolver";
 
-import { EngineServices } from "../types";
+import { EngineServices } from "../../types";
+import { LayoutManager } from "../../ui/LayoutManager";
+import { ToolRegistry } from "../../ui/ToolRegistry";
+import { ToolBootstrap } from "./ToolBootstrap";
 
 export class EngineBootstrap {
 
@@ -175,6 +178,10 @@ export class EngineBootstrap {
 				traversalExecutor
 			);
 
+		const toolRegistry = ToolBootstrap.build(traceLogger);
+
+		const layoutManager = new LayoutManager(toolRegistry, traceLogger);
+
 		return {
 			loggerFactory,
 			engineLog,
@@ -198,7 +205,10 @@ export class EngineBootstrap {
 			queryExecutor,
 			queryManager,
 
-			mutationExecutor
+			mutationExecutor,
+
+			toolRegistry,
+			layoutManager
 		};
 	}
 }

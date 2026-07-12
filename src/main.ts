@@ -1,9 +1,10 @@
 import { Plugin, Notice } from "obsidian";
-import { EngineBootstrap } from "./infrastructure/EngineBootstrap";
+import { EngineBootstrap } from "./infrastructure/bootstraps/EngineBootstrap";
 import { EngineServices } from "./types";
 import { DebugHooks } from "./infrastructure/DebugHooks";
 import { ToolPanelManager } from "./ui/ToolPanelManager";
 import { CommandRegistry } from "./infrastructure/CommandRegistry";
+import { LayoutManager } from "./ui/LayoutManager";
 
 export default class DoobEngine extends Plugin {
 
@@ -11,6 +12,7 @@ export default class DoobEngine extends Plugin {
 	public softReload?: () => Promise<void>;
 	public toolPanelManager!: ToolPanelManager;
 	public services!: EngineServices;
+	public layoutManager!: LayoutManager;
 	
 	async onload() {
 
@@ -33,6 +35,8 @@ export default class DoobEngine extends Plugin {
 		// --------------------------------------------------
 		// NOW SAFE TO BUILD UI
 		// --------------------------------------------------
+
+		// this.layoutManager = new LayoutManager();
 
 		this.toolPanelManager =
 			new ToolPanelManager(this);

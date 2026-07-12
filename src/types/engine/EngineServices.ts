@@ -15,6 +15,8 @@ import { TraversalExecutor } from "../../managers/traversal/TraversalExecutor";
 import { TraversalPlanBuilder } from "../../managers/traversal/TraversalPlanBuilder";
 import { TraversalPlanner } from "../../managers/traversal/TraversalPlanner";
 import { TraversalRequestBuilder } from "../../managers/traversal/TraversalRequestBuilder";
+import { LayoutManager } from "../../ui/LayoutManager";
+import { ToolRegistry } from "../../ui/ToolRegistry";
 
 export interface EngineServices {
 	loggerFactory: LoggerFactory;
@@ -40,4 +42,7 @@ export interface EngineServices {
 	queryManager: QueryManager;
 
 	mutationExecutor: MutationExecutor;
+
+	toolRegistry: ToolRegistry;
+	layoutManager: LayoutManager;
 }
